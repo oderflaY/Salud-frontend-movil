@@ -4,5 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Exigido por CoreNFC: el texto que ve el usuario antes de conceder el permiso de lectura. -->
+	<key>NFCReaderUsageDescription</key>
+	<string>Necesitamos leer la tarjeta de emergencia del paciente para mostrar su perfil de supervivencia.</string>
 </dict>
 </plist>
