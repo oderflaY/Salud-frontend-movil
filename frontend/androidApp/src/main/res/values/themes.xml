@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Tema de VENTANA, no de la app: la app se pinta entera en Compose con
+      SaludTheme. Este tema solo decide que ve el usuario en los milisegundos
+      antes del primer fotograma de Compose (arranque en frio, pantalla de
+      bienvenida de Android 12+, recreacion al girar). Por eso su fondo es el
+      mismo PearlGray del tema Compose: sin salto de color al entrar.
+    -->
+    <style name="Theme.Salud" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fondo_ventana</item>
+    </style>
+
+    <color name="fondo_ventana">#FFF0F1F4</color>
+</resources>

@@ -1,0 +1,96 @@
+services:
+  db:
+    build: ./db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_cron
+      - -c
+      - cron.database_name=${POSTGRES_DB}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: postgres:16-bookworm
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
+    volumes:
+      - ./db/migrations:/migrations:ro
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "-c", "/scripts/migrate.sh /migrations && /scripts/set_secrets.sh"]
+
+  postgrest:
+    image: postgrest/postgrest:v12.2.3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGRST_DB_URI: ${PGRST_DB_URI}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE}
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_JWT_ROLE_CLAIM_KEY: .role
+    ports:
+      - "${POSTGREST_PORT}:3000"
+
+  backend:
+    build: ./backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRACION_HORAS: ${JWT_EXPIRACION_HORAS}
+      ARGON2_SECRET_KEY: ${ARGON2_SECRET_KEY}
+      BACKEND_PORT: ${BACKEND_PORT}
+      RUST_LOG: ${RUST_LOG}
+      # Opcionales: si DEEPSEEK_API_KEY viene vacía, el módulo de IA
+      # (resumen de chat, traducción) responde IA_NO_CONFIGURADA (503) y el
+      # resto del backend arranca y funciona igual.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODELO: ${DEEPSEEK_MODELO:-deepseek-chat}
+    ports:
+      - "${BACKEND_PORT}:8080"
+
+  proxy:
+    image: caddy:2.8-alpine
+    depends_on:
+      - postgrest
+      - backend
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "${PROXY_PORT}:8000"
+
+  # Perfil aparte: no corre en `docker compose up` normal, solo con
+  # `docker compose --profile test run dbtest`.
+  dbtest:
+    build: ./db
+    profiles: ["test"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./db/tests:/tests:ro
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/run_pgtap.sh", "/tests"]
+
+volumes:
+  db-data:

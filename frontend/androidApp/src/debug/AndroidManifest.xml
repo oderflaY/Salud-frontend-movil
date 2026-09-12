@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Fragmento SOLO de depuracion: el fusionador de manifiestos de Android lo
+  combina con androidApp/src/main/AndroidManifest.xml unicamente en builds
+  debug. Es lo que activa network_security_config.xml (permite HTTP sin
+  cifrar hacia el backend de desarrollo); un build de release nunca ve este
+  archivo ni ese permiso.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

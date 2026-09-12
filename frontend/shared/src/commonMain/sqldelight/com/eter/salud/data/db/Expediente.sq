@@ -1,0 +1,35 @@
+-- ============================================================================
+-- Expediente medico del paciente (PacienteDto de DM_HistorialMedico.md).
+--
+-- Se guarda como el JSON del contrato y no desarmado en veinte tablas: es el
+-- mismo documento que viajara al backend, y partirlo aqui obligaria a
+-- reconstruirlo en cada lectura con el riesgo de perder un nodo por el camino.
+-- Lo que SI se consulta por separado vive en columnas propias.
+-- ============================================================================
+
+CREATE TABLE expediente (
+    id_paciente TEXT NOT NULL PRIMARY KEY,
+    -- RiesgoPaciente.name: el semaforo que ve el medico en su cartera.
+    riesgo TEXT NOT NULL DEFAULT 'BAJO',
+    -- Fecha civil `YYYY-MM-DD` desde la que cuentan las tomas del tratamiento.
+    -- Un dia anterior al expediente no tenia medicinas que olvidar.
+    tomas_desde TEXT NOT NULL,
+    datos_json TEXT NOT NULL,
+    actualizado_en TEXT NOT NULL
+);
+
+obtener:
+SELECT *
+FROM expediente
+WHERE id_paciente = ?;
+
+-- Sin UPSERT a proposito: Android 7 trae SQLite 3.9 y `ON CONFLICT DO UPDATE`
+-- llego en la 3.24. Alta y edicion son dos sentencias dentro de una transaccion.
+insertarSiNoExiste:
+INSERT OR IGNORE INTO expediente(id_paciente, riesgo, tomas_desde, datos_json, actualizado_en)
+VALUES (?, ?, ?, ?, ?);
+
+actualizarDatos:
+UPDATE expediente
+SET datos_json = ?, actualizado_en = ?
+WHERE id_paciente = ?;

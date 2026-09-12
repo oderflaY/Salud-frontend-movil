@@ -1,0 +1,1046 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  English translation of the app strings.
+  Generated from values/strings.xml (Spanish), which stays the source of truth.
+  Every key here MUST exist in the Spanish file: a key only in English is dead
+  weight, and one missing here silently falls back to Spanish and produces a
+  half-translated screen.
+  No emojis (DM_Arquitectura_App.md, section 3).
+-->
+<resources>
+
+    <string name="app_nombre">Salud</string>
+    <string name="accion_continuar">Continue</string>
+    <string name="accion_atras">Back</string>
+    <string name="accion_omitir">Skip for now</string>
+    <string name="accion_agregar">Add</string>
+    <string name="accion_eliminar">Delete</string>
+    <string name="accion_guardar">Save</string>
+    <string name="accion_cancelar">Cancel</string>
+    <string name="accion_finalizar">Finish registration</string>
+    <string name="a11y_accion_reintentar">Try loading again</string>
+    <string name="accion_reintentar">Retry</string>
+    <string name="accion_si">Yes</string>
+    <string name="accion_no">No</string>
+    <string name="accion_no_lo_se">I don't know</string>
+    <string name="accion_seleccionar">Select</string>
+    <string name="estado_enviando">Sending your information</string>
+    <string name="estado_envio_exitoso">Your profile has been saved</string>
+    <string name="estado_envio_error">We couldn't save your information. Check your connection.</string>
+    <string name="etiqueta_opcional">Optional</string>
+    <string name="etiqueta_obligatorio">Required</string>
+    <string name="etiqueta_dato_critico">Critical emergency data</string>
+    <string name="etiqueta_lista_vacia">No entries</string>
+    <string name="a11y_progreso">Step %1$d of %2$d</string>
+    <string name="a11y_boton_atras">Go back to the previous step</string>
+    <string name="a11y_boton_continuar">Continue to the next step</string>
+    <string name="a11y_boton_finalizar">Finish and submit the registration</string>
+    <string name="a11y_campo_obligatorio">Required field</string>
+    <string name="a11y_campo_opcional">Optional field</string>
+    <string name="a11y_dato_critico">This information is shared with paramedics in an emergency</string>
+    <string name="a11y_error_campo">Error in field: %1$s</string>
+    <string name="a11y_elemento_agregado">%1$s added to the list</string>
+    <string name="a11y_elemento_eliminado">%1$s removed from the list</string>
+    <string name="a11y_eliminar_elemento">Delete %1$s</string>
+    <string name="a11y_cargando">Sending information, please wait</string>
+    <string name="a11y_seccion_resumen">Summary of the information you entered</string>
+    <string name="onb_bienvenida_titulo">Welcome to Salud</string>
+    <string name="onb_bienvenida_descripcion">Let's set up your emergency profile. It's ten short questions; the critical information stays available to paramedics who read your card.</string>
+    <string name="onb_bienvenida_accion">Get started</string>
+    <string name="a11y_onb_bienvenida_accion">Start setting up your health profile</string>
+    <string name="onb_nombre_titulo">What is your name</string>
+    <string name="onb_nombre_descripcion">We use your legal name so it matches your medical records.</string>
+    <string name="onb_nombre_campo">First name</string>
+    <string name="onb_nombre_placeholder">John</string>
+    <string name="onb_apellidos_campo">Last name</string>
+    <string name="onb_apellidos_placeholder">Smith Jones</string>
+    <string name="a11y_onb_nombre_campo">Enter your first name</string>
+    <string name="a11y_onb_apellidos_campo">Enter your last name</string>
+    <string name="error_nombre_vacio">Enter your first name</string>
+    <string name="error_apellidos_vacio">Enter your last name</string>
+    <string name="onb_nacimiento_titulo">What is your date of birth</string>
+    <string name="onb_nacimiento_descripcion">Age changes dosages and treatment protocols.</string>
+    <string name="onb_nacimiento_campo">Date of birth</string>
+    <string name="onb_nacimiento_placeholder">YYYY-MM-DD</string>
+    <string name="a11y_onb_nacimiento_campo">Select your date of birth</string>
+    <string name="error_nacimiento_vacio">Enter your date of birth</string>
+    <string name="error_nacimiento_formato">Use the year, month and day format</string>
+    <string name="error_nacimiento_futura">The date cannot be later than today</string>
+    <string name="onb_genero_titulo">What is your gender</string>
+    <string name="onb_genero_descripcion">Some clinical reference values depend on this.</string>
+    <string name="onb_genero_campo">Gender</string>
+    <string name="a11y_onb_genero_campo">Select your gender</string>
+    <string name="error_genero_vacio">Select an option</string>
+    <string name="onb_telefono_titulo">What is your mobile phone number</string>
+    <string name="onb_telefono_descripcion">We use it for medication reminders and to verify your account.</string>
+    <string name="onb_telefono_campo">Mobile phone</string>
+    <string name="onb_telefono_placeholder">+52 618 123 4567</string>
+    <string name="a11y_onb_telefono_campo">Enter your mobile phone number with country code</string>
+    <string name="error_telefono_vacio">Enter your phone number</string>
+    <string name="error_telefono_formato">Enter a valid 10-digit number with country code</string>
+    <string name="onb_sangre_titulo">Do you know your blood type</string>
+    <string name="onb_sangre_descripcion">It's the first thing a paramedic checks before a transfusion.</string>
+    <string name="onb_sangre_campo">Blood type</string>
+    <string name="a11y_onb_sangre_campo">Select your blood type</string>
+    <string name="onb_sangre_desconocido">I don't know my blood type</string>
+    <string name="error_sangre_vacio">Select your blood type or say you don't know it</string>
+    <string name="onb_alergias_titulo">Are you allergic to any medication</string>
+    <string name="onb_alergias_descripcion">An unnoticed allergy is the most common avoidable cause of harm in an emergency.</string>
+    <string name="onb_alergias_pregunta_tiene">Do you have any allergies</string>
+    <string name="onb_alergias_sin_alergias">I have no known allergies</string>
+    <string name="onb_alergias_alergeno_campo">Allergen</string>
+    <string name="onb_alergias_alergeno_placeholder">Penicillin</string>
+    <string name="onb_alergias_severidad_campo">Severity</string>
+    <string name="onb_alergias_reaccion_campo">Reaction</string>
+    <string name="onb_alergias_reaccion_placeholder">Hives and swelling</string>
+    <string name="onb_alergias_lista_titulo">Allergies on record</string>
+    <string name="onb_alergias_accion_agregar">Add allergy</string>
+    <string name="a11y_onb_alergias_alergeno">Enter the substance or medication that causes your allergy</string>
+    <string name="a11y_onb_alergias_severidad">Select how severe the reaction is</string>
+    <string name="a11y_onb_alergias_reaccion">Describe the reaction this substance causes</string>
+    <string name="a11y_onb_alergias_item">Allergy to %1$s, severity %2$s, reaction %3$s</string>
+    <string name="error_alergia_alergeno_vacio">Enter the name of the allergen</string>
+    <string name="error_alergia_severidad_vacia">Select the severity</string>
+    <string name="error_alergia_reaccion_vacia">Describe the reaction</string>
+    <string name="error_alergias_sin_confirmar">Add your allergies or state that you have none</string>
+    <string name="onb_condiciones_titulo">Do you live with any chronic condition</string>
+    <string name="onb_condiciones_descripcion">Conditions such as asthma, diabetes or epilepsy change how you are treated.</string>
+    <string name="onb_condiciones_campo">Condition</string>
+    <string name="onb_condiciones_placeholder">Reactive asthma</string>
+    <string name="onb_condiciones_lista_titulo">Conditions on record</string>
+    <string name="onb_condiciones_accion_agregar">Add condition</string>
+    <string name="onb_condiciones_sin_condiciones">I have no chronic conditions</string>
+    <string name="a11y_onb_condiciones_campo">Enter a chronic condition you live with</string>
+    <string name="a11y_onb_condiciones_item">Chronic condition: %1$s</string>
+    <string name="error_condicion_vacia">Enter the condition before adding it</string>
+    <string name="error_condiciones_sin_confirmar">Add your conditions or state that you have none</string>
+    <string name="onb_rescate_titulo">Do you take any life-saving rescue medication</string>
+    <string name="onb_rescate_descripcion">These are the medications that save your life in a crisis, such as inhalers, adrenaline or blood thinners.</string>
+    <string name="onb_rescate_campo">Rescue medication</string>
+    <string name="onb_rescate_placeholder">Blood thinners in use</string>
+    <string name="onb_rescate_lista_titulo">Rescue medication on record</string>
+    <string name="onb_rescate_accion_agregar">Add medication</string>
+    <string name="onb_rescate_sin_medicacion">I take no rescue medication</string>
+    <string name="a11y_onb_rescate_campo">Enter the name of your rescue medication</string>
+    <string name="a11y_onb_rescate_item">Rescue medication: %1$s</string>
+    <string name="error_rescate_vacio">Enter the medication before adding it</string>
+    <string name="error_rescate_sin_confirmar">Add your rescue medication or state that you take none</string>
+    <string name="onb_tratamientos_titulo">What medication are you taking right now</string>
+    <string name="onb_tratamientos_descripcion">Knowing your current medication avoids dangerous interactions.</string>
+    <string name="onb_tratamientos_medicamento_campo">Medication</string>
+    <string name="onb_tratamientos_medicamento_placeholder">Salbutamol</string>
+    <string name="onb_tratamientos_dosis_campo">Dose</string>
+    <string name="onb_tratamientos_dosis_placeholder">50mg</string>
+    <string name="onb_tratamientos_frecuencia_campo">Every how many hours</string>
+    <string name="onb_tratamientos_frecuencia_placeholder">12</string>
+    <string name="onb_tratamientos_inventario_campo">Units left</string>
+    <string name="onb_tratamientos_inventario_placeholder">14</string>
+    <string name="onb_tratamientos_via_campo">Route of administration</string>
+    <string name="onb_tratamientos_lista_titulo">Treatments on record</string>
+    <string name="onb_tratamientos_accion_agregar">Add treatment</string>
+    <string name="onb_tratamientos_sin_tratamientos">I am not taking any medication</string>
+    <string name="a11y_onb_tratamientos_medicamento">Enter the name of the medication</string>
+    <string name="a11y_onb_tratamientos_dosis">Enter the dose, for example 50 milligrams</string>
+    <string name="a11y_onb_tratamientos_frecuencia">Enter how many hours apart you take it</string>
+    <string name="a11y_onb_tratamientos_inventario">Enter how many units you have left</string>
+    <string name="a11y_onb_tratamientos_item">%1$s, dose %2$s, every %3$s hours</string>
+    <string name="error_tratamientos_sin_confirmar">Add your current medication or state that you take none</string>
+    <string name="error_tratamiento_medicamento_vacio">Enter the name of the medication</string>
+    <string name="error_tratamiento_dosis_vacia">Enter the dose</string>
+    <string name="error_tratamiento_frecuencia_vacia">Enter how many hours apart you take it</string>
+    <string name="error_tratamiento_frecuencia_invalida">Frequency must be a whole number of hours between 1 and 168</string>
+    <string name="error_tratamiento_inventario_invalido">Units left must be a whole number</string>
+    <string name="onb_contactos_titulo">Who should we contact in an emergency</string>
+    <string name="onb_contactos_descripcion">Add at least one person. The priority one contact is called first.</string>
+    <string name="onb_contactos_nombre_campo">Full name</string>
+    <string name="onb_contactos_nombre_placeholder">Mary Gomez</string>
+    <string name="onb_contactos_relacion_campo">Relationship</string>
+    <string name="onb_contactos_telefono_campo">Phone</string>
+    <string name="onb_contactos_telefono_placeholder">+52 618 987 6543</string>
+    <string name="onb_contactos_prioridad_campo">Priority</string>
+    <string name="onb_contactos_lista_titulo">Contacts on record</string>
+    <string name="onb_contactos_accion_agregar">Add contact</string>
+    <string name="a11y_onb_contactos_nombre">Enter your contact's full name</string>
+    <string name="a11y_onb_contactos_relacion">Select your relationship to this contact</string>
+    <string name="a11y_onb_contactos_telefono">Enter your contact's phone number</string>
+    <string name="a11y_onb_contactos_prioridad">Select the order in which we should call this contact</string>
+    <string name="a11y_onb_contactos_item">%1$s, %2$s, phone %3$s, priority %4$s</string>
+    <string name="error_contacto_nombre_vacio">Enter the contact's name</string>
+    <string name="error_contacto_relacion_vacia">Enter your relationship to the contact</string>
+    <string name="error_contacto_telefono_vacio">Enter the contact's phone number</string>
+    <string name="error_contacto_telefono_formato">Enter a valid 10-digit number with country code</string>
+    <string name="error_contactos_vacio">Add at least one emergency contact</string>
+    <string name="onb_resumen_titulo">Review your emergency profile</string>
+    <string name="onb_resumen_descripcion">This is what paramedics will see when they read your card.</string>
+    <string name="onb_resumen_seccion_identidad">Identity</string>
+    <string name="onb_resumen_seccion_emergencia">Emergency profile</string>
+    <string name="onb_resumen_seccion_tratamientos">Active treatments</string>
+    <string name="onb_resumen_seccion_contactos">Emergency contacts</string>
+    <string name="onb_final_titulo">Profile ready</string>
+    <string name="onb_final_descripcion">You can complete your medical history any time from Settings.</string>
+    <string name="onb_final_accion_ir_perfil">Go to my profile</string>
+    <string name="onb_final_accion_completar">Complete history now</string>
+    <string name="onb_alerta_criticos_titulo">Critical information missing</string>
+    <string name="onb_alerta_criticos_mensaje">Without this, your emergency card is incomplete and paramedics won't know how to treat you.</string>
+    <string name="onb_alerta_criticos_accion_completar">Complete now</string>
+    <string name="onb_alerta_criticos_accion_continuar">Continue without completing</string>
+    <string name="a11y_onb_alerta_criticos">Alert: critical survival information is missing</string>
+    <string name="perfil_titulo">My profile</string>
+    <string name="perfil_seccion_completar_titulo">Complete your history</string>
+    <string name="perfil_seccion_completar_descripcion">Only the treating doctor you authorise can see this.</string>
+    <string name="perfil_progreso_completado">Profile %1$d percent complete</string>
+    <string name="a11y_perfil_progreso">Your profile is %1$d percent complete</string>
+    <string name="f2_curp_titulo">Enter your CURP for official medical validation</string>
+    <string name="f2_curp_descripcion">The CURP links your record with health institutions.</string>
+    <string name="f2_curp_campo">CURP</string>
+    <string name="f2_curp_placeholder">PAGJ850412HDFRXX09</string>
+    <string name="a11y_f2_curp_campo">Enter your unique population registry code, eighteen characters</string>
+    <string name="error_curp_vacia">Enter your CURP</string>
+    <string name="error_curp_formato">The CURP must have eighteen valid characters</string>
+    <string name="f2_nss_titulo">What is your Social Security number or insurance policy</string>
+    <string name="f2_nss_descripcion">It speeds up your admission in the emergency room.</string>
+    <string name="f2_nss_campo">Social Security number</string>
+    <string name="f2_nss_placeholder">12345678901</string>
+    <string name="f2_aseguradora_campo">Insurer or policy</string>
+    <string name="f2_aseguradora_placeholder">IMSS</string>
+    <string name="a11y_f2_nss_campo">Enter your social security number, eleven digits</string>
+    <string name="a11y_f2_aseguradora_campo">Enter your insurer's name or your policy number</string>
+    <string name="error_nss_formato">The social security number must have eleven digits</string>
+    <string name="f2_donador_titulo">Are you a voluntary organ donor</string>
+    <string name="f2_donador_descripcion">This appears on your emergency profile.</string>
+    <string name="f2_donador_campo">Organ donor</string>
+    <string name="a11y_f2_donador_campo">State whether you are a voluntary organ donor</string>
+    <string name="f2_metricas_titulo">What is your current weight and height</string>
+    <string name="f2_metricas_descripcion">We use these to calculate your body mass index.</string>
+    <string name="f2_peso_campo">Weight in kilograms</string>
+    <string name="f2_peso_placeholder">78.5</string>
+    <string name="f2_altura_campo">Height in centimetres</string>
+    <string name="f2_altura_placeholder">175</string>
+    <string name="f2_imc_campo">Body mass index</string>
+    <string name="f2_imc_calculado">Calculated automatically: %1$s</string>
+    <string name="a11y_f2_peso_campo">Enter your current weight in kilograms</string>
+    <string name="a11y_f2_altura_campo">Enter your height in centimetres</string>
+    <string name="a11y_f2_imc_calculado">Your calculated body mass index is %1$s</string>
+    <string name="error_peso_invalido">Weight must be a number between 2 and 400 kilograms</string>
+    <string name="error_altura_invalida">Height must be a whole number between 30 and 250 centimetres</string>
+    <string name="f2_presion_titulo">Record your latest blood pressure reading</string>
+    <string name="f2_presion_descripcion">Enter systolic over diastolic, for example 120 over 80.</string>
+    <string name="f2_presion_sistolica_campo">Systolic</string>
+    <string name="f2_presion_diastolica_campo">Diastolic</string>
+    <string name="f2_presion_placeholder_sistolica">120</string>
+    <string name="f2_presion_placeholder_diastolica">80</string>
+    <string name="a11y_f2_presion_sistolica">Enter your systolic pressure, the higher number</string>
+    <string name="a11y_f2_presion_diastolica">Enter your diastolic pressure, the lower number</string>
+    <string name="error_presion_invalida">Enter two valid blood pressure numbers</string>
+    <string name="f2_cirugias_titulo">Have you had any surgery before</string>
+    <string name="f2_cirugias_descripcion">Include major and minor surgery with its approximate date.</string>
+    <string name="f2_cirugias_procedimiento_campo">Procedure</string>
+    <string name="f2_cirugias_procedimiento_placeholder">Appendectomy</string>
+    <string name="f2_cirugias_fecha_campo">Date</string>
+    <string name="f2_cirugias_fecha_placeholder">YYYY-MM-DD</string>
+    <string name="f2_cirugias_notas_campo">Notes</string>
+    <string name="f2_cirugias_notas_placeholder">No complications</string>
+    <string name="f2_cirugias_lista_titulo">Surgeries on record</string>
+    <string name="f2_cirugias_accion_agregar">Add surgery</string>
+    <string name="f2_cirugias_sin_cirugias">I have never had surgery</string>
+    <string name="a11y_f2_cirugias_procedimiento">Enter the name of the surgical procedure</string>
+    <string name="a11y_f2_cirugias_fecha">Select the date of the surgery</string>
+    <string name="a11y_f2_cirugias_notas">Add notes about the surgery, optional field</string>
+    <string name="a11y_f2_cirugias_item">Surgery %1$s, performed on %2$s</string>
+    <string name="error_cirugia_procedimiento_vacio">Enter the name of the procedure</string>
+    <string name="error_cirugia_fecha_invalida">Enter a valid date in year, month and day format</string>
+    <string name="f2_antecedentes_titulo">Are there serious chronic illnesses in your immediate family</string>
+    <string name="f2_antecedentes_descripcion">Consider parents, siblings and children.</string>
+    <string name="f2_antecedentes_campo">Family history entry</string>
+    <string name="f2_antecedentes_placeholder">Type 2 diabetes on my mother's side</string>
+    <string name="f2_antecedentes_lista_titulo">Family history on record</string>
+    <string name="f2_antecedentes_accion_agregar">Add family history</string>
+    <string name="f2_antecedentes_sin_antecedentes">No known family history</string>
+    <string name="a11y_f2_antecedentes_campo">Enter a chronic illness present in your immediate family</string>
+    <string name="a11y_f2_antecedentes_item">Family history: %1$s</string>
+    <string name="error_antecedente_vacio">Enter the family history before adding it</string>
+    <string name="perfil_estado_cargando">Loading your history</string>
+    <string name="perfil_estado_guardando">Saving</string>
+    <string name="perfil_estado_guardado">Section saved: %1$s</string>
+    <string name="perfil_estado_seccion_completa">Complete</string>
+    <string name="perfil_estado_seccion_pendiente">Pending</string>
+    <string name="perfil_accion_cerrar">Close</string>
+    <string name="perfil_accion_editar">Edit</string>
+    <string name="perfil_fila_curp">CURP</string>
+    <string name="perfil_fila_seguridad_social">Social security</string>
+    <string name="perfil_fila_donador">Organ donation</string>
+    <string name="perfil_fila_metricas">Weight and height</string>
+    <string name="perfil_fila_presion">Blood pressure</string>
+    <string name="perfil_fila_cirugias">Surgeries</string>
+    <string name="perfil_fila_antecedentes">Family history</string>
+    <string name="a11y_perfil_fila">%1$s, %2$s. Open to edit this section</string>
+    <string name="a11y_perfil_cargando">Loading your medical history, please wait</string>
+    <string name="a11y_perfil_guardando">Saving the section, please wait</string>
+    <string name="a11y_perfil_seccion_guardada">The %1$s section was saved successfully</string>
+    <string name="a11y_perfil_cerrar_seccion">Close the section without saving</string>
+    <string name="a11y_perfil_guardar_seccion">Save the changes in this section</string>
+    <string name="error_guardado_sin_conexion">We couldn't save your changes. Check your connection.</string>
+    <string name="error_guardado_perfil_no_cargado">Open your profile before editing it</string>
+    <string name="error_nss_vacio">Enter your social security number or your insurer</string>
+    <string name="error_donador_sin_respuesta">State whether you are an organ donor</string>
+    <string name="error_cirugias_sin_confirmar">Add your surgeries or state that you have had none</string>
+    <string name="error_antecedentes_sin_confirmar">Add your family history or state that you know of none</string>
+    <string name="login_titulo">Welcome</string>
+    <string name="login_subtitulo">Sign in to check your health profile and your medication reminders.</string>
+    <string name="login_correo_campo">Email</string>
+    <string name="login_correo_placeholder">name@email.com</string>
+    <string name="login_contrasena_campo">Password</string>
+    <string name="login_contrasena_placeholder">At least eight characters</string>
+    <string name="login_accion_mostrar_contrasena">Show</string>
+    <string name="login_accion_ocultar_contrasena">Hide</string>
+    <string name="login_accion_entrar">Sign in</string>
+    <string name="login_accion_recuperar">Forgot your password</string>
+    <string name="login_divisor">OR</string>
+    <string name="login_accion_registrarse">Create a new account</string>
+    <string name="login_estado_autenticando">Verifying your details</string>
+    <string name="a11y_login_isotipo">Salud app logo</string>
+    <string name="a11y_login_correo_campo">Enter your email address</string>
+    <string name="a11y_login_contrasena_campo">Enter your password</string>
+    <string name="a11y_login_mostrar_contrasena">Show the password on screen</string>
+    <string name="a11y_login_ocultar_contrasena">Hide the password</string>
+    <string name="a11y_login_accion_entrar">Sign in with the email and password entered</string>
+    <string name="a11y_login_accion_recuperar">Recover your password by email</string>
+    <string name="a11y_login_accion_registrarse">Create a new patient account</string>
+    <string name="a11y_login_autenticando">Verifying your details, please wait</string>
+    <string name="error_correo_vacio">Enter your email address</string>
+    <string name="error_correo_formato">Enter a valid email address</string>
+    <string name="error_contrasena_vacia">Enter your password</string>
+    <string name="error_contrasena_corta">The password must be at least eight characters</string>
+    <string name="error_credenciales_invalidas">The email or password don't match</string>
+    <string name="error_cuenta_bloqueada">Your account is locked. Contact your clinic.</string>
+    <string name="error_login_sin_conexion">We couldn't verify your details. Check your connection.</string>
+    <string name="registro_titulo">Create account</string>
+    <string name="registro_subtitulo">With your account we save your emergency profile and your medication reminders.</string>
+    <string name="registro_correo_campo">Email</string>
+    <string name="registro_correo_placeholder">name@email.com</string>
+    <string name="registro_contrasena_campo">Password</string>
+    <string name="registro_contrasena_placeholder">At least eight characters</string>
+    <string name="registro_contrasena_ayuda">Use at least eight characters, with letters and numbers.</string>
+    <string name="registro_confirmacion_campo">Repeat the password</string>
+    <string name="registro_aviso_privacidad">I accept the privacy notice and the processing of my health data</string>
+    <string name="registro_accion_crear">Create account</string>
+    <string name="registro_accion_ya_tengo_cuenta">I already have an account</string>
+    <string name="registro_estado_creando">Creating your account</string>
+    <string name="a11y_registro_correo_campo">Enter the email address for your new account</string>
+    <string name="a11y_registro_contrasena_campo">Enter a password of at least eight characters with letters and numbers</string>
+    <string name="a11y_registro_confirmacion_campo">Repeat the password to confirm it</string>
+    <string name="a11y_registro_aviso_privacidad">Accept the privacy notice to create the account</string>
+    <string name="a11y_registro_accion_crear">Create the account with the details entered</string>
+    <string name="a11y_registro_accion_ya_tengo_cuenta">Go back to the sign-in screen</string>
+    <string name="a11y_registro_creando">Creating your account, please wait</string>
+    <string name="error_contrasena_debil">The password must combine letters and numbers</string>
+    <string name="error_confirmacion_no_coincide">The passwords don't match</string>
+    <string name="error_aviso_no_aceptado">Accept the privacy notice to continue</string>
+    <string name="error_correo_ya_registrado">An account with this email already exists</string>
+    <string name="error_registro_sin_conexion">We couldn't create your account. Check your connection.</string>
+    <string name="home_titulo">Home</string>
+    <string name="home_saludo">Hello</string>
+    <string name="home_descripcion">From here you reach your emergency profile and your medical history.</string>
+    <string name="home_perfil_pendiente_titulo">Your emergency profile is incomplete</string>
+    <string name="home_perfil_pendiente_descripcion">Without it, paramedics reading your card won't know how to treat you.</string>
+    <string name="home_perfil_completo_titulo">Your emergency profile is ready</string>
+    <string name="home_perfil_completo_descripcion">You can review or correct it whenever you want.</string>
+    <string name="home_acceso_completar_perfil">Complete my emergency profile</string>
+    <string name="home_acceso_historial">My medical history</string>
+    <string name="a11y_home_acceso_completar_perfil">Open the setup for your emergency profile</string>
+    <string name="a11y_home_acceso_historial">Open your medical history and profile settings</string>
+    <string name="a11y_home_estado_perfil">Emergency profile status: %1$s</string>
+    <string name="home_saludo_con_nombre">Hello, %1$s</string>
+    <string name="home_rfid_activa">Emergency card active</string>
+    <string name="home_rfid_inactiva">No emergency card active</string>
+    <string name="home_medicacion_titulo">Your medication today</string>
+    <string name="home_medicacion_sin_tomas">You have no doses scheduled for today.</string>
+    <string name="home_medicacion_todo_listo">You have logged all of today's doses.</string>
+    <string name="home_medicacion_pendientes">%1$d of %2$d doses pending</string>
+    <string name="home_toma_detalle">%1$s, %2$s</string>
+    <string name="home_toma_accion_tomado">Taken</string>
+    <string name="home_toma_accion_omitir">Skip</string>
+    <string name="home_toma_estado_tomado">Taken</string>
+    <string name="home_toma_estado_tomado_tarde">Taken late</string>
+    <string name="home_toma_estado_omitido">Skipped</string>
+    <string name="home_toma_estado_pendiente">Pending</string>
+    <string name="home_adherencia_titulo">Your adherence this week</string>
+    <string name="home_adherencia_porcentaje">%1$d percent</string>
+    <string name="home_adherencia_detalle">%1$d of %2$d doses logged</string>
+    <string name="home_adherencia_sin_datos">No doses logged this week yet.</string>
+    <string name="home_acceso_rfid">My RFID card</string>
+    <string name="home_acceso_sintomas">Symptom diary</string>
+    <string name="home_acceso_medicos">My doctors</string>
+    <string name="home_acceso_historial_corto">History</string>
+    <string name="home_estado_cargando">Loading your information</string>
+    <string name="home_estado_error">We couldn't load your information. Check your connection.</string>
+    <string name="a11y_home_saludo">Home screen of %1$s</string>
+    <string name="a11y_home_rfid">%1$s</string>
+    <string name="a11y_home_toma">%1$s, dose %2$s, scheduled at %3$s. Status: %4$s</string>
+    <string name="a11y_home_toma_tomado">Log %1$s as taken</string>
+    <string name="a11y_home_toma_omitir">Log %1$s as skipped</string>
+    <string name="a11y_home_adherencia">Weekly adherence: %1$d percent, %2$d of %3$d doses logged</string>
+    <string name="a11y_home_acceso_rfid">Open your RFID emergency card</string>
+    <string name="a11y_home_acceso_sintomas">Open your symptom diary</string>
+    <string name="a11y_home_acceso_medicos">Open the list of your authorised doctors</string>
+    <string name="a11y_home_acceso_historial_corto">Open your medical history</string>
+    <string name="a11y_home_cargando">Loading your information, please wait</string>
+    <string name="fecha_opcion_hoy">Today</string>
+    <string name="fecha_opcion_ayer">Yesterday</string>
+    <string name="fecha_opcion_hace_una_semana">A week ago</string>
+    <string name="fecha_opcion_hace_un_mes">A month ago</string>
+    <string name="fecha_opcion_personalizada">Another date</string>
+    <string name="fecha_campo_dia">Day</string>
+    <string name="fecha_campo_mes">Month</string>
+    <string name="fecha_campo_anio">Year</string>
+    <string name="fecha_placeholder_dia">12</string>
+    <string name="fecha_placeholder_mes">04</string>
+    <string name="fecha_placeholder_anio">1985</string>
+    <string name="fecha_seleccionada">Date chosen: %1$s</string>
+    <string name="error_fecha_incompleta">Fill in the day, month and year</string>
+    <string name="error_fecha_inexistente">That date doesn't exist in the calendar</string>
+    <string name="a11y_fecha_opciones_rapidas">Quick date options</string>
+    <string name="a11y_fecha_opcion">%1$s. Tap to choose this date</string>
+    <string name="a11y_fecha_opcion_elegida">%1$s, chosen</string>
+    <string name="a11y_fecha_campo_dia">Enter the day of the month, two digits</string>
+    <string name="a11y_fecha_campo_mes">Enter the month, two digits</string>
+    <string name="a11y_fecha_campo_anio">Enter the year, four digits</string>
+    <string name="a11y_fecha_seleccionada">The chosen date is %1$s</string>
+    <string name="nfc_titulo">Hold the card to the device</string>
+    <string name="nfc_descripcion">Hold the patient's card against the back of the phone until it vibrates.</string>
+    <string name="nfc_accion_cancelar">Cancel reading</string>
+    <string name="nfc_estado_consultando">Reading the survival profile</string>
+    <string name="nfc_estado_desactivada">NFC is off. Turn it on in your phone settings.</string>
+    <string name="nfc_estado_no_soportada">This device cannot read NFC cards.</string>
+    <string name="nfc_error_lectura">The card couldn't be read. Hold it closer again.</string>
+    <string name="nfc_error_tarjeta_desconocida">This card doesn't match any registered patient.</string>
+    <string name="nfc_error_revocada">This card has been revoked. Ask the patient for other identification.</string>
+    <string name="nfc_error_sin_conexion">No connection to look up the profile. Try again.</string>
+    <string name="nfc_accion_reintentar">Scan again</string>
+    <string name="a11y_nfc_ondas">NFC reading antenna active</string>
+    <string name="a11y_nfc_titulo">Hold the patient's card to the back of the phone</string>
+    <string name="a11y_nfc_consultando">Reading the survival profile, please wait</string>
+    <string name="a11y_nfc_cancelar">Cancel the reading and go back</string>
+    <string name="a11y_nfc_reintentar">Turn card reading back on</string>
+    <string name="triage_titulo">Survival profile</string>
+    <string name="triage_tipo_sangre_etiqueta">Blood type</string>
+    <string name="triage_tipo_sangre_desconocido">Not recorded</string>
+    <string name="triage_edad">%1$d years old</string>
+    <string name="triage_donador_si">Organ donor</string>
+    <string name="triage_donador_no">Not an organ donor</string>
+    <string name="triage_alergias_titulo">Critical allergies</string>
+    <string name="triage_alergias_sin_datos">No allergies declared</string>
+    <string name="triage_alergia_detalle">%1$s - %2$s</string>
+    <string name="triage_condiciones_titulo">Critical conditions</string>
+    <string name="triage_condiciones_sin_datos">No conditions declared</string>
+    <string name="triage_medicacion_titulo">Vital medication</string>
+    <string name="triage_medicacion_sin_datos">No rescue medication declared</string>
+    <string name="triage_tarjeta">Card %1$s</string>
+    <string name="triage_accion_cerrar">Close profile</string>
+    <string name="triage_accion_escanear_otra">Scan another card</string>
+    <string name="triage_aviso_datos_reducidos">Emergency data. The full record requires the treating doctor's authorisation.</string>
+    <string name="a11y_triage_paciente">Patient %1$s, %2$d years old</string>
+    <string name="a11y_triage_tipo_sangre">Blood type %1$s</string>
+    <string name="a11y_triage_tipo_sangre_desconocido">Blood type not recorded on the card</string>
+    <string name="a11y_triage_donador">%1$s</string>
+    <string name="a11y_triage_alergia">Allergic to %1$s, severity %2$s, reaction %3$s</string>
+    <string name="a11y_triage_condicion">Critical condition: %1$s</string>
+    <string name="a11y_triage_medicacion">Vital medication: %1$s</string>
+    <string name="a11y_triage_cerrar">Close the patient's profile</string>
+    <string name="a11y_triage_escanear_otra">Scan another patient's card</string>
+    <string name="profesional_login_titulo">Medical staff sign-in</string>
+    <string name="profesional_login_subtitulo">For authorised doctors and paramedics. Use your institutional account.</string>
+    <string name="profesional_login_accion_crear_cuenta">Create a medical staff account</string>
+    <string name="a11y_profesional_login_accion_crear_cuenta">Create a new medical staff account</string>
+    <string name="profesional_login_accion_volver_paciente">I'm a patient</string>
+    <string name="a11y_profesional_login_accion_volver_paciente">Go back to the patient sign-in screen</string>
+    <string name="a11y_login_accion_acceso_profesional">Go to medical staff sign-in</string>
+    <string name="profesional_registro_titulo">Create a medical staff account</string>
+    <string name="profesional_registro_subtitulo">Your professional licence is verified before you can access full records.</string>
+    <string name="profesional_registro_nombre_campo">First name</string>
+    <string name="profesional_registro_nombre_placeholder">Elena</string>
+    <string name="profesional_registro_apellidos_campo">Last name</string>
+    <string name="profesional_registro_apellidos_placeholder">Ruiz Santos</string>
+    <string name="profesional_registro_tratamiento_campo">How we address you</string>
+    <string name="a11y_profesional_registro_tratamiento_campo">Select how the app addresses you</string>
+    <string name="profesional_registro_cedula_campo">Professional licence</string>
+    <string name="profesional_registro_cedula_placeholder">12345678</string>
+    <string name="a11y_profesional_registro_cedula_campo">Enter your professional licence, six to eight digits</string>
+    <string name="profesional_registro_accion_crear">Create account</string>
+    <string name="a11y_profesional_registro_accion_crear">Create your medical staff account with the details entered</string>
+    <string name="profesional_registro_accion_ya_tengo_cuenta">I already have an account</string>
+    <string name="a11y_profesional_registro_accion_ya_tengo_cuenta">Go back to the medical staff sign-in screen</string>
+    <string name="profesional_registro_estado_creando">Creating your account</string>
+    <string name="a11y_profesional_registro_creando">Creating your account, please wait</string>
+    <string name="error_tratamiento_vacio">Select how we address you</string>
+    <string name="error_cedula_vacia">Enter your professional licence</string>
+    <string name="error_cedula_formato">The professional licence must have six to eight digits</string>
+    <string name="error_cedula_ya_registrada">An account with this professional licence already exists</string>
+    <string name="profesional_home_saludo">Welcome, %1$s %2$s</string>
+    <string name="a11y_profesional_home_saludo">Main panel of %1$s %2$s</string>
+    <string name="profesional_home_cedula_verificada">Professional licence verified</string>
+    <string name="profesional_home_cedula_pendiente">Professional licence verification pending</string>
+    <string name="a11y_profesional_home_estado_cedula">%1$s</string>
+    <string name="profesional_home_accion_escanear">Scan emergency card</string>
+    <string name="a11y_profesional_home_accion_escanear">Scan a patient's emergency card</string>
+    <string name="profesional_home_pacientes_titulo">Linked patients</string>
+    <string name="profesional_home_pacientes_sin_datos">You have no linked patients yet</string>
+    <string name="profesional_home_riesgo_alto">High risk</string>
+    <string name="profesional_home_riesgo_medio">Medium risk</string>
+    <string name="profesional_home_riesgo_bajo">Low risk</string>
+    <string name="a11y_profesional_home_paciente">%1$s, %2$s</string>
+    <string name="profesional_home_estado_cargando">Loading your patients</string>
+    <string name="a11y_profesional_home_cargando">Loading your linked patients, please wait</string>
+    <string name="profesional_home_estado_error">We couldn't load your patients. Check your connection.</string>
+    <string name="mimedico_titulo">My doctor</string>
+    <string name="mimedico_estado_vacio_titulo">You don't have a treating doctor yet</string>
+    <string name="mimedico_estado_vacio_descripcion">Choose a verified specialist from the directory to answer your questions before your in-person visit.</string>
+    <string name="mimedico_estado_cargando">Loading your information</string>
+    <string name="a11y_mimedico_cargando">Loading your information, please wait</string>
+    <string name="directorio_titulo">Doctor directory</string>
+    <string name="directorio_busqueda_placeholder">Search by name</string>
+    <string name="a11y_directorio_busqueda">Search doctors by name</string>
+    <string name="directorio_filtro_todas">All</string>
+    <string name="a11y_directorio_filtro_especialidad">Filter the directory by specialty</string>
+    <string name="directorio_especialidad_medicina_general">General Medicine</string>
+    <string name="directorio_especialidad_cardiologia">Cardiology</string>
+    <string name="directorio_especialidad_pediatria">Paediatrics</string>
+    <string name="directorio_especialidad_dermatologia">Dermatology</string>
+    <string name="directorio_especialidad_ginecologia">Gynaecology</string>
+    <string name="directorio_especialidad_psiquiatria">Psychiatry</string>
+    <string name="directorio_especialidad_geriatria">Geriatrics</string>
+    <string name="directorio_especialidad_endocrinologia">Endocrinology</string>
+    <string name="directorio_especialidad_neumologia">Pulmonology</string>
+    <string name="directorio_especialidad_neurologia">Neurology</string>
+    <string name="directorio_sin_doctores">No doctors available</string>
+    <string name="directorio_sin_resultados">We found no doctors matching that filter</string>
+    <string name="directorio_accion_contactar">Contact</string>
+    <string name="directorio_accion_solicitando">Requesting</string>
+    <string name="a11y_directorio_accion_contactar">Request to link with %1$s</string>
+    <string name="directorio_estado_error">We couldn't load the directory. Check your connection.</string>
+    <string name="directorio_error_vinculacion">We couldn't complete the request. Try again.</string>
+    <string name="a11y_directorio_doctor_verificado">%1$s, %2$s, professional licence verified. Availability: %3$s</string>
+    <string name="a11y_directorio_doctor_sin_verificar">%1$s, %2$s, professional licence pending. Availability: %3$s</string>
+    <string name="directorio_universidad_egresado">Graduate of %1$s</string>
+    <string name="chat_banner_advertencia">This is guidance, not a diagnosis. Go to the emergency room if your symptoms get worse.</string>
+    <string name="a11y_chat_banner_advertencia">Notice: this is guidance, not a diagnosis. Go to the emergency room if your symptoms get worse</string>
+    <string name="chat_orientacion_inicial_etiqueta">Initial guidance</string>
+    <string name="chat_campo_placeholder">Write a message</string>
+    <string name="a11y_chat_campo_mensaje">Write your message to the doctor</string>
+    <string name="a11y_chat_accion_enviar">Send message</string>
+    <string name="chat_estado_escribiendo">%1$s is typing</string>
+    <string name="a11y_chat_estado_escribiendo">%1$s is typing a reply</string>
+    <string name="chat_estado_cargando">Loading the conversation</string>
+    <string name="a11y_chat_cargando">Loading the conversation, please wait</string>
+    <string name="chat_estado_error_carga">We couldn't load the conversation. Check your connection.</string>
+    <string name="chat_estado_error_envio">Couldn't send. Try again.</string>
+    <string name="a11y_chat_mensaje_paciente">You said: %1$s</string>
+    <string name="a11y_chat_mensaje_medico">%1$s said: %2$s</string>
+    <string name="a11y_chat_mensaje_orientacion">Initial guidance from the doctor: %1$s</string>
+
+    <string name="a11y_chat_accion_adjuntar">Attach a photo, a file, or scan a document</string>
+    <string name="chat_adjuntar_titulo">Attach</string>
+    <string name="chat_adjuntar_foto">Photo</string>
+    <string name="a11y_chat_adjuntar_foto">Choose a photo from your gallery</string>
+    <string name="chat_adjuntar_archivo">File</string>
+    <string name="a11y_chat_adjuntar_archivo">Choose a file from your device</string>
+    <string name="chat_adjuntar_escanear">Scan document</string>
+    <string name="a11y_chat_adjuntar_escanear">Scan a document with the camera</string>
+    <string name="chat_adjunto_tipo_foto">Photo</string>
+    <string name="chat_adjunto_tipo_archivo">File</string>
+    <string name="chat_adjunto_tipo_escaneo">Scanned document</string>
+    <string name="chat_adjunto_accion_quitar">Remove</string>
+    <string name="a11y_chat_adjunto_quitar">Remove %1$s before sending</string>
+    <string name="a11y_chat_mensaje_con_adjunto">With an attachment: %1$s</string>
+
+    <string name="a11y_chatmedico_cabecera">Conversation with %1$s. %2$s</string>
+    <string name="chatmedico_accion_expediente">Record</string>
+    <string name="a11y_chatmedico_accion_expediente">Open %1$s's medical record</string>
+    <string name="chatmedico_campo_placeholder">Write your reply</string>
+    <string name="a11y_chatmedico_campo_mensaje">Write your reply to the patient</string>
+    <string name="a11y_chatmedico_accion_enviar">Send reply</string>
+    <string name="chatmedico_respuestas_rapidas_titulo">Quick replies</string>
+    <string name="a11y_chatmedico_respuestas_rapidas">Triage quick replies. Choosing one writes it into the field so you can edit it before sending</string>
+    <string name="a11y_chatmedico_respuesta_rapida">Use the quick reply: %1$s</string>
+    <string name="chatmedico_estado_cargando">Loading the conversation</string>
+    <string name="a11y_chatmedico_cargando">Loading the conversation, please wait</string>
+    <string name="chatmedico_estado_error_carga">We couldn't load the conversation. Check your connection.</string>
+    <string name="chatmedico_estado_error_envio">Couldn't send. Try again.</string>
+    <string name="chatmedico_sin_mensajes">This patient hasn't written yet. You can start the guidance.</string>
+    <string name="a11y_chatmedico_mensaje_propio">You said at %2$s: %1$s</string>
+    <string name="a11y_chatmedico_mensaje_paciente">%1$s said at %3$s: %2$s</string>
+
+    <string name="ia_traduccion_pie">Translated from %1$s</string>
+    <string name="ia_traduccion_accion_ver_original">View original</string>
+    <string name="ia_traduccion_accion_ver_traduccion">View translation</string>
+    <string name="a11y_ia_traduccion_burbuja_traducida">Message translated from %1$s: %2$s</string>
+    <string name="a11y_ia_traduccion_burbuja_original">Original message in %1$s: %2$s</string>
+    <string name="a11y_ia_traduccion_accion_ver_original">Show the message in its original language</string>
+    <string name="a11y_ia_traduccion_accion_ver_traduccion">Show the translated message</string>
+
+    <string name="ia_resumen_titulo">AI-generated summary</string>
+    <string name="a11y_ia_resumen_tarjeta">AI-generated summary of the patient's message</string>
+    <string name="ia_resumen_accion_leer_original">Read original message (%1$d words)</string>
+    <string name="ia_resumen_accion_ocultar_original">Hide original message</string>
+    <string name="a11y_ia_resumen_accion_leer_original">Show the full original message, %1$d words</string>
+    <string name="a11y_ia_resumen_accion_ocultar_original">Hide the original message</string>
+    <string name="ia_resumen_estado_cargando">Generating summary</string>
+    <string name="a11y_ia_resumen_cargando">Generating the message summary, please wait</string>
+    <string name="ia_resumen_estado_error">The summary could not be generated.</string>
+
+    <string name="expediente_titulo">Clinical record</string>
+    <string name="a11y_expediente_accion_abrir">Open %1$s's clinical record</string>
+    <string name="expediente_estado_cargando">Loading the record</string>
+    <string name="a11y_expediente_cargando">Loading the clinical record, please wait</string>
+    <string name="expediente_estado_error">We couldn't load the record. Check your connection.</string>
+
+    <string name="expediente_seccion_identidad">Identity</string>
+    <string name="expediente_campo_fecha_nacimiento">Date of birth</string>
+    <string name="expediente_campo_genero">Gender</string>
+    <string name="expediente_campo_telefono">Phone</string>
+    <string name="expediente_campo_curp">CURP</string>
+    <string name="expediente_campo_nss">NSS</string>
+    <string name="expediente_campo_aseguradora">Insurance provider</string>
+
+    <string name="expediente_seccion_emergencia">Emergency profile</string>
+    <string name="expediente_campo_tipo_sangre">Blood type</string>
+    <string name="expediente_campo_donador_organos">Organ donor</string>
+    <string name="expediente_valor_si">Yes</string>
+    <string name="expediente_valor_no">No</string>
+    <string name="expediente_valor_sin_dato">No data</string>
+    <string name="expediente_subseccion_alergias">Allergies</string>
+    <string name="expediente_alergia_item">%1$s (%2$s): %3$s</string>
+    <string name="expediente_sin_alergias">No allergies on record.</string>
+    <string name="expediente_subseccion_condiciones">Critical conditions</string>
+    <string name="expediente_sin_condiciones">No critical conditions on record.</string>
+    <string name="expediente_subseccion_medicacion_rescate">Rescue medication</string>
+    <string name="expediente_sin_medicacion_rescate">No rescue medication on record.</string>
+
+    <string name="expediente_seccion_tratamientos">Active treatments</string>
+    <string name="expediente_tratamiento_dosis">%1$s, every %2$d hours</string>
+    <string name="expediente_sin_tratamientos">No active treatments on record.</string>
+
+    <string name="expediente_seccion_historial_clinico">Clinical history</string>
+    <string name="expediente_subseccion_cirugias">Surgeries</string>
+    <string name="expediente_cirugia_item">%1$s (%2$s)</string>
+    <string name="expediente_sin_cirugias">No surgeries on record.</string>
+    <string name="expediente_subseccion_antecedentes">Family history</string>
+    <string name="expediente_sin_antecedentes">No family history on record.</string>
+
+    <string name="expediente_seccion_contactos">Emergency contacts</string>
+    <string name="expediente_contacto_item">%1$s (%2$s): %3$s</string>
+    <string name="expediente_sin_contactos">No emergency contacts on record.</string>
+    <string name="fecha_larga">%1$s %2$d %3$s</string>
+    <string name="fecha_corta">%2$s %1$d</string>
+    <string name="rango_fechas">From %1$s to %2$s</string>
+    <string name="rango_horas">%1$s to %2$s</string>
+    <string name="cita_panel_titulo">Book an appointment</string>
+    <string name="a11y_cita_panel">Panel to book an appointment. You can cancel it and keep writing</string>
+    <string name="cita_accion_abrir">Book appointment</string>
+    <string name="a11y_cita_accion_abrir">Open the appointment booking panel</string>
+    <string name="cita_accion_cancelar">Cancel</string>
+    <string name="a11y_cita_accion_cancelar">Cancel the booking and go back to the conversation</string>
+    <string name="cita_paso_especialidad_titulo">What do you need</string>
+    <string name="cita_paso_especialidad_ayuda">Choose a specialty, or continue with the doctor already treating you.</string>
+    <string name="cita_accion_mi_medico">With %1$s</string>
+    <string name="a11y_cita_accion_mi_medico">Book with %1$s, the doctor already treating you</string>
+    <string name="a11y_cita_accion_especialidad">Find %1$s doctors</string>
+    <string name="cita_paso_medico_titulo">Choose your doctor</string>
+    <string name="cita_paso_medico_vacio">No doctors in this specialty have an open schedule.</string>
+    <string name="a11y_cita_accion_medico">See %1$s's schedule, %2$s</string>
+    <string name="cita_paso_franja_titulo">Choose a day and time</string>
+    <string name="cita_paso_franja_ayuda">We hold the slot for %1$d minutes while you fill in your details.</string>
+    <string name="a11y_cita_accion_franja">Choose %1$s on %2$s</string>
+    <string name="cita_paso_datos_titulo">Your details</string>
+    <string name="cita_campo_nombre">Full name</string>
+    <string name="a11y_cita_campo_nombre">Enter your full name</string>
+    <string name="cita_campo_telefono">Phone</string>
+    <string name="a11y_cita_campo_telefono">Enter your ten-digit phone number</string>
+    <string name="cita_campo_correo">Email</string>
+    <string name="a11y_cita_campo_correo">Enter your email address</string>
+    <string name="cita_campo_motivo">Reason for the visit</string>
+    <string name="cita_marcador_motivo">For example: headache for the past three days</string>
+    <string name="a11y_cita_campo_motivo">Briefly describe the reason for your visit</string>
+    <string name="cita_accion_continuar">Continue</string>
+    <string name="a11y_cita_accion_continuar">Review the appointment summary</string>
+    <string name="cita_error_nombre_vacio">Enter your full name</string>
+    <string name="cita_error_telefono_vacio">Enter a contact phone number</string>
+    <string name="cita_error_telefono_formato">The phone number must have ten digits</string>
+    <string name="cita_error_correo_vacio">Enter your email address</string>
+    <string name="cita_error_correo_formato">Enter a valid email address</string>
+    <string name="cita_error_motivo_vacio">Enter the reason for your visit</string>
+    <string name="cita_paso_resumen_titulo">Review your appointment</string>
+    <string name="cita_resumen_medico">Doctor</string>
+    <string name="cita_resumen_fecha">Date</string>
+    <string name="cita_resumen_hora">Time</string>
+    <string name="cita_resumen_paciente">Patient</string>
+    <string name="cita_resumen_motivo">Reason</string>
+    <string name="cita_accion_confirmar">Confirm appointment</string>
+    <string name="a11y_cita_accion_confirmar">Confirm the appointment with %1$s on %2$s at %3$s</string>
+    <string name="cita_accion_cambiar_horario">Change the time</string>
+    <string name="cita_accion_corregir_datos">Correct my details</string>
+    <string name="cita_confirmada_titulo">Appointment booked</string>
+    <string name="cita_confirmada_folio">Reference %1$s</string>
+    <string name="cita_confirmada_detalle">%1$s on %2$s at %3$s</string>
+    <string name="cita_confirmada_canal_correo">We've emailed you the confirmation.</string>
+    <string name="cita_confirmada_canal_whatsapp">We've sent you the confirmation on WhatsApp.</string>
+    <string name="cita_confirmada_sin_canales">Save your reference: we couldn't send you the confirmation.</string>
+    <string name="a11y_cita_confirmada">Appointment booked with reference %1$s. %2$s</string>
+    <string name="cita_accion_cerrar">Done</string>
+    <string name="cita_estado_cargando">Checking the schedule</string>
+    <string name="a11y_cita_cargando">Checking the schedule, please wait</string>
+    <string name="cita_error_sin_conexion">We couldn't check the schedule. Check your connection.</string>
+    <string name="cita_error_franja_ocupada">That slot has just been taken. Choose another.</string>
+    <string name="cita_error_reserva_expirada">The time to fill in your details ran out and the slot is free again. Choose it once more.</string>
+    <string name="cita_error_sin_horarios">This doctor has no free slots right now.</string>
+    <string name="agenda_titulo">Appointments</string>
+    <string name="profesional_home_accion_agenda">Appointments</string>
+    <string name="a11y_profesional_home_accion_agenda">Open your appointment calendar</string>
+    <string name="agenda_vista_diaria">Day</string>
+    <string name="agenda_vista_dos_semanas">2 weeks</string>
+    <string name="agenda_vista_mensual">Month</string>
+    <string name="a11y_agenda_vista">View the calendar by %1$s</string>
+    <string name="agenda_accion_anterior">Previous</string>
+    <string name="a11y_agenda_accion_anterior">See the previous period</string>
+    <string name="agenda_accion_siguiente">Next</string>
+    <string name="a11y_agenda_accion_siguiente">See the next period</string>
+    <string name="agenda_accion_hoy">Today</string>
+    <string name="a11y_agenda_accion_hoy">Go back to today</string>
+    <string name="agenda_estado_pendiente">Pending</string>
+    <string name="agenda_estado_confirmada">Confirmed</string>
+    <string name="agenda_estado_en_curso">In progress</string>
+    <string name="agenda_estado_cancelada">Cancelled</string>
+    <string name="agenda_estado_no_asistio">No-show</string>
+    <string name="agenda_estado_bloqueado">Blocked</string>
+    <string name="agenda_estado_propuesta_medico">Awaiting patient</string>
+    <string name="agenda_leyenda_titulo">Statuses</string>
+    <string name="a11y_agenda_leyenda">Legend of appointment statuses for this period</string>
+    <string name="agenda_leyenda_conteo">%1$s: %2$d</string>
+    <string name="agenda_hora_libre">Free</string>
+    <string name="agenda_sin_citas">No appointments in this period.</string>
+    <string name="agenda_estado_cargando">Loading your calendar</string>
+    <string name="a11y_agenda_cargando">Loading your calendar, please wait</string>
+    <string name="agenda_estado_error">We couldn't load your calendar. Check your connection.</string>
+    <string name="agenda_error_accion">The change couldn't be applied. Try again.</string>
+    <string name="a11y_agenda_renglon_ocupado">%1$s, %2$s. %3$s. Tap to see the appointment</string>
+    <string name="a11y_agenda_renglon_libre">%1$s, free. Tap to block this slot</string>
+    <string name="a11y_agenda_celda_mes">%1$s, %2$d appointments</string>
+    <string name="a11y_agenda_celda_mes_vacia">%1$s, no appointments</string>
+    <string name="agenda_detalle_contacto">Contact</string>
+    <string name="agenda_detalle_motivo">Reason for the appointment</string>
+    <string name="agenda_detalle_sin_motivo">The patient didn't write a reason.</string>
+    <string name="agenda_detalle_bloqueo">Blocked slot</string>
+    <string name="agenda_detalle_folio">Reference %1$s</string>
+    <string name="agenda_accion_iniciar_consulta">Start consultation</string>
+    <string name="a11y_agenda_accion_iniciar_consulta">Start %1$s's consultation and open their record</string>
+    <string name="agenda_accion_confirmar">Confirm</string>
+    <string name="agenda_accion_reprogramar">Reschedule</string>
+    <string name="agenda_accion_cancelar_cita">Cancel</string>
+    <string name="agenda_accion_no_asistio">No-show</string>
+    <string name="agenda_accion_liberar_bloqueo">Free this slot</string>
+    <string name="agenda_accion_cerrar_detalle">Close</string>
+    <string name="agenda_reprogramar_titulo">Choose the new time</string>
+    <string name="agenda_reprogramar_vacio">You have no free slots left to move this appointment.</string>
+    <string name="a11y_agenda_accion_nuevo_horario">Move the appointment to %1$s on %2$s</string>
+    <string name="agenda_bloqueo_ayuda">Tap the hour the block starts and then the hour it ends.</string>
+    <string name="agenda_bloqueo_en_curso">Blocking from %1$s. Tap the end time.</string>
+    <string name="agenda_bloqueo_campo_nota">Reason for the block</string>
+    <string name="agenda_bloqueo_marcador_nota">For example: surgery, lunch, holiday</string>
+    <string name="a11y_agenda_bloqueo_campo_nota">Enter why you are blocking this slot</string>
+    <string name="agenda_accion_cancelar_bloqueo">Cancel block</string>
+
+    <string name="agenda_accion_agendar_cita">Schedule appointment</string>
+    <string name="a11y_agenda_accion_agendar_cita">Propose an appointment to one of your patients</string>
+    <string name="agenda_propuesta_titulo">Choose the patient</string>
+    <string name="agenda_propuesta_sin_pacientes">You don't have any linked patients yet.</string>
+    <string name="a11y_agenda_propuesta_elegir_paciente">Propose an appointment to %1$s</string>
+    <string name="agenda_propuesta_titulo_horario">Choose a time for %1$s</string>
+    <string name="agenda_propuesta_campo_motivo">Reason for the appointment (optional)</string>
+    <string name="agenda_propuesta_marcador_motivo">For example: treatment follow-up</string>
+    <string name="a11y_agenda_propuesta_campo_motivo">Write the reason for the appointment you're proposing to the patient</string>
+    <string name="agenda_propuesta_sin_horarios">You don't have any free time slots right now.</string>
+    <string name="agenda_propuesta_error">The appointment couldn't be proposed. The slot may already be taken.</string>
+    <string name="agenda_accion_cancelar_propuesta">Cancel</string>
+
+    <string name="nav_inicio">Home</string>
+    <string name="nav_mi_medico">My doctor</string>
+    <string name="nav_historial">History</string>
+    <string name="nav_panel">Panel</string>
+    <string name="a11y_nav_seccion">%1$s. Tab %2$d of %3$d</string>
+    <string name="a11y_nav_seccion_activa">%1$s, current section. Tab %2$d of %3$d</string>
+    <string name="mimedico_ficha_titulo">Your doctor</string>
+    <string name="mimedico_ficha_cedula_verificada">Professional licence verified</string>
+    <string name="mimedico_ficha_cedula_pendiente">Professional licence pending</string>
+    <string name="mimedico_ficha_universidad">Graduate of %1$s</string>
+    <string name="mimedico_ficha_disponibilidad">Availability</string>
+    <string name="mimedico_accion_iniciar_consulta">Start consultation</string>
+    <string name="a11y_mimedico_accion_iniciar_consulta">Start the remote consultation with %1$s</string>
+    <string name="a11y_mimedico_ficha">Your doctor is %1$s, %2$s. %3$s</string>
+    <string name="adherencia_titulo">Adherence</string>
+    <string name="adherencia_hoy_titulo">Adherence today</string>
+    <string name="adherencia_porcentaje">%1$d%%</string>
+    <string name="adherencia_detalle">%1$d of %2$d doses this week</string>
+    <string name="adherencia_sin_datos">No data yet</string>
+    <string name="a11y_adherencia_anillo">Weekly adherence of %1$d percent. %2$d of %3$d doses taken</string>
+    <string name="home_seccion_accesos">Shortcuts</string>
+    <string name="profesional_home_pacientes_conteo">%1$d being followed</string>
+    <string name="a11y_profesional_home_paciente_abrir">Open the conversation with %1$s. %2$s</string>
+    <string name="aviso_medicacion_titulo">Time for your medication</string>
+    <string name="aviso_medicacion_cuerpo">%1$s, %2$s</string>
+    <string name="aviso_medicacion_accion_registrar">Mark as taken</string>
+    <string name="aviso_medicacion_accion_posponer">Snooze 10 min</string>
+    <string name="avisos_permiso_titulo">Turn on reminders</string>
+    <string name="avisos_permiso_descripcion">Without notification permission we can't remind you of your doses, not even offline.</string>
+    <string name="a11y_semana_dia_completo">%1$s %2$d. All doses taken</string>
+    <string name="a11y_semana_dia_incompleto">%1$s %2$d. %3$d of %4$d doses taken</string>
+    <string name="a11y_semana_dia_sin_tomas">%1$s %2$d. No doses scheduled</string>
+    <string name="a11y_semana_dia_en_curso">%1$s %2$d. Day in progress, %3$d of %4$d doses</string>
+    <string name="a11y_semana_dia_seleccionado">%1$s. Selected day</string>
+    <string name="a11y_nav_sin_leer">%1$s. %2$d unread messages</string>
+    <string name="bandeja_titulo">My doctors</string>
+    <string name="bandeja_vacia_titulo">You aren't talking to any doctor yet</string>
+    <string name="bandeja_vacia_descripcion">Find a specialist in the directory to open your first consultation.</string>
+    <string name="bandeja_error">We couldn't load your conversations. Check your connection.</string>
+    <string name="bandeja_cargando">Loading your conversations</string>
+    <string name="a11y_bandeja_cargando">Loading your conversations, please wait</string>
+    <string name="bandeja_ultimo_propio">You: %1$s</string>
+    <string name="bandeja_accion_directorio">Find a doctor</string>
+    <string name="a11y_bandeja_accion_directorio">Open the directory to find a new specialist</string>
+    <string name="a11y_bandeja_conversacion">%1$s, %2$s. Last message at %3$s: %4$s</string>
+    <string name="a11y_bandeja_conversacion_sin_leer">%1$s, %2$s. %5$d unread. Last message at %3$s: %4$s</string>
+    <string name="config_titulo">Settings</string>
+    <string name="config_bloque_avisos">Notifications</string>
+    <string name="config_avisos_medicacion">Medication reminders</string>
+    <string name="config_avisos_medicacion_apoyo">They ring on your phone even without a connection.</string>
+    <string name="config_avisos_mensajes">Messages from your doctor</string>
+    <string name="config_avisos_mensajes_apoyo">Immediate alert when your doctor writes to you.</string>
+    <string name="config_avisos_sin_permiso">The system has blocked notifications for this app. Turn them on in your phone settings.</string>
+    <string name="config_bloque_apariencia">Appearance</string>
+    <string name="config_modo_oscuro">Follow the system dark mode</string>
+    <string name="config_modo_oscuro_apoyo">Turning this off lets you set light or dark mode manually.</string>
+    <string name="config_forzar_oscuro">Always use dark mode</string>
+    <string name="config_bloque_seguridad">Security</string>
+    <string name="config_biometria">Ask for fingerprint or face on open</string>
+    <string name="config_biometria_apoyo">Protects your record if someone else uses your phone.</string>
+    <string name="config_biometria_no_disponible">This device has no biometrics set up.</string>
+    <string name="config_bloque_cuenta">Account</string>
+    <string name="accion_cerrar_sesion">Sign out</string>
+    <string name="config_cerrar_sesion_apoyo">Your record, doses and appointments stay saved on this phone. They will be here when you sign back in.</string>
+    <string name="a11y_accion_cerrar_sesion">Sign out. Your data stays saved on this phone</string>
+    <string name="accion_cancelar_generico">Cancel</string>
+    <string name="diario_titulo">My diary</string>
+    <string name="diario_descripcion">Note how you feel. Your doctor will see it alongside your consultations.</string>
+    <string name="diario_campo">How do you feel today</string>
+    <string name="diario_marcador">For example: since last night I feel pressure in my chest</string>
+    <string name="a11y_diario_campo">Write how you feel today</string>
+    <string name="diario_accion_guardar">Save to my diary</string>
+    <string name="a11y_diario_accion_guardar">Save this note to your diary</string>
+    <string name="diario_error_guardado">We couldn't save your note. Try again.</string>
+    <string name="diario_vacio">You haven't written anything in your diary yet.</string>
+    <string name="diario_historial_titulo">Previous notes</string>
+    <string name="diario_accion_eliminar">Delete</string>
+    <string name="a11y_diario_accion_eliminar">Delete the note from %1$s</string>
+    <string name="diario_severidad_verde">No warning signs</string>
+    <string name="diario_severidad_ambar">Worth reviewing</string>
+    <string name="diario_severidad_rojo">Needs prompt attention</string>
+    <string name="diario_aviso_no_es_diagnostico">This signal helps your doctor prioritise. It is not a diagnosis.</string>
+    <string name="a11y_diario_entrada">%1$s. %2$s: %3$s</string>
+    <string name="a11y_profesional_paciente_diario">Latest diary: %1$s</string>
+    <string name="a11y_profesional_paciente_sin_diario">No notes in their diary</string>
+    <string name="a11y_profesional_home_paciente_completo">%1$s. %2$s. %3$s</string>
+    <string name="accion_ajustes">Settings</string>
+    <string name="a11y_accion_ajustes">Open the app settings</string>
+    <string name="app_restaurando">Opening your session</string>
+    <string name="a11y_app_restaurando">Opening your session, please wait</string>
+
+    <string-array name="opciones_genero">
+        <item>Male</item>
+        <item>Female</item>
+        <item>Non-binary</item>
+        <item>Prefer not to say</item>
+    </string-array>
+    <string-array name="opciones_tipo_sangre">
+        <item>O+</item>
+        <item>O-</item>
+        <item>A+</item>
+        <item>A-</item>
+        <item>B+</item>
+        <item>B-</item>
+        <item>AB+</item>
+        <item>AB-</item>
+    </string-array>
+    <string-array name="opciones_severidad_alergia">
+        <item>High (Anaphylaxis)</item>
+        <item>Medium</item>
+        <item>Low</item>
+    </string-array>
+    <string-array name="opciones_via_administracion">
+        <item>Oral</item>
+        <item>Injected</item>
+        <item>Inhaled</item>
+        <item>Topical</item>
+        <item>Sublingual</item>
+    </string-array>
+    <string-array name="opciones_relacion_contacto">
+        <item>Mother</item>
+        <item>Father</item>
+        <item>Partner</item>
+        <item>Son or daughter</item>
+        <item>Brother or sister</item>
+        <item>Friend</item>
+        <item>Other</item>
+    </string-array>
+    <string-array name="opciones_donador">
+        <item>Yes</item>
+        <item>No</item>
+    </string-array>
+    <string-array name="opciones_tratamiento_profesional">
+        <item>Dr.</item>
+        <item>Dr.</item>
+        <item>Dr.</item>
+    </string-array>
+    <string-array name="opciones_respuestas_rapidas">
+        <item>Go to the emergency room</item>
+        <item>Rest</item>
+        <item>Book an in-person visit</item>
+        <item>Drink plenty of fluids</item>
+        <item>Do not stop your medication</item>
+        <item>Send a photo of the affected area</item>
+    </string-array>
+    <string-array name="opciones_meses">
+        <item>January</item>
+        <item>February</item>
+        <item>March</item>
+        <item>April</item>
+        <item>May</item>
+        <item>June</item>
+        <item>July</item>
+        <item>August</item>
+        <item>September</item>
+        <item>October</item>
+        <item>November</item>
+        <item>December</item>
+    </string-array>
+    <string-array name="opciones_iniciales_dias">
+        <item>M</item>
+        <item>T</item>
+        <item>W</item>
+        <item>T</item>
+        <item>F</item>
+        <item>S</item>
+        <item>S</item>
+    </string-array>
+    <string-array name="opciones_dias_semana">
+        <item>Monday</item>
+        <item>Tuesday</item>
+        <item>Wednesday</item>
+        <item>Thursday</item>
+        <item>Friday</item>
+        <item>Saturday</item>
+        <item>Sunday</item>
+    </string-array>
+
+    <string name="config_bloque_idioma">Language</string>
+    <string name="config_idioma_sistema">Follow the phone language</string>
+    <string name="config_idioma_espanol">Spanish</string>
+    <string name="config_idioma_ingles">English</string>
+    <string name="config_idioma_aviso_reinicio">The change takes effect the next time you open the app.</string>
+    <string name="config_idioma_no_disponible">Your Android version can't change the language from inside the app. Do it in your phone settings.</string>
+    <string name="a11y_config_idioma">App language: %1$s</string>
+
+    <string name="bandeja_vacia_accion">Find my first specialist</string>
+    <string name="a11y_bandeja_vacia">You have no conversations yet. Find a specialist in the directory to open your first one.</string>
+
+    <!-- Biotech redesign: adherence hero figure and medication rail -->
+    <string name="home_hero_titulo">My medicines</string>
+    <string name="adherencia_unidad">%</string>
+    <string name="home_toma_accion_marcar">Mark as taken</string>
+    <string name="bandeja_accion_nuevo_especialista">New specialist</string>
+
+    <!-- Hallmark 2026-09-10: patient home (redesigned) -->
+    <string name="home_saludo_portada">Hello,</string>
+    <string name="home_dato_hoy">doses today</string>
+    <string name="home_dato_semana">this week</string>
+    <string name="home_dato_fraccion">%1$d/%2$d</string>
+    <string name="home_toma_error">We couldn't save your dose. Check your connection and try again.</string>
+    <string name="home_perfil_accion_corta">Complete profile</string>
+    <string name="a11y_home_anillo_hoy">Today's adherence: %1$d percent. %2$d of %3$d doses taken</string>
+    <string name="a11y_home_anillo_sin_tomas">You have no doses scheduled today</string>
+    <string name="a11y_home_dato_hoy">%1$d of %2$d doses taken today</string>
+    <string name="a11y_home_dato_semana">%1$d of %2$d doses taken this week</string>
+    <!-- Hallmark 2026-09-10: clinician inbox -->
+    <string name="nav_bandeja">Inbox</string>
+    <string name="inbox_titulo">Inbox</string>
+    <string name="inbox_orden">Most urgent patient first.</string>
+    <string name="inbox_sin_mensajes">No messages yet</string>
+    <string name="inbox_vacia_titulo">No conversations yet</string>
+    <string name="inbox_vacia_descripcion">When a linked patient writes to you, their conversation will appear here, sorted by clinical priority.</string>
+    <string name="a11y_inbox_accion_nuevo_especialista">Add a new specialist</string>
+    <string name="a11y_inbox_fila">%1$s. %2$s priority. Last message at %3$s: %4$s</string>
+    <string name="a11y_inbox_fila_sin_mensajes">%1$s. %2$s priority. No messages yet</string>
+    <string name="a11y_inbox_censo">High priority: %1$d. Medium priority: %2$d. Low priority: %3$d</string>
+    <string name="a11y_triage_estable">Low, no warning signs</string>
+    <string name="a11y_triage_vigilancia">Medium, worth reviewing</string>
+    <string name="a11y_triage_critico">High, needs prompt attention</string>
+
+    <!-- Hallmark 2026-09-10 (second pass): patient home for older adults -->
+    <string name="saludo_manana">Good morning,</string>
+    <string name="saludo_tarde">Good afternoon,</string>
+    <string name="saludo_noche">Good evening,</string>
+    <string name="home_resumen_titulo">Your medicines today</string>
+    <string name="home_resumen_faltan">%1$d of %2$d still to take</string>
+    <string name="home_resumen_listo">You took them all</string>
+    <string name="home_resumen_sin">No medicines today</string>
+    <string name="home_conteo_tomadas">%1$d taken</string>
+    <string name="home_conteo_pendientes">%1$d pending</string>
+    <string name="home_conteo_omitidas">%1$d skipped</string>
+    <string name="home_proxima_titulo">Your next medicine</string>
+    <string name="home_proxima_a_las">At %1$s</string>
+    <string name="home_accion_ya_tome">I took it</string>
+    <string name="home_accion_no_tome">I didn't take it</string>
+    <string name="home_accion_tomar">Take</string>
+    <string name="home_todas_titulo">All of today's</string>
+    <string name="home_agenda_titulo">My schedule</string>
+    <string name="home_agenda_descripcion">Your appointments and medicines for each day</string>
+    <string name="a11y_home_resumen">%1$s. %2$d taken, %3$d pending and %4$d skipped</string>
+    <string name="a11y_home_abrir_agenda">Open your schedule of appointments and medicines</string>
+    <!-- Hallmark 2026-09-10: patient schedule -->
+    <string name="nav_agenda_paciente">Schedule</string>
+    <string name="agenda_pac_titulo">My schedule</string>
+    <string name="agenda_pac_subtitulo">Your medicines and appointments for two weeks, day by day.</string>
+    <string name="agenda_pac_mes">%1$s %2$s</string>
+    <string name="agenda_pac_rango">%1$s to %2$s</string>
+    <string name="agenda_pac_volver_hoy">Back to today</string>
+    <string name="agenda_pac_hoy">Today</string>
+    <string name="agenda_pac_leyenda_cita">Appointment</string>
+    <string name="agenda_pac_leyenda_completo">All medicines taken</string>
+    <string name="agenda_pac_leyenda_incompleto">Some missed</string>
+    <string name="agenda_pac_vacio">No medicines or appointments this day.</string>
+    <string name="agenda_pac_cita_titulo">Appointment with %1$s</string>
+    <string name="agenda_pac_cita_detalle">From %1$s to %2$s. Reference %3$s</string>
+    <string name="agenda_pac_toma_programada">Scheduled</string>
+    <string name="agenda_pac_cita_pendiente">Awaiting confirmation</string>
+    <string name="agenda_pac_cita_confirmada">Confirmed</string>
+    <string name="agenda_pac_cita_en_curso">In consultation</string>
+    <string name="agenda_pac_cita_cancelada">Cancelled</string>
+    <string name="agenda_pac_cita_no_asistio">You didn't attend</string>
+    <string name="agenda_pac_cita_propuesta_medico">Your doctor proposes this appointment</string>
+    <string name="agenda_pac_propuesta_accion_aceptar">Accept</string>
+    <string name="agenda_pac_propuesta_accion_rechazar">Decline</string>
+    <string name="a11y_agenda_pac_propuesta_aceptar">Accept the appointment %1$s proposes on %2$s at %3$s</string>
+    <string name="a11y_agenda_pac_propuesta_rechazar">Decline the appointment %1$s proposes on %2$s at %3$s</string>
+    <string name="agenda_pac_propuesta_error">Couldn't respond to the appointment. Try again.</string>
+    <string name="agenda_pac_citas_no_disponibles">We couldn't load your appointments. Your medicines are up to date.</string>
+    <string name="agenda_pac_cargando">Loading your schedule</string>
+    <string name="agenda_pac_error">We couldn't load your schedule. Check your connection.</string>
+    <string name="a11y_agenda_pac_anterior">Show the previous two weeks</string>
+    <string name="a11y_agenda_pac_siguiente">Show the next two weeks</string>
+    <string name="agenda_pac_proximas_titulo">Your appointments in the next two weeks</string>
+    <string name="agenda_pac_proximas_vacio">You have no appointments in the next two weeks.</string>
+    <string name="agenda_pac_proxima_cuando">%1$s, %2$s</string>
+    <string name="a11y_agenda_pac_proxima">%1$s at %2$s. %3$s. %4$s. Tap to see that day</string>
+    <string name="a11y_agenda_pac_con_cita">you have an appointment</string>
+    <string name="a11y_agenda_pac_seleccionado">selected day</string>
+    <string name="a11y_agenda_pac_evento">At %1$s. %2$s. %3$s. %4$s</string>
+
+</resources>

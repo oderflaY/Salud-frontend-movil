@@ -1,0 +1,33 @@
+-- ============================================================================
+-- Registro de tomas: lo que el paciente marco ("ya me la tome", "la omiti").
+--
+-- Solo se guarda lo REGISTRADO. Lo programado se deriva del tratamiento del
+-- expediente, asi que cambiar un horario no deja filas huerfanas que limpiar.
+-- Una toma programada de un dia ya pasado sin fila aqui es una toma olvidada.
+-- ============================================================================
+
+CREATE TABLE registro_toma (
+    id_paciente TEXT NOT NULL,
+    -- Fecha civil `YYYY-MM-DD` de la toma.
+    fecha TEXT NOT NULL,
+    -- Toma dentro del dia: `<idTratamiento>_<HHMM>`.
+    clave_toma TEXT NOT NULL,
+    -- EstadoToma.valorApi
+    estado TEXT NOT NULL,
+    -- Instante ISO 8601 UTC en que se registro.
+    instante TEXT NOT NULL,
+    PRIMARY KEY (id_paciente, fecha, clave_toma)
+);
+
+registrosEntre:
+SELECT *
+FROM registro_toma
+WHERE id_paciente = ? AND fecha BETWEEN ? AND ?;
+
+registrar:
+INSERT OR REPLACE INTO registro_toma(id_paciente, fecha, clave_toma, estado, instante)
+VALUES (?, ?, ?, ?, ?);
+
+registrarSiNoExiste:
+INSERT OR IGNORE INTO registro_toma(id_paciente, fecha, clave_toma, estado, instante)
+VALUES (?, ?, ?, ?, ?);
