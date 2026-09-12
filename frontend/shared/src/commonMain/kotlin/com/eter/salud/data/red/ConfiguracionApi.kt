@@ -32,7 +32,7 @@ object ConfiguracionApi {
      * necesitan la IP real de la maquina en la red local, o el dominio de
      * verdad en produccion.
      */
-    var BASE_URL: String = "http://10.74.120.197:8000"
+    var BASE_URL: String = "http://10.206.42.87:8000"
 
     /**
      * Raiz del socket de tiempo real (seccion 11 de `CONTRATOS_BACKEND.md`).
