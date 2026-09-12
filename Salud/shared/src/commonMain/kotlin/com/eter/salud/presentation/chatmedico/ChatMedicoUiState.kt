@@ -1,7 +1,29 @@
 package com.eter.salud.presentation.chatmedico
 
 import com.eter.salud.domain.model.AutorMensaje
+import com.eter.salud.domain.model.ResumenClinicoIa
 import com.eter.salud.domain.model.RiesgoPaciente
+
+/**
+ * Estado del resumen clinico que la IA del backend extrae de un mensaje largo
+ * del paciente.
+ *
+ * Vive en tres momentos, no en dos: mientras el resumen se genera la tarjeta no
+ * puede mostrar nada ([Cargando]), y un resumen puede fallar sin que eso impida
+ * seguir leyendo el mensaje tal cual llego ([Fallido] conserva el texto
+ * original para ese caso).
+ */
+sealed interface EstadoResumenIa {
+
+    /** El resumen se esta generando. */
+    data object Cargando : EstadoResumenIa
+
+    /** Resumen listo para mostrarse. */
+    data class Disponible(val resumen: ResumenClinicoIa) : EstadoResumenIa
+
+    /** El backend no pudo resumir el mensaje; se conserva el original para leerlo igual. */
+    data class Fallido(val mensajeOriginal: String) : EstadoResumenIa
+}
 
 /**
  * Mensaje ya preparado para pintarse.
@@ -64,6 +86,10 @@ data class ChatMedicoUiState(
     val historial: HistorialChatUiState = HistorialChatUiState.Cargando,
     val textoEnCurso: String = "",
     val errorEnvio: Boolean = false,
+    /** Resumen de IA por `idMensaje`, solo para los mensajes del paciente que lo ameritan. */
+    val resumenesIa: Map<String, EstadoResumenIa> = emptyMap(),
+    /** `idMensaje` cuyo mensaje original se muestra expandido bajo su resumen. */
+    val originalExpandido: Set<String> = emptySet(),
 ) {
     val puedeEnviar: Boolean get() = textoEnCurso.isNotBlank()
 

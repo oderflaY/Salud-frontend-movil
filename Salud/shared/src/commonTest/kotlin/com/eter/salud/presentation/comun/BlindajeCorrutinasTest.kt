@@ -59,6 +59,14 @@ class BlindajeCorrutinasTest {
             especialidad: Especialidad?,
         ): Result<List<PerfilDoctorDirectorio>> = throw IllegalStateException("timeout")
 
+        override suspend fun obtenerMedicosVinculados(
+            idPaciente: String,
+        ): Result<List<MedicoVinculado>> = throw IllegalStateException("timeout")
+
+        override suspend fun obtenerPerfilDeMedico(
+            idMedico: String,
+        ): Result<PerfilDoctorDirectorio?> = throw IllegalStateException("timeout")
+
         override suspend fun solicitarVinculacion(
             idPaciente: String,
             idMedico: String,

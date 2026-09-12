@@ -1,5 +1,7 @@
 package com.eter.salud.data.repository
 
+import com.eter.salud.data.demo.CuentaMedicaDemo
+
 import com.eter.salud.domain.model.EstadoVerificacionCedula
 import com.eter.salud.domain.model.MotivoFalloAutenticacionProfesional
 import com.eter.salud.domain.model.MotivoFalloRegistroProfesional
@@ -19,6 +21,8 @@ import com.eter.salud.domain.repository.FalloRegistroProfesional
  */
 class AutenticacionProfesionalRepositorioEnMemoria(
     cuentaDemo: Pair<String, String> = CORREO_DEMO to CONTRASENA_DEMO,
+    /** Otras cuentas medicas de demostracion, ya verificadas. */
+    cuentasExtra: List<CuentaMedicaDemo> = emptyList(),
 ) : AutenticacionProfesionalRepositorio {
 
     private data class Cuenta(
@@ -41,9 +45,24 @@ class AutenticacionProfesionalRepositorioEnMemoria(
             cedulaProfesional = "12345678",
             estadoVerificacion = EstadoVerificacionCedula.APROBADO,
         ),
-    )
+    ).apply {
+        cuentasExtra.forEach { extra ->
+            put(
+                extra.correo,
+                Cuenta(
+                    contrasena = cuentaDemo.second,
+                    idMedico = extra.idMedico,
+                    nombre = extra.nombre,
+                    apellidos = extra.apellidos,
+                    tratamiento = extra.tratamiento,
+                    cedulaProfesional = extra.cedula,
+                    estadoVerificacion = EstadoVerificacionCedula.APROBADO,
+                ),
+            )
+        }
+    }
 
-    private val cedulasRegistradas = mutableSetOf("12345678")
+    private val cedulasRegistradas = mutableSetOf("12345678").apply { addAll(cuentasExtra.map { it.cedula }) }
     private var siguienteId = 1
 
     override suspend fun iniciarSesion(

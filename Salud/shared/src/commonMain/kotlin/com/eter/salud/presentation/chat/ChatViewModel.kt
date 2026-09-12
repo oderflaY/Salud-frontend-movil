@@ -2,6 +2,7 @@ package com.eter.salud.presentation.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
 import com.eter.salud.domain.repository.ChatRepositorio
@@ -57,6 +58,11 @@ class ChatViewModel(
                     onFailure = { previo.copy(cargando = false, errorCarga = true) },
                 )
             }
+            // Abrir la conversacion ES leerla: el punto rojo de la barra baja
+            // aqui, sin pedirle al paciente ningun gesto adicional.
+            if (resultado.isSuccess) {
+                ejecutarSeguro { Result.success(repositorio.marcarConversacionLeida(idConversacion)) }
+            }
         }
     }
 
@@ -65,14 +71,36 @@ class ChatViewModel(
     }
 
     /**
-     * Envia el mensaje en curso. La burbuja aparece de inmediato con un id
-     * provisional; cuando el backend confirma, ese id se reemplaza por el
-     * definitivo, y si falla, el mensaje se retira y el texto vuelve al campo.
+     * Deja lista una foto, un archivo o una pagina escaneada para el proximo
+     * envio. Quien la consiguio (galeria, selector de archivos, camara del
+     * escaner) ya la entrega como [Adjunto] resuelto -- copiada al
+     * almacenamiento propio de la app -- porque de ahi para abajo los tres
+     * casos son identicos.
+     *
+     * Solo uno a la vez: elegir un segundo adjunto reemplaza al primero, igual
+     * que en cualquier chat comun. Obligar a enviar o quitar el primero antes
+     * de poder elegir otro seria un tramite que ningun chat le pide al usuario.
+     */
+    fun adjuntar(adjunto: Adjunto) {
+        _estado.update { it.copy(adjuntoEnCurso = adjunto, errorEnvio = false) }
+    }
+
+    fun quitarAdjunto() {
+        _estado.update { it.copy(adjuntoEnCurso = null) }
+    }
+
+    /**
+     * Envia el mensaje en curso (texto, adjunto, o los dos). La burbuja aparece
+     * de inmediato con un id provisional; cuando el backend confirma, ese id se
+     * reemplaza por el definitivo, y si falla, el mensaje se retira y tanto el
+     * texto como el adjunto vuelven al campo -- perder un archivo ya elegido
+     * por un fallo de red obligaria a buscarlo otra vez.
      */
     fun enviarMensaje() {
         val actual = _estado.value
         val texto = actual.textoEnCurso.trim()
-        if (texto.isBlank()) return
+        val adjunto = actual.adjuntoEnCurso
+        if (texto.isBlank() && adjunto == null) return
 
         val esPrimerMensajeDelPaciente = actual.mensajes.none { it.autor == AutorMensaje.PACIENTE }
         val instante = reloj.instanteActual()
@@ -81,10 +109,16 @@ class ChatViewModel(
             autor = AutorMensaje.PACIENTE,
             texto = texto,
             instante = instante,
+            adjunto = adjunto,
         )
 
         _estado.update {
-            it.copy(mensajes = it.mensajes + provisional, textoEnCurso = "", errorEnvio = false)
+            it.copy(
+                mensajes = it.mensajes + provisional,
+                textoEnCurso = "",
+                adjuntoEnCurso = null,
+                errorEnvio = false,
+            )
         }
 
         viewModelScope.launch {
@@ -94,6 +128,7 @@ class ChatViewModel(
                     texto = texto,
                     instante = instante,
                     autor = AutorMensaje.PACIENTE,
+                    adjunto = adjunto,
                 )
             }
             resultado.fold(
@@ -109,6 +144,7 @@ class ChatViewModel(
                             mensajes = previo.mensajes.filterNot { m -> m.idMensaje == provisional.idMensaje },
                             errorEnvio = true,
                             textoEnCurso = texto,
+                            adjuntoEnCurso = adjunto,
                         )
                     }
                 },

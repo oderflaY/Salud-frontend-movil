@@ -18,9 +18,10 @@ import salud.shared.generated.resources.agenda_estado_confirmada
 import salud.shared.generated.resources.agenda_estado_en_curso
 import salud.shared.generated.resources.agenda_estado_no_asistio
 import salud.shared.generated.resources.agenda_estado_pendiente
+import salud.shared.generated.resources.agenda_estado_propuesta_medico
 import salud.shared.generated.resources.agenda_vista_diaria
 import salud.shared.generated.resources.agenda_vista_mensual
-import salud.shared.generated.resources.agenda_vista_semanal
+import salud.shared.generated.resources.agenda_vista_dos_semanas
 import salud.shared.generated.resources.cita_error_correo_formato
 import salud.shared.generated.resources.cita_error_correo_vacio
 import salud.shared.generated.resources.cita_error_franja_ocupada
@@ -51,11 +52,12 @@ internal fun EstadoCita.recurso(): StringResource = when (this) {
     EstadoCita.CANCELADA -> Res.string.agenda_estado_cancelada
     EstadoCita.NO_ASISTIO -> Res.string.agenda_estado_no_asistio
     EstadoCita.BLOQUEADO -> Res.string.agenda_estado_bloqueado
+    EstadoCita.PROPUESTA_MEDICO -> Res.string.agenda_estado_propuesta_medico
 }
 
 internal fun VistaCalendario.recurso(): StringResource = when (this) {
     VistaCalendario.DIARIA -> Res.string.agenda_vista_diaria
-    VistaCalendario.SEMANAL -> Res.string.agenda_vista_semanal
+    VistaCalendario.DOS_SEMANAS -> Res.string.agenda_vista_dos_semanas
     VistaCalendario.MENSUAL -> Res.string.agenda_vista_mensual
 }
 
@@ -83,7 +85,11 @@ internal fun ErrorCampoCita.recurso(): StringResource = when (this) {
  * etiqueta escrita, no el color.
  */
 internal fun ColoresSalud.parDeEstado(estado: EstadoCita): Pair<Color, Color> = when (estado) {
-    EstadoCita.PENDIENTE -> citaPendiente to fondoCitaPendiente
+    // PENDIENTE y PROPUESTA_MEDICO comparten par: para quien mira el calendario
+    // las dos dicen lo mismo -- "esta cita todavia no la valido la otra
+    // parte" -- y solo cambia QUIEN falta por responder, que ya lo dice la
+    // palabra del estado, no el color.
+    EstadoCita.PENDIENTE, EstadoCita.PROPUESTA_MEDICO -> citaPendiente to fondoCitaPendiente
     EstadoCita.CONFIRMADA -> citaConfirmada to fondoCitaConfirmada
     EstadoCita.EN_CURSO -> citaEnCurso to fondoCitaEnCurso
     EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO -> citaCancelada to fondoCitaCancelada

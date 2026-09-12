@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,8 +33,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -45,38 +48,52 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eter.salud.domain.adjuntos.rememberSelectorDeAdjuntos
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
+import com.eter.salud.domain.model.TipoAdjunto
 import com.eter.salud.domain.model.TipoMensaje
 import com.eter.salud.presentation.chat.ChatUiState
 import com.eter.salud.presentation.chat.ChatViewModel
 import com.eter.salud.ui.componentes.BarraAccionInferior
+import com.eter.salud.ui.componentes.BloqueDeError
+import com.eter.salud.ui.componentes.BotonAtras
 import com.eter.salud.ui.componentes.GlifoSalud
 import com.eter.salud.ui.componentes.IconoSalud
+import com.eter.salud.ui.componentes.bordeDeTarjeta
+import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.theme.AreaTactilMinima
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
+import com.eter.salud.ui.theme.MedidaSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
-import salud.shared.generated.resources.a11y_boton_atras
+import salud.shared.generated.resources.a11y_chat_accion_adjuntar
 import salud.shared.generated.resources.a11y_chat_accion_enviar
+import salud.shared.generated.resources.a11y_chat_adjunto_quitar
 import salud.shared.generated.resources.a11y_chat_banner_advertencia
 import salud.shared.generated.resources.a11y_chat_campo_mensaje
 import salud.shared.generated.resources.a11y_chat_cargando
 import salud.shared.generated.resources.a11y_chat_estado_escribiendo
+import salud.shared.generated.resources.a11y_chat_mensaje_con_adjunto
 import salud.shared.generated.resources.a11y_chat_mensaje_medico
 import salud.shared.generated.resources.a11y_chat_mensaje_orientacion
 import salud.shared.generated.resources.a11y_chat_mensaje_paciente
-import salud.shared.generated.resources.accion_atras
 import salud.shared.generated.resources.a11y_cita_accion_abrir
+import salud.shared.generated.resources.chat_adjunto_accion_quitar
+import salud.shared.generated.resources.chat_adjunto_tipo_archivo
+import salud.shared.generated.resources.chat_adjunto_tipo_escaneo
+import salud.shared.generated.resources.chat_adjunto_tipo_foto
 import salud.shared.generated.resources.chat_banner_advertencia
-import salud.shared.generated.resources.cita_accion_abrir
 import salud.shared.generated.resources.chat_campo_placeholder
 import salud.shared.generated.resources.chat_estado_cargando
 import salud.shared.generated.resources.chat_estado_error_carga
 import salud.shared.generated.resources.chat_estado_error_envio
 import salud.shared.generated.resources.chat_estado_escribiendo
 import salud.shared.generated.resources.chat_orientacion_inicial_etiqueta
+import salud.shared.generated.resources.cita_accion_abrir
 
 /**
  * Chat de orientacion de primera vista.
@@ -131,17 +148,7 @@ fun ChatScreen(
                         style = MaterialTheme.typography.titleMedium,
                     )
                 },
-                navigationIcon = {
-                    val descripcion = stringResource(Res.string.a11y_boton_atras)
-                    TextButton(
-                        onClick = alVolver,
-                        modifier = Modifier
-                            .heightIn(min = AreaTactilMinima)
-                            .semantics { contentDescription = descripcion },
-                    ) {
-                        Text(stringResource(Res.string.accion_atras))
-                    }
-                },
+                navigationIcon = { BotonAtras(alPulsar = alVolver) },
                 actions = {
                     // La deteccion por frase no basta como unica puerta: si el
                     // paciente no acierta con las palabras, la funcion no
@@ -184,7 +191,10 @@ fun ChatScreen(
 
             when {
                 estado.cargando -> IndicadorCargando()
-                estado.errorCarga -> MensajeErrorCarga()
+                estado.errorCarga -> BloqueDeError(
+                    mensaje = stringResource(Res.string.chat_estado_error_carga),
+                    alReintentar = viewModel::cargar,
+                )
                 else -> LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -259,11 +269,18 @@ private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
     val esPaciente = mensaje.autor == AutorMensaje.PACIENTE
-    val descripcion = if (esPaciente) {
+    val adjunto = mensaje.adjunto
+    val descripcionBase = if (esPaciente) {
         stringResource(Res.string.a11y_chat_mensaje_paciente, mensaje.texto)
     } else {
         stringResource(Res.string.a11y_chat_mensaje_medico, nombreMedico, mensaje.texto)
     }
+    val descripcion = if (adjunto != null) {
+        descripcionBase + " " + stringResource(Res.string.a11y_chat_mensaje_con_adjunto, adjunto.nombre)
+    } else {
+        descripcionBase
+    }
+    val colorTexto = if (esPaciente) colores.sobreBurbujaMedico else MaterialTheme.colorScheme.onPrimary
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -271,20 +288,81 @@ private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
     ) {
         Surface(
             modifier = Modifier
-                .widthIn(max = ANCHO_MAXIMO_BURBUJA)
+                .widthIn(max = MedidaSalud.anchoBurbuja)
                 .semantics(mergeDescendants = true) { contentDescription = descripcion },
-            color = if (esPaciente) MaterialTheme.colorScheme.primary else colores.fondoBurbujaMedico,
-            shape = RoundedCornerShape(espaciado.medio),
+            // El relleno de marca es SIEMPRE del medico, tambien visto desde
+            // el portal del paciente: lo que el rediseno quiere destacar es la
+            // voz clinica, no la propiedad del mensaje. El lado sigue mandandolo
+            // `esPaciente`, que es la convencion que nadie debe tocar.
+            color = if (esPaciente) colores.fondoBurbujaMedico else MaterialTheme.colorScheme.primary,
+            shape = FormaSalud.media,
         ) {
-            Text(
-                text = mensaje.texto,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (esPaciente) MaterialTheme.colorScheme.onPrimary else colores.sobreBurbujaMedico,
+            Column(
                 modifier = Modifier.padding(horizontal = espaciado.medio, vertical = espaciado.compacto),
+                verticalArrangement = Arrangement.spacedBy(espaciado.compacto),
+            ) {
+                if (adjunto != null) {
+                    ChipDeAdjunto(adjunto = adjunto, colorTexto = colorTexto)
+                }
+                if (mensaje.texto.isNotBlank()) {
+                    Text(
+                        text = mensaje.texto,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorTexto,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Nombre del tipo de adjunto, tal como se muestra al medico. */
+@Composable
+private fun tituloDe(tipo: TipoAdjunto): String = when (tipo) {
+    TipoAdjunto.FOTO -> stringResource(Res.string.chat_adjunto_tipo_foto)
+    TipoAdjunto.ARCHIVO -> stringResource(Res.string.chat_adjunto_tipo_archivo)
+    TipoAdjunto.ESCANEO -> stringResource(Res.string.chat_adjunto_tipo_escaneo)
+}
+
+private fun glifoDe(tipo: TipoAdjunto): GlifoSalud = when (tipo) {
+    TipoAdjunto.FOTO -> GlifoSalud.FOTO
+    TipoAdjunto.ARCHIVO -> GlifoSalud.ARCHIVO
+    TipoAdjunto.ESCANEO -> GlifoSalud.ESCANER
+}
+
+/**
+ * El adjunto dentro de la burbuja: icono por tipo, nombre del archivo y su
+ * categoria. Es deliberadamente un rotulo y no una miniatura de la imagen: leer
+ * una foto de un archivo local en las tres plataformas exige decodificarla a
+ * mano (no hay libreria de imagenes en el proyecto), y un rotulo claro dice lo
+ * mismo que hace falta saber -- que se adjunto y de que tipo es -- sin ese
+ * costo.
+ */
+@Composable
+private fun ChipDeAdjunto(adjunto: Adjunto, colorTexto: Color) {
+    val espaciado = LocalEspaciadoSalud.current
+    Row(
+        modifier = Modifier
+            .background(colorTexto.copy(alpha = ALFA_FONDO_CHIP), FormaSalud.sutil)
+            .padding(horizontal = espaciado.compacto, vertical = espaciado.minimo),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
+    ) {
+        IconoSalud(glifo = glifoDe(adjunto.tipo), lado = LADO_ICONO_ADJUNTO, color = colorTexto)
+        Column {
+            Text(text = adjunto.nombre, style = MaterialTheme.typography.labelLarge, color = colorTexto, maxLines = 1)
+            Text(
+                text = tituloDe(adjunto.tipo),
+                style = MaterialTheme.typography.labelSmall,
+                color = colorTexto.copy(alpha = ALFA_SUBTITULO_CHIP),
             )
         }
     }
 }
+
+private const val ALFA_FONDO_CHIP = 0.12f
+private const val ALFA_SUBTITULO_CHIP = 0.7f
+private val LADO_ICONO_ADJUNTO = 22.dp
 
 /**
  * El bloque destacado de Orientacion Inicial: soporte vital inmediato de parte
@@ -302,15 +380,18 @@ private fun BloqueOrientacionInicial(mensaje: MensajeChat) {
             .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = descripcion },
         color = colores.fondoTarjeta,
-        shape = RoundedCornerShape(espaciado.medio),
+        border = bordeDeTarjeta(),
+        shadowElevation = elevacionDeTarjeta(),
+        shape = FormaSalud.media,
     ) {
+        // Sin franja lateral de color.
+        //
+        // La barra vertical de acento pegada al borde de una tarjeta es un
+        // patron que delata interfaz generada: marca importancia con un adorno
+        // en lugar de con jerarquia. Aqui la importancia ya la lleva la etiqueta
+        // "Orientacion inicial" en color de acento, que ademas SE LEE -- una
+        // franja de 4dp no dice nada a quien usa un lector de pantalla.
         Row(Modifier.fillMaxWidth()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .width(FRANJA_ACENTO)
-                    .background(colores.acentoAccion),
-            )
             Column(Modifier.padding(espaciado.amplio)) {
                 Text(
                     text = stringResource(Res.string.chat_orientacion_inicial_etiqueta),
@@ -347,7 +428,7 @@ private fun IndicadorEscribiendo(nombreMedico: String) {
     ) {
         Surface(
             color = colores.fondoBurbujaMedico,
-            shape = RoundedCornerShape(espaciado.medio),
+            shape = FormaSalud.media,
         ) {
             Text(
                 text = texto,
@@ -359,7 +440,10 @@ private fun IndicadorEscribiendo(nombreMedico: String) {
     }
 }
 
-/** Campo de texto expandible y boton de enviar, anclados a la zona segura inferior. */
+/**
+ * Vista previa del adjunto, campo de texto y boton de enviar, anclados a la
+ * zona segura inferior.
+ */
 @Composable
 private fun FilaEnvio(
     estado: ChatUiState,
@@ -367,25 +451,101 @@ private fun FilaEnvio(
     alEnviarMensaje: (String) -> Unit,
 ) {
     val espaciado = LocalEspaciadoSalud.current
+    val selectorDeAdjuntos = rememberSelectorDeAdjuntos(estado.idConversacion)
+    var mostrandoHojaAdjuntar by remember { mutableStateOf(false) }
+
+    Column {
+        estado.adjuntoEnCurso?.let { adjunto ->
+            VistaPreviaAdjunto(adjunto = adjunto, alQuitar = viewModel::quitarAdjunto)
+            Spacer(Modifier.height(espaciado.compacto))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
+        ) {
+            BotonAdjuntar(alPulsar = { mostrandoHojaAdjuntar = true })
+            CampoMensaje(
+                valor = estado.textoEnCurso,
+                alCambiar = viewModel::actualizarTexto,
+                modifier = Modifier.weight(1f),
+            )
+            BotonEnviar(
+                habilitado = estado.puedeEnviar,
+                alPulsar = {
+                    // El texto se lee ANTES de enviar: `enviarMensaje` limpia el
+                    // campo, asi que leerlo despues daria siempre cadena vacia.
+                    val texto = estado.textoEnCurso
+                    viewModel.enviarMensaje()
+                    alEnviarMensaje(texto)
+                },
+            )
+        }
+    }
+
+    if (mostrandoHojaAdjuntar) {
+        HojaAdjuntar(
+            selector = selectorDeAdjuntos,
+            alAdjuntar = viewModel::adjuntar,
+            onDismissRequest = { mostrandoHojaAdjuntar = false },
+        )
+    }
+}
+
+@Composable
+private fun BotonAdjuntar(alPulsar: () -> Unit) {
+    val colores = LocalColoresSalud.current
+    val descripcion = stringResource(Res.string.a11y_chat_accion_adjuntar)
+    Surface(
+        modifier = Modifier
+            .size(AreaTactilMinima)
+            .clickable(onClick = alPulsar)
+            .semantics { contentDescription = descripcion },
+        color = colores.fondoCampo,
+        shape = CircleShape,
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            IconoSalud(glifo = GlifoSalud.ADJUNTAR, lado = 20.dp, color = colores.textoSecundario)
+        }
+    }
+}
+
+/**
+ * El adjunto ya elegido, a la espera de que se pulse enviar. Vive pegado al
+ * campo de texto y no dentro de una burbuja de chat: todavia no es un mensaje,
+ * es lo que el mensaje va a llevar.
+ */
+@Composable
+private fun VistaPreviaAdjunto(adjunto: Adjunto, alQuitar: () -> Unit) {
+    val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
+    val descripcionQuitar = stringResource(Res.string.a11y_chat_adjunto_quitar, adjunto.nombre)
+
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(colores.fondoCampo, FormaSalud.sutil)
+            .padding(horizontal = espaciado.medio, vertical = espaciado.compacto),
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
     ) {
-        CampoMensaje(
-            valor = estado.textoEnCurso,
-            alCambiar = viewModel::actualizarTexto,
+        IconoSalud(glifo = glifoDe(adjunto.tipo), lado = LADO_ICONO_ADJUNTO, color = colores.acentoAccion)
+        Text(
+            text = adjunto.nombre,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
             modifier = Modifier.weight(1f),
         )
-        BotonEnviar(
-            habilitado = estado.puedeEnviar,
-            alPulsar = {
-                // El texto se lee ANTES de enviar: `enviarMensaje` limpia el
-                // campo, asi que leerlo despues daria siempre cadena vacia.
-                val texto = estado.textoEnCurso
-                viewModel.enviarMensaje()
-                alEnviarMensaje(texto)
-            },
+        Text(
+            text = stringResource(Res.string.chat_adjunto_accion_quitar),
+            style = MaterialTheme.typography.labelLarge,
+            color = colores.acentoAccion,
+            modifier = Modifier
+                .heightIn(min = AreaTactilMinima)
+                .clickable(onClick = alQuitar)
+                .semantics { contentDescription = descripcionQuitar }
+                .padding(horizontal = espaciado.compacto),
         )
     }
 }
@@ -405,7 +565,7 @@ private fun CampoMensaje(valor: String, alCambiar: (String) -> Unit, modifier: M
     Box(
         modifier = modifier
             .heightIn(min = AreaTactilMinima)
-            .background(colores.fondoCampo, RoundedCornerShape(espaciado.generoso))
+            .background(colores.fondoCampo, FormaSalud.destacada)
             .padding(horizontal = espaciado.medio, vertical = espaciado.compacto)
             .semantics { contentDescription = descripcion },
         contentAlignment = Alignment.CenterStart,
@@ -476,18 +636,5 @@ private fun IndicadorCargando() {
     }
 }
 
-@Composable
-private fun MensajeErrorCarga() {
-    Box(Modifier.fillMaxSize().padding(LocalEspaciadoSalud.current.amplio)) {
-        Text(
-            text = stringResource(Res.string.chat_estado_error_carga),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-        )
-    }
-}
 
-private val ANCHO_MAXIMO_BURBUJA = 280.dp
-private val FRANJA_ACENTO = 4.dp
 private const val MAXIMO_LINEAS_CAMPO = 5

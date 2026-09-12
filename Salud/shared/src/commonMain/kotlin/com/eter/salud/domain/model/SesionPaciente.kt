@@ -1,5 +1,7 @@
 package com.eter.salud.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Sesion abierta tras un acceso correcto.
  *
@@ -7,6 +9,7 @@ package com.eter.salud.domain.model
  * nodos protegidos del expediente. Se mantiene fuera del DTO del paciente: es
  * una credencial, no un dato clinico.
  */
+@Serializable
 data class SesionPaciente(
     val idPaciente: String,
     val token: String,

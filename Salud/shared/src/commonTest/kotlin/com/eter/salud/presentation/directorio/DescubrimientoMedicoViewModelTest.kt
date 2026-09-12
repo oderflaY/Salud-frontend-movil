@@ -17,10 +17,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Puerta de entrada a "Mi Medico": estas pruebas garantizan que, sin un doctor
- * vinculado, el estado dice mostrar el Directorio en lugar de un chat vacio, y
- * que la lista resuelve sus cuatro escenarios sellados (carga, exito, vacio y
- * error) sin quedarse muda en ninguno.
+ * Directorio Medico: estas pruebas garantizan que el paciente siempre puede
+ * escoger un medico -- tenga o no uno ya --, que al escoger se abre la ficha
+ * de ese medico, y que la lista resuelve sus cuatro escenarios sellados (carga,
+ * exito, vacio y error) sin quedarse muda en ninguno.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DescubrimientoMedicoViewModelTest {
@@ -68,7 +68,9 @@ class DescubrimientoMedicoViewModelTest {
     }
 
     @Test
-    fun con_medico_ya_vinculado_el_estado_dice_mostrar_el_chat_y_no_consulta_el_directorio() {
+    fun con_medico_ya_vinculado_el_directorio_sigue_ofreciendo_escoger_otro() {
+        // Antes el directorio desaparecia con UN medico vinculado, y como toda
+        // cuenta nace vinculada con la Dra. Ruiz, nadie podia escoger a otro.
         val vinculado = MedicoVinculado(
             idMedico = "doc_889900A",
             nombreCompleto = "Dra. Elena Ruiz Santos",
@@ -78,12 +80,59 @@ class DescubrimientoMedicoViewModelTest {
         val repositorio = DirectorioMedicoRepositorioFalso(medicoVinculado = Result.success(vinculado))
         val vm = viewModel(repositorio)
 
+        val estado = vm.estado.value
+        assertTrue(estado.debeMostrarDirectorio)
+        // Se conserva para el contador de mensajes de la barra inferior.
+        assertEquals(vinculado, estado.medicoVinculado)
+        assertIs<DirectorioUiState.ConDoctores>(estado.directorio)
+    }
+
+    @Test
+    fun con_medico_ya_vinculado_se_puede_escoger_un_segundo_especialista() {
+        val vinculado = MedicoVinculado(
+            idMedico = "doc_889900A",
+            nombreCompleto = "Dra. Elena Ruiz Santos",
+            especialidad = Especialidad.CARDIOLOGIA,
+            idConversacion = "conv_pac_01H8X9A_doc_889900A",
+        )
+        val repositorio = DirectorioMedicoRepositorioFalso(medicoVinculado = Result.success(vinculado))
+        val vm = viewModel(repositorio)
+
+        vm.solicitarVinculacion("doc_local_2")
 
         val estado = vm.estado.value
-        assertFalse(estado.debeMostrarDirectorio)
-        assertEquals(vinculado, estado.medicoVinculado)
-        // Ya hay con quien chatear: no hace falta gastar red trayendo el directorio.
-        assertTrue(repositorio.especialidadesBuscadas.isEmpty())
+        assertEquals(listOf("doc_local_2"), repositorio.solicitudesVinculacion)
+        assertEquals("doc_local_2", estado.medicoElegido?.idMedico)
+        // El primero sigue siendo el de la barra: escoger otro no lo desplaza.
+        assertEquals("doc_889900A", estado.medicoVinculado?.idMedico)
+    }
+
+    // ------------------------------------------------ Ficha del medico elegido
+
+    @Test
+    fun cerrar_la_ficha_devuelve_la_lista_para_comparar_medicos() {
+        val vm = viewModel(DirectorioMedicoRepositorioFalso())
+        vm.solicitarVinculacion("doc_local_2")
+
+        vm.cerrarFicha()
+
+        val estado = vm.estado.value
+        assertTrue(estado.debeMostrarDirectorio)
+        assertNull(estado.medicoElegido)
+        assertNull(estado.perfilDelElegido)
+    }
+
+    @Test
+    fun al_vincularse_la_ficha_se_toma_de_la_lista_ya_descargada() {
+        val repositorio = DirectorioMedicoRepositorioFalso()
+        val vm = viewModel(repositorio)
+
+        vm.solicitarVinculacion("doc_local_2")
+
+        assertEquals("Dr. Carlos Mendoza", vm.estado.value.perfilDelElegido?.nombreCompleto)
+        // No hubo segunda llamada: el perfil ya estaba en la lista que el
+        // paciente acaba de tocar.
+        assertTrue(repositorio.perfilesPedidos.isEmpty())
     }
 
     // ------------------------------------------------- Los cuatro estados sellados
@@ -202,13 +251,14 @@ class DescubrimientoMedicoViewModelTest {
     // ----------------------------------------------------------- Vinculacion
 
     @Test
-    fun vincularse_con_un_doctor_publica_el_medico_vinculado_y_cambia_a_mostrar_el_chat() {
+    fun vincularse_con_un_doctor_abre_su_ficha_para_iniciar_la_consulta() {
         val vm = viewModel(DirectorioMedicoRepositorioFalso())
 
         vm.solicitarVinculacion("doc_local_2")
 
         val estado = vm.estado.value
         assertFalse(estado.debeMostrarDirectorio)
+        assertEquals("doc_local_2", estado.medicoElegido?.idMedico)
         assertEquals("doc_local_2", estado.medicoVinculado?.idMedico)
         assertNull(estado.idSolicitandoVinculacion)
     }

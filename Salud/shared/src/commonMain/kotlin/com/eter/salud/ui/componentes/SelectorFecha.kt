@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.eter.salud.domain.time.CalendarioSalud
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
@@ -207,7 +207,7 @@ private fun ChipFecha(etiqueta: String, elegido: Boolean, alPulsar: () -> Unit) 
     } else {
         stringResource(Res.string.a11y_fecha_opcion, etiqueta)
     }
-    val forma = RoundedCornerShape(percent = 50)
+    val forma = FormaSalud.pastilla
 
     Text(
         text = etiqueta,

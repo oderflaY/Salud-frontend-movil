@@ -107,4 +107,39 @@ interface CitasRepositorio {
 
     /** Mueve una cita a otra franja libre, conservando paciente, motivo y folio. */
     suspend fun reprogramar(idCita: String, idFranjaNueva: String, ahora: String): Result<Cita>
+
+    /**
+     * El medico ofrece una hora a un paciente ya vinculado, eligiendola de su
+     * propia agenda. La cita nace en [EstadoCita.PROPUESTA_MEDICO] y ocupa la
+     * franja de inmediato -- ningun otro paciente puede tomarla mientras el
+     * destinatario decide -- pero solo pasa a [EstadoCita.CONFIRMADA] cuando ese
+     * paciente la acepta con [aceptarPropuesta]. Es el reverso de
+     * [reservarTemporalmente] + [confirmarCita]: alli agenda el paciente y valida
+     * el consultorio; aqui agenda el consultorio y valida el paciente.
+     *
+     * Falla con [MotivoFalloCita.FRANJA_OCUPADA] en las mismas condiciones que
+     * [reservarTemporalmente]: la franja debe seguir estrictamente libre en el
+     * instante [ahora].
+     */
+    suspend fun proponerCita(
+        idMedico: String,
+        idPaciente: String,
+        idFranja: String,
+        contacto: DatosContactoCita,
+        ahora: String,
+    ): Result<Cita>
+
+    /**
+     * El paciente acepta una hora que su medico le propuso: pasa a
+     * [EstadoCita.CONFIRMADA]. Falla si la cita no existe o ya no esta en
+     * [EstadoCita.PROPUESTA_MEDICO] -- por ejemplo, si el medico ya la retiro.
+     */
+    suspend fun aceptarPropuesta(idCita: String): Result<Cita>
+
+    /**
+     * El paciente rechaza la hora propuesta: la cita pasa a
+     * [EstadoCita.CANCELADA] y la franja vuelve a estar libre para otros. Mismas
+     * condiciones de fallo que [aceptarPropuesta].
+     */
+    suspend fun rechazarPropuesta(idCita: String): Result<Cita>
 }

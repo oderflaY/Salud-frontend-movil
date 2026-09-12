@@ -87,7 +87,12 @@ fun LoginProfesionalScreen(
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
 
-    LaunchedEffect(estado.sesion) { estado.sesion?.let(alIniciarSesion) }
+    LaunchedEffect(estado.sesion) {
+        estado.sesion?.let { sesion ->
+            alIniciarSesion(sesion)
+            viewModel.sesionEntregada()
+        }
+    }
 
     Column(
         modifier = modifier

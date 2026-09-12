@@ -15,10 +15,13 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel de la seccion "Mi Medico".
  *
- * Es el unico responsable de decidir si el paciente ve el Directorio Medico o
- * el chat: consulta primero si ya existe una vinculacion y, solo si no hay
- * ninguna, trae el directorio. Una vez vinculado, deja de gastar red en
- * busquedas de doctores.
+ * Trae siempre el Directorio Medico, tenga o no el paciente medico ya: un
+ * paciente acumula especialistas, y antes el directorio desaparecia en cuanto
+ * habia UN medico vinculado. Como toda cuenta arranca vinculada con la Dra.
+ * Ruiz, eso significaba que nadie podia escoger nunca a otro medico.
+ *
+ * Tambien sabe cual es el primer medico vinculado ([DescubrimientoMedicoUiState.medicoVinculado]),
+ * que la barra inferior usa para su contador de mensajes.
  *
  * Expone un unico [StateFlow] con el estado de la pantalla; el estado de la
  * lista viaja dentro como [DirectorioUiState] sellado, de modo que la Vista
@@ -62,12 +65,10 @@ class DescubrimientoMedicoViewModel(
                 when {
                     resultadoVinculo.isFailure -> publicarError()
 
-                    vinculado != null -> _estado.update {
-                        // Ya hay con quien chatear: no se gasta red en el directorio.
-                        it.copy(medicoVinculado = vinculado)
+                    else -> {
+                        _estado.update { it.copy(medicoVinculado = vinculado) }
+                        consultarDirectorio(_estado.value.especialidadFiltro)
                     }
-
-                    else -> consultarDirectorio(especialidad = null)
                 }
             } finally {
                 consultaEnCurso = false
@@ -90,14 +91,22 @@ class DescubrimientoMedicoViewModel(
 
     fun solicitarVinculacion(idMedico: String) {
         val actual = _estado.value
-        if (actual.idSolicitandoVinculacion != null || actual.medicoVinculado != null) return
+        if (actual.idSolicitandoVinculacion != null) return
         _estado.update { it.copy(idSolicitandoVinculacion = idMedico, errorVinculacion = false) }
         viewModelScope.launch {
             val resultado = ejecutarSeguro { repositorio.solicitarVinculacion(idPaciente, idMedico) }
             _estado.update { previo ->
                 resultado.fold(
                     onSuccess = { vinculado ->
-                        previo.copy(idSolicitandoVinculacion = null, medicoVinculado = vinculado)
+                        previo.copy(
+                            idSolicitandoVinculacion = null,
+                            medicoVinculado = previo.medicoVinculado ?: vinculado,
+                            medicoElegido = vinculado,
+                            // La ficha ya esta en la lista que el paciente
+                            // acaba de tocar: no hace falta volver a pedirla.
+                            perfilDelElegido = previo.doctoresFiltrados
+                                .firstOrNull { it.idMedico == vinculado.idMedico },
+                        )
                     },
                     onFailure = {
                         previo.copy(idSolicitandoVinculacion = null, errorVinculacion = true)
@@ -105,6 +114,11 @@ class DescubrimientoMedicoViewModel(
                 )
             }
         }
+    }
+
+    /** Cierra la ficha del medico elegido y devuelve la lista del directorio. */
+    fun cerrarFicha() {
+        _estado.update { it.copy(medicoElegido = null, perfilDelElegido = null) }
     }
 
     fun descartarErrorVinculacion() {

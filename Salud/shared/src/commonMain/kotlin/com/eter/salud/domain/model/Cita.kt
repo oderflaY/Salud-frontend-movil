@@ -1,5 +1,7 @@
 package com.eter.salud.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Estado de una cita en la agenda del medico.
  *
@@ -12,7 +14,17 @@ package com.eter.salud.domain.model
  * [BLOQUEADO] no es una cita de un paciente, sino tiempo que el medico se
  * reserva (comida, cirugia, vacaciones). Vive en el mismo enum porque ocupa la
  * agenda igual que una cita y el calendario lo dibuja en la misma rejilla.
+ *
+ * [PROPUESTA_MEDICO] es el espejo de [PENDIENTE]: en aquel el paciente pidio la
+ * hora y espera a que el consultorio la valide; aqui el MEDICO eligio la hora
+ * (desde su propia agenda, para un paciente ya vinculado) y espera a que el
+ * paciente la acepte. Ocupa la franja igual que cualquier otra cita viva -- dos
+ * propuestas no pueden competir por el mismo hueco -- y solo dos caminos la
+ * sacan de aqui: el paciente la acepta ([CONFIRMADA]) o la rechaza/el medico la
+ * retira ([CANCELADA]). Nunca la confirma el propio medico: confirmar la
+ * propuesta que uno mismo hizo no es una validacion de nadie.
  */
+@Serializable
 enum class EstadoCita {
     PENDIENTE,
     CONFIRMADA,
@@ -20,6 +32,7 @@ enum class EstadoCita {
     CANCELADA,
     NO_ASISTIO,
     BLOQUEADO,
+    PROPUESTA_MEDICO,
     ;
 
     /** Cierto si sigue ocupando la franja, es decir, si impide agendar encima. */
@@ -36,6 +49,7 @@ enum class EstadoCita {
  * en UTC obligaria a convertir en cada pantalla y abriria la puerta a que un
  * cambio de horario de verano moviera todas las citas ya agendadas.
  */
+@Serializable
 data class FranjaAgenda(
     val idFranja: String,
     val idMedico: String,
@@ -54,6 +68,7 @@ data class FranjaAgenda(
 }
 
 /** Datos que el paciente aporta en el chat al agendar. */
+@Serializable
 data class DatosContactoCita(
     val nombreCompleto: String,
     val telefono: String,
@@ -69,6 +84,7 @@ data class DatosContactoCita(
  * bloqueo no tiene paciente al que llamar. Es la unica nulidad del modelo y esta
  * atada a ese estado.
  */
+@Serializable
 data class Cita(
     val idCita: String,
     /** Comprobante que el paciente recibe en el chat, por ejemplo `CITA-4F2A`. */
@@ -99,6 +115,7 @@ data class Cita(
  * a los demas. Si el paciente abandona la conversacion, la retencion caduca sola
  * y el hueco vuelve a estar libre sin que nadie tenga que limpiarlo.
  */
+@Serializable
 data class ReservaFranja(
     val idReserva: String,
     val franja: FranjaAgenda,
@@ -120,6 +137,7 @@ data class ReservaFranja(
 }
 
 /** Canal por el que sale el comprobante de la cita. */
+@Serializable
 enum class CanalNotificacion {
     CORREO,
     WHATSAPP,
@@ -130,6 +148,7 @@ enum class CanalNotificacion {
  * notificar, no los que se le pidieron: si el envio de WhatsApp esta caido, el
  * chat debe poder decir "te llego por correo" en vez de prometer las dos cosas.
  */
+@Serializable
 data class ConfirmacionCita(
     val cita: Cita,
     val canalesNotificados: List<CanalNotificacion>,

@@ -1,0 +1,156 @@
+{
+  "proyecto": "Un Dia Mas - app clinica KMP",
+  "notas": "Registro de ejecuciones de Hallmark. Sirve a la regla de diversificacion: una ejecucion futura no debe repetir la misma huella estructural que la anterior.",
+  "ejecuciones": [
+    {
+      "fecha": "2026-09-10",
+      "verbo": "redesign (segunda corrida: el usuario rechazo 'Sala Blanca')",
+      "alcance": "sistema completo (paleta, tipografia, bordes) + HomeScreen reescrita + AgendaPacienteScreen nueva (pestana) + InboxScreen reestilizada",
+      "audiencia": "personas mayores",
+      "genero": "modern-minimal, tono soft",
+      "tema": "custom 'Clinica Serena' (vibe: 'hospital amable, legible, para personas mayores')",
+      "ejesTema": "light / humanist-sans (Atkinson Hyperlegible Next) / cool (azul clinico oklch 46% 0.14 252)",
+      "macroestructura": {
+        "HomeScreen": "Narrative Workflow vertical: saludo+fecha -> resumen del dia -> proxima medicina -> todas -> destinos",
+        "AgendaPacienteScreen": "calendario semanal + linea del dia",
+        "InboxScreen": "Index-First con tarjeta por conversacion"
+      },
+      "diversificacion": "Rechazo explicito de la corrida anterior: cambian paleta (neutra->azul clinico), tipografia (Geist->Atkinson), accion (tinta->azul), anillo->frase+barra por tomas, carrusel->lista vertical.",
+      "criticaPreEmision": {
+        "P": 5,
+        "H": 5,
+        "E": 4,
+        "S": 5,
+        "R": 4,
+        "V": 5
+      },
+      "hallazgosEnDispositivo": [
+        "'Hola, Inicio' cuando el perfil no tiene nombre",
+        "etiqueta 'Completar mi perfil de emergencia' partida en dos lineas (gate 49)",
+        "raya del anillo vacio leida como barra negra",
+        "la pagina no mostraba calendario sin datos de semana"
+      ],
+      "gatesAbiertos": [
+        27
+      ],
+      "verificacion": "compileDebugKotlin + testAndroidHostTest: BUILD SUCCESSFUL, 398 pruebas en verde. APK compilado; el telefono se desconecto antes de instalar esta version."
+    },
+    {
+      "fecha": "2026-09-10",
+      "verbo": "audit + redesign",
+      "alcance": "HomeScreen (paciente, reescrita) + InboxScreen (bandeja clinica del medico, nueva: pestana BandejaClinica) + sistema: paleta, tipografia, iconografia, filetes y elevaciones",
+      "genero": "modern-minimal",
+      "tema": "custom 'Sala Blanca' (vibe: 'sala blanca, instrumental, monocroma')",
+      "ejesTema": "light / grotesk-sans (Geist) / neutral (accion en tinta; croma solo en senales clinicas)",
+      "papel": "oklch(96.2% 0.004 250)",
+      "accion": "oklch(20.5% 0.012 258)",
+      "tipografia": "Geist 300/400/600/700/800, una familia, cifras tnum (OFL)",
+      "iconografia": "Material Symbols Rounded 400 (trazos oficiales, Apache 2.0) en toda la app via GlifoSalud",
+      "macroestructura": {
+        "HomeScreen": "Stat-Led - knobs: numero tabular 800 centrado exacto, dos cifras secundarias reales (antes ninguna), anillo 86% del ancho / trazo 22dp (antes 200dp/16dp), accesos como indice tipografico (antes mosaicos)",
+        "InboxScreen": "Index-First clinico - orden por triage, Glow Dot en 3 intensidades + latido solo en critico, censo de tres cifras, FAB M3 plano"
+      },
+      "diversificacion": "Proyecto gestionado como app: la regla se invierte y el sistema se comparte. El cambio de identidad se hizo en los tokens, no por pantalla.",
+      "criticaPreEmision": {
+        "P": 5,
+        "H": 5,
+        "E": 4,
+        "S": 5,
+        "R": 5,
+        "V": 4
+      },
+      "gatesCorregidos": [
+        1,
+        4,
+        7,
+        22,
+        30,
+        40,
+        41,
+        46
+      ],
+      "gatesAbiertos": [
+        27
+      ],
+      "razonDelGateAbierto": "Compose Multiplatform no expone 'reducir movimiento' en codigo comun. En Android el llenado del anillo y el latido obedecen la escala de animaciones del sistema; en iOS aun no.",
+      "hallazgosAuditoria": [
+        "errorRegistroToma existia en el estado y ninguna pantalla lo pintaba: un registro rechazado revertia la tarjeta en silencio",
+        "el anillo mostraba la adherencia de HOY con una descripcion accesible que decia 'semanal'",
+        "spinner sobre la tarjeta durante un registro que el ViewModel ya hacia optimista",
+        "botones de toma activos mientras el ViewModel descartaba sus pulsaciones (otra toma en curso)",
+        "mosaicos icono-arriba (tell de tarjeta de caracteristica) y filetes en todas las tarjetas",
+        "roles surfaceContainer* sin declarar: el lila base de Material se colaba en hojas y menus"
+      ],
+      "noAplicables": "gates de CSS/web (viewport, overflow-x, chrome de navegador, @media): el proyecto es Compose Multiplatform",
+      "pendiente": "alNuevoEspecialista de la bandeja clinica no tiene destino: el portal del medico aun no tiene directorio de especialistas",
+      "verificacion": "gradlew :androidApp:compileDebugKotlin y :shared:testAndroidHostTest: BUILD SUCCESSFUL, 391 pruebas en verde (8 nuevas del Inbox + 1 de iconos). Sin verificacion visual en dispositivo."
+    },
+    {
+      "fecha": "2026-09-09",
+      "verbo": "redesign",
+      "alcance": "HomeScreen (paciente) + HomeProfesionalScreen (medico) + BandejaScreen, mas los tokens de color, tipografia, iconografia y piezas que las tres comparten",
+      "genero": "modern-minimal",
+      "tema": "Biotech Premium (tokens propios del proyecto, no del catalogo Hallmark)",
+      "macroestructura": {
+        "HomeScreen": "Stat-Led (cifra heroe + carril horizontal)",
+        "HomeProfesionalScreen": "Workbench (herramienta dominante + worklist con triage)",
+        "BandejaScreen": "Indice plano (filas sin tarjeta, separadas por aire)"
+      },
+      "diversificacion": "Las tres huellas son distintas entre si y ninguna repite la de la corrida anterior ('cabecera-grande + lista de tarjetas + accion flotante'), que era la de BandejaScreen.",
+      "criticaPreEmision": {
+        "P": 5,
+        "H": 5,
+        "E": 4,
+        "S": 5,
+        "R": 5,
+        "V": 5
+      },
+      "gatesCorregidos": [
+        3,
+        4,
+        5,
+        9,
+        13,
+        23,
+        30,
+        49
+      ],
+      "gatesAbiertos": [
+        7
+      ],
+      "razonDelGateAbierto": "Blanco #FFFFFF y negro OLED #000000 puros: exigidos por la especificacion del cliente. Se compensa con filete obligatorio en ambos modos, porque a 1.03:1 de contraste con el fondo la tarjeta ya no se despega sola.",
+      "decisionesForzadas": [
+        "Material Symbols Rounded no se adopta: el artefacto no esta publicado para Compose Multiplatform 1.11.1 y la app ya tiene una voz icónica propia (GlifoSalud, Canvas vectorial) en ~20 pantallas. Mezclar dos familias de iconos es el anti-patron 'mismatched icon sets'. Se extendio GlifoSalud con PASTILLA, CONFIRMAR y ANADIR_MEDICO en el mismo trazo.",
+        "El difuminado del punto de triage se resuelve con radialGradient en Canvas y no con Modifier.blur, que no existe en Android por debajo de API 31 y se comporta distinto en iOS."
+      ],
+      "verificacion": "gradlew :androidApp:compileDebugKotlin y :shared:testAndroidHostTest --rerun-tasks: ambos BUILD SUCCESSFUL. Sin verificacion visual en dispositivo."
+    },
+    {
+      "fecha": "2026-09-09",
+      "verbo": "audit + redesign",
+      "alcance": "Bandeja de conversaciones (pantalla) + correcciones sistemicas de estados",
+      "genero": "modern-minimal",
+      "tema": "Biotech Premium (tokens propios del proyecto, no del catalogo Hallmark)",
+      "macroestructura": "cabecera-grande + lista + accion flotante",
+      "criticaPreEmision": {
+        "P": 4,
+        "H": 4,
+        "E": 4,
+        "S": 5,
+        "R": 4,
+        "V": 4
+      },
+      "gatesCorregidos": [
+        4,
+        5,
+        26
+      ],
+      "gatesAbiertos": [
+        7,
+        9,
+        23
+      ],
+      "noAplicables": "1-2, 6, 8, 10-12, 14-21, 22, 24-25, 27-32, 34-39, 42-45, 47-57 (gates de CSS/web: este proyecto es Compose Multiplatform, no tiene hojas de estilo, viewport ni chrome de navegador)"
+    }
+  ]
+}

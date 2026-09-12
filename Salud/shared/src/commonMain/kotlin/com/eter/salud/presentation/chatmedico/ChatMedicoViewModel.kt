@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
+import com.eter.salud.domain.model.ResumenClinicoIa
 import com.eter.salud.domain.model.RiesgoPaciente
 import com.eter.salud.domain.repository.ChatRepositorio
 import com.eter.salud.domain.time.RelojSalud
@@ -84,11 +85,61 @@ class ChatMedicoViewModel(
                         },
                     )
                 }
+                resultado.getOrNull()?.forEach { mensaje ->
+                    if (mensaje.autor == AutorMensaje.PACIENTE && esMensajeLargo(mensaje.texto)) {
+                        solicitarResumen(mensaje.idMensaje, mensaje.texto)
+                    }
+                }
             } finally {
                 consultaEnCurso = false
             }
         }
     }
+
+    /**
+     * Alterna entre el resumen de IA y el mensaje tal como lo escribio el
+     * paciente, bajo la misma tarjeta.
+     */
+    fun alternarOriginal(idMensaje: String) {
+        _estado.update { previo ->
+            previo.copy(
+                originalExpandido = if (idMensaje in previo.originalExpandido) {
+                    previo.originalExpandido - idMensaje
+                } else {
+                    previo.originalExpandido + idMensaje
+                },
+            )
+        }
+    }
+
+    /**
+     * Pide el resumen clinico de un mensaje del paciente. Se llama sola desde
+     * [cargar] para los mensajes que ya califican, pero no vuelve a pedirse dos
+     * veces para el mismo mensaje: un resumen ya en curso, listo, o ya fallido
+     * no cambia con un segundo intento automatico.
+     */
+    private fun solicitarResumen(idMensaje: String, texto: String) {
+        if (idMensaje in _estado.value.resumenesIa) return
+        _estado.update { it.copy(resumenesIa = it.resumenesIa + (idMensaje to EstadoResumenIa.Cargando)) }
+        viewModelScope.launch {
+            val resultado = ejecutarSeguro { repositorio.obtenerResumenClinico(idMensaje) }
+            val nuevoEstado = resultado.fold(
+                onSuccess = { resumen -> EstadoResumenIa.Disponible(resumen) },
+                onFailure = { EstadoResumenIa.Fallido(texto) },
+            )
+            _estado.update { it.copy(resumenesIa = it.resumenesIa + (idMensaje to nuevoEstado)) }
+        }
+    }
+
+    /**
+     * Umbral a partir del cual un mensaje del paciente se ofrece resumido en
+     * vez de leerse entero de corrido. Cuarenta palabras es, mas o menos, un
+     * parrafo corto -- suficiente para que un relato de sintomas empiece a
+     * costar barrer con la vista, pero no tan bajo como para resumir un simple
+     * "Sigo con dolor de cabeza".
+     */
+    private fun esMensajeLargo(texto: String): Boolean =
+        texto.trim().split(EXPRESION_ESPACIOS).count { it.isNotBlank() } > UMBRAL_PALABRAS_RESUMEN_IA
 
     fun actualizarTexto(valor: String) {
         _estado.update { it.copy(textoEnCurso = valor, errorEnvio = false) }
@@ -181,5 +232,7 @@ class ChatMedicoViewModel(
 
     private companion object {
         const val PREFIJO_ID_PROVISIONAL = "local_medico_"
+        const val UMBRAL_PALABRAS_RESUMEN_IA = 40
+        val EXPRESION_ESPACIOS = Regex("\\s+")
     }
 }

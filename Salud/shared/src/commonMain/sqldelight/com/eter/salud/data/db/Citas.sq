@@ -1,0 +1,53 @@
+-- ============================================================================
+-- Citas y bloqueos de horario de todas las agendas medicas.
+--
+-- Las retenciones de cinco minutos del chat NO viven aqui: caducan solas y
+-- sobrevivir a un reinicio las haria durar mas de lo prometido.
+-- ============================================================================
+
+CREATE TABLE cita (
+    id_cita TEXT NOT NULL PRIMARY KEY,
+    folio TEXT NOT NULL,
+    id_medico TEXT NOT NULL,
+    nombre_medico TEXT NOT NULL,
+    -- Vacio en un bloqueo de horario.
+    id_paciente TEXT NOT NULL,
+    fecha TEXT NOT NULL,
+    hora_inicio TEXT NOT NULL,
+    hora_fin TEXT NOT NULL,
+    -- EstadoCita.name
+    estado TEXT NOT NULL,
+    -- Datos de contacto: nulos en un bloqueo.
+    contacto_nombre TEXT,
+    contacto_telefono TEXT,
+    contacto_correo TEXT,
+    contacto_motivo TEXT,
+    nota_bloqueo TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX cita_por_medico ON cita(id_medico, fecha, hora_inicio);
+
+todas:
+SELECT *
+FROM cita
+ORDER BY fecha, hora_inicio;
+
+guardar:
+INSERT OR REPLACE INTO cita(
+    id_cita, folio, id_medico, nombre_medico, id_paciente, fecha, hora_inicio,
+    hora_fin, estado, contacto_nombre, contacto_telefono, contacto_correo,
+    contacto_motivo, nota_bloqueo
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertarSiNoExiste:
+INSERT OR IGNORE INTO cita(
+    id_cita, folio, id_medico, nombre_medico, id_paciente, fecha, hora_inicio,
+    hora_fin, estado, contacto_nombre, contacto_telefono, contacto_correo,
+    contacto_motivo, nota_bloqueo
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Ultimo consecutivo de folio usado, para no repetir folios tras un reinicio.
+foliosLocales:
+SELECT folio
+FROM cita
+WHERE folio LIKE 'CITA-%';

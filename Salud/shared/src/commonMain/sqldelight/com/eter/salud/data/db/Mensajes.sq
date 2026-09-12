@@ -1,0 +1,75 @@
+-- ============================================================================
+-- Conversaciones paciente-medico.
+--
+-- La lectura se guarda como CONTEO de mensajes del medico ya vistos, no como
+-- instante: el reloj del telefono se puede mover a mano, un contador no.
+-- ============================================================================
+
+CREATE TABLE mensaje (
+    id_mensaje TEXT NOT NULL PRIMARY KEY,
+    id_conversacion TEXT NOT NULL,
+    -- AutorMensaje.name
+    autor TEXT NOT NULL,
+    texto TEXT NOT NULL,
+    -- Instante ISO 8601 UTC.
+    instante TEXT NOT NULL,
+    -- TipoMensaje.name
+    tipo TEXT NOT NULL DEFAULT 'NORMAL',
+    -- Las cinco columnas de adjunto viajan juntas: NULL en las cinco si el
+    -- mensaje no lleva ninguno, todas escritas si lleva uno. No se separan en
+    -- una tabla aparte porque un mensaje nunca lleva mas de un adjunto.
+    -- TipoAdjunto.name
+    adjunto_tipo TEXT,
+    adjunto_nombre TEXT,
+    -- Ruta en el almacenamiento privado de la app, no el content://original.
+    adjunto_ruta TEXT,
+    adjunto_mime TEXT
+);
+
+CREATE INDEX mensaje_por_conversacion ON mensaje(id_conversacion, instante);
+
+CREATE TABLE lectura_conversacion (
+    id_conversacion TEXT NOT NULL PRIMARY KEY,
+    mensajes_medico_vistos INTEGER NOT NULL
+);
+
+historial:
+SELECT *
+FROM mensaje
+WHERE id_conversacion = ?
+ORDER BY instante, rowid;
+
+contar:
+SELECT count(*)
+FROM mensaje
+WHERE id_conversacion = ?;
+
+insertar:
+INSERT OR IGNORE INTO mensaje(
+    id_mensaje, id_conversacion, autor, texto, instante, tipo,
+    adjunto_tipo, adjunto_nombre, adjunto_ruta, adjunto_mime
+)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+mensajesDelMedico:
+SELECT count(*)
+FROM mensaje
+WHERE id_conversacion = ? AND autor = 'MEDICO';
+
+vistos:
+SELECT mensajes_medico_vistos
+FROM lectura_conversacion
+WHERE id_conversacion = ?;
+
+marcarVistos:
+INSERT OR REPLACE INTO lectura_conversacion(id_conversacion, mensajes_medico_vistos)
+VALUES (?, ?);
+
+-- En vivo: se vuelve a emitir cuando cambia cualquiera de las dos tablas.
+sinLeer:
+SELECT
+    (SELECT count(*) FROM mensaje WHERE id_conversacion = :conversacion AND autor = 'MEDICO')
+    - coalesce(
+        (SELECT mensajes_medico_vistos FROM lectura_conversacion WHERE id_conversacion = :conversacion),
+        0
+    ) AS pendientes;

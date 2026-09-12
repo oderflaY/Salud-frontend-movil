@@ -1,7 +1,9 @@
 package com.eter.salud.presentation.chat
 
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
+import com.eter.salud.domain.model.TipoAdjunto
 import com.eter.salud.domain.model.TipoMensaje
 import com.eter.salud.presentation.onboarding.RelojFijo
 import kotlinx.coroutines.Dispatchers
@@ -168,5 +170,98 @@ class ChatViewModelTest {
         vm.actualizarTexto("Hola de nuevo")
 
         assertFalse(vm.estado.value.errorEnvio)
+    }
+
+    // -------------------------------------------------------------- Adjuntos
+
+    private val adjuntoDePrueba = Adjunto(
+        idAdjunto = "adj_1",
+        tipo = TipoAdjunto.FOTO,
+        nombre = "receta.jpg",
+        rutaLocal = "/datos/adjuntos/conv_x/adj_1.jpg",
+        tipoMime = "image/jpeg",
+    )
+
+    @Test
+    fun adjuntar_deja_el_archivo_listo_y_habilita_enviar_aunque_no_haya_texto() {
+        val vm = viewModel()
+
+        vm.adjuntar(adjuntoDePrueba)
+
+        assertEquals(adjuntoDePrueba, vm.estado.value.adjuntoEnCurso)
+        assertTrue(vm.estado.value.puedeEnviar)
+    }
+
+    @Test
+    fun quitar_el_adjunto_lo_descarta_sin_tocar_el_texto() {
+        val vm = viewModel()
+        vm.actualizarTexto("Aqui esta")
+        vm.adjuntar(adjuntoDePrueba)
+
+        vm.quitarAdjunto()
+
+        assertEquals(null, vm.estado.value.adjuntoEnCurso)
+        assertEquals("Aqui esta", vm.estado.value.textoEnCurso)
+    }
+
+    @Test
+    fun enviar_con_adjunto_y_sin_texto_manda_el_mensaje_igual() {
+        val repositorio = ChatRepositorioFalso()
+        val vm = viewModel(repositorio)
+        vm.adjuntar(adjuntoDePrueba)
+
+        vm.enviarMensaje()
+
+        assertEquals(adjuntoDePrueba, repositorio.ultimoAdjuntoEnviado)
+        assertEquals("", repositorio.mensajesEnviados.single())
+        // La burbuja optimista ya lleva el adjunto, antes de que el backend
+        // confirme. Se busca el mensaje DEL PACIENTE y no el ultimo de la
+        // lista: al ser el primero, dispara ademas la cortesia automatica del
+        // medico, que queda despues en la conversacion.
+        val propio = vm.estado.value.mensajes.single { it.autor == AutorMensaje.PACIENTE }
+        assertEquals(adjuntoDePrueba, propio.adjunto)
+        // Y el campo queda limpio para el siguiente mensaje.
+        assertEquals(null, vm.estado.value.adjuntoEnCurso)
+    }
+
+    @Test
+    fun enviar_texto_y_adjunto_juntos_los_manda_en_el_mismo_mensaje() {
+        val repositorio = ChatRepositorioFalso()
+        val vm = viewModel(repositorio)
+        vm.actualizarTexto("Aqui tienes mi receta")
+        vm.adjuntar(adjuntoDePrueba)
+
+        vm.enviarMensaje()
+
+        val propio = vm.estado.value.mensajes.single { it.autor == AutorMensaje.PACIENTE }
+        assertEquals("Aqui tienes mi receta", propio.texto)
+        assertEquals(adjuntoDePrueba, propio.adjunto)
+    }
+
+    @Test
+    fun si_el_envio_con_adjunto_falla_el_archivo_vuelve_al_campo() {
+        val repositorio = ChatRepositorioFalso(
+            resultadoEnvio = Result.failure(IllegalStateException("sin red")),
+        )
+        val vm = viewModel(repositorio)
+        vm.adjuntar(adjuntoDePrueba)
+
+        vm.enviarMensaje()
+
+        assertTrue(vm.estado.value.errorEnvio)
+        // Un fallo de red no puede obligar a elegir el archivo otra vez.
+        assertEquals(adjuntoDePrueba, vm.estado.value.adjuntoEnCurso)
+    }
+
+    @Test
+    fun sin_texto_ni_adjunto_enviar_no_hace_nada() {
+        val repositorio = ChatRepositorioFalso()
+        val vm = viewModel(repositorio)
+        val totalPrevio = vm.estado.value.mensajes.size
+
+        vm.enviarMensaje()
+
+        assertEquals(totalPrevio, vm.estado.value.mensajes.size)
+        assertTrue(repositorio.mensajesEnviados.isEmpty())
     }
 }

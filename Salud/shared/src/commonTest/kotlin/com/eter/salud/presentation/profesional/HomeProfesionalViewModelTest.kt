@@ -1,19 +1,20 @@
 package com.eter.salud.presentation.profesional
 
+import com.eter.salud.domain.diario.SeveridadDiario
 import com.eter.salud.domain.model.EstadoVerificacionCedula
 import com.eter.salud.domain.model.PacienteVinculado
 import com.eter.salud.domain.model.RiesgoPaciente
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 
 /**
  * Panel principal del profesional: identidad ya conocida al entrar (viene de
@@ -37,8 +38,10 @@ class HomeProfesionalViewModelTest {
     private fun viewModel(
         repositorio: PacientesVinculadosRepositorioFalso = PacientesVinculadosRepositorioFalso(),
         estadoVerificacion: EstadoVerificacionCedula = EstadoVerificacionCedula.APROBADO,
+        diario: DiarioParaPanelFalso = DiarioParaPanelFalso(),
     ) = HomeProfesionalViewModel(
         pacientesVinculados = repositorio,
+        diario = diario,
         idMedico = idMedico,
         tratamiento = "Dra.",
         apellidos = "Ruiz Santos",
@@ -111,5 +114,104 @@ class HomeProfesionalViewModelTest {
 
         assertEquals(2, repositorio.consultas.size)
         assertFalse(vm.estado.value.cargando)
+    }
+}
+
+
+/**
+ * El punto de triage de la tarjeta del paciente.
+ *
+ * Cierra el circuito: lo que el paciente escribe en su diario decide el orden en
+ * que su medico lo atiende. Lo critico es que "sin anotaciones" NO se confunda
+ * con "verde": silencio no es lo mismo que estar bien.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class TriageEnLaCarteraTest {
+
+    private val idMedico = "doc_889900A"
+
+    @BeforeTest
+    fun configurar() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
+    @AfterTest
+    fun limpiar() {
+        Dispatchers.resetMain()
+    }
+
+    private val cartera = listOf(
+        PacienteVinculado(
+            idPaciente = "pac_01H8X9A",
+            nombreCompleto = "Alfredo Valadez Gonzalez",
+            riesgo = RiesgoPaciente.BAJO,
+            idConversacion = "conv_1",
+        ),
+        PacienteVinculado(
+            idPaciente = "pac_02",
+            nombreCompleto = "Maria Lopez",
+            riesgo = RiesgoPaciente.MEDIO,
+            idConversacion = "conv_2",
+        ),
+    )
+
+    private fun viewModel(diario: DiarioParaPanelFalso) = HomeProfesionalViewModel(
+        pacientesVinculados = PacientesVinculadosRepositorioFalso(Result.success(cartera)),
+        diario = diario,
+        idMedico = idMedico,
+        tratamiento = "Dra.",
+        apellidos = "Ruiz Santos",
+        estadoVerificacion = EstadoVerificacionCedula.APROBADO,
+    )
+
+    @Test
+    fun la_severidad_del_ultimo_diario_llega_a_la_tarjeta_del_paciente() {
+        val vm = viewModel(DiarioParaPanelFalso(ultimas = mapOf("pac_01H8X9A" to SeveridadDiario.ROJO)))
+
+        vm.cargar()
+
+        assertEquals(SeveridadDiario.ROJO, vm.estado.value.severidadDelDiario["pac_01H8X9A"])
+    }
+
+    @Test
+    fun un_paciente_sin_anotaciones_queda_FUERA_del_mapa_y_no_en_verde() {
+        // Silencio no es lo mismo que estar bien: pintarlo verde le diria al
+        // medico "todo en orden" sobre alguien que no ha escrito nada.
+        val vm = viewModel(DiarioParaPanelFalso(ultimas = emptyMap()))
+
+        vm.cargar()
+
+        assertTrue(vm.estado.value.severidadDelDiario.isEmpty())
+    }
+
+    @Test
+    fun solo_se_pide_la_ULTIMA_entrada_de_cada_paciente() {
+        // Descargar bitacoras completas de veinte pacientes para pintar veinte
+        // circulos gastaria red y memoria en datos que la pantalla no muestra.
+        val diario = DiarioParaPanelFalso()
+        val vm = viewModel(diario)
+
+        vm.cargar()
+
+        assertEquals(
+            vm.estado.value.pacientesVinculados.map { it.idPaciente },
+            diario.pacientesConsultados,
+        )
+    }
+
+    @Test
+    fun si_el_diario_falla_la_cartera_sigue_viendose() {
+        // El punto es contexto; la cartera es lo que el medico viene a ver.
+        val diario = DiarioParaPanelFalso(
+            resultado = Result.failure(IllegalStateException("sin red")),
+        )
+        val vm = viewModel(diario)
+
+        vm.cargar()
+
+        val estado = vm.estado.value
+        assertFalse(estado.errorCarga)
+        assertTrue(estado.pacientesVinculados.isNotEmpty())
+        assertTrue(estado.severidadDelDiario.isEmpty())
     }
 }

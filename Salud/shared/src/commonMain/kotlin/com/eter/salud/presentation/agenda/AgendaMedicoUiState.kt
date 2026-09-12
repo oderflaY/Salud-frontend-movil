@@ -4,12 +4,21 @@ import com.eter.salud.domain.model.Cita
 import com.eter.salud.domain.model.EstadoCita
 import com.eter.salud.domain.model.FranjaAgenda
 import com.eter.salud.domain.model.HorarioConsultorio
+import com.eter.salud.domain.model.PacienteVinculado
 import com.eter.salud.domain.time.CalendarioSalud
 
 /** Alcance temporal que el medico esta mirando. */
 enum class VistaCalendario {
     DIARIA,
-    SEMANAL,
+
+    /**
+     * Dos semanas de lunes a domingo: la que esta en curso y la siguiente.
+     *
+     * Dos y no una porque la cita que un paciente pide hoy cae casi siempre en
+     * los proximos catorce dias, y con una semana a la vista el medico tenia
+     * que ir y volver para saber si el martes de la otra semana ya estaba lleno.
+     */
+    DOS_SEMANAS,
     MENSUAL,
 }
 
@@ -70,19 +79,32 @@ data class AgendaMedicoUiState(
     val errorCarga: Boolean = false,
     /** Una accion sobre una cita (confirmar, cancelar, mover) no se pudo aplicar. */
     val errorAccion: Boolean = false,
+
+    // ------------------------------------------- Proponer cita a un paciente
+
+    /** Cartera del medico, para elegir a quien proponerle una hora. */
+    val pacientesVinculados: List<PacienteVinculado> = emptyList(),
+    /** La hoja de "Agendar cita" esta abierta. */
+    val proponiendoCita: Boolean = false,
+    /** Paciente ya elegido dentro de la hoja; nulo mientras se elige. */
+    val pacienteParaPropuesta: PacienteVinculado? = null,
+    /** Horarios libres del propio medico, una vez elegido el paciente. */
+    val franjasParaPropuesta: List<FranjaAgenda> = emptyList(),
+    val motivoPropuesta: String = "",
+    val errorPropuesta: Boolean = false,
 ) {
 
     val rango: RangoAgenda
         get() = when (vista) {
             VistaCalendario.DIARIA -> RangoAgenda(fechaAncla, fechaAncla)
 
-            VistaCalendario.SEMANAL -> {
-                // Semana de lunes a domingo, no "siete dias desde hoy": el medico
-                // razona su agenda en semanas del calendario, y una ventana movil
-                // haria que el mismo dia cayera en columnas distintas al avanzar.
+            VistaCalendario.DOS_SEMANAS -> {
+                // Desde el lunes de la semana ancla, no "catorce dias desde hoy":
+                // el medico razona su agenda en semanas del calendario, y una
+                // ventana movil haria que el mismo dia cayera en filas distintas.
                 val desplazamiento = CalendarioSalud.diaDeLaSemana(fechaAncla) ?: 0
                 val lunes = CalendarioSalud.restarDias(fechaAncla, desplazamiento)
-                RangoAgenda(lunes, CalendarioSalud.sumarDias(lunes, DIAS_DE_LA_SEMANA - 1))
+                RangoAgenda(lunes, CalendarioSalud.sumarDias(lunes, DIAS_DOS_SEMANAS - 1))
             }
 
             VistaCalendario.MENSUAL -> RangoAgenda(
@@ -138,6 +160,6 @@ data class AgendaMedicoUiState(
     val hayBloqueoEnCurso: Boolean get() = inicioDeBloqueo != null
 
     private companion object {
-        const val DIAS_DE_LA_SEMANA = 7
+        const val DIAS_DOS_SEMANAS = 14
     }
 }

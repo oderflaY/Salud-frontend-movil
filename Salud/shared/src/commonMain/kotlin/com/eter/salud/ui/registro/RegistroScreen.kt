@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +33,7 @@ import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.presentation.registro.ErrorCampoRegistro
 import com.eter.salud.presentation.registro.RegistroUiState
 import com.eter.salud.presentation.registro.RegistroViewModel
+import com.eter.salud.ui.componentes.BotonAtras
 import com.eter.salud.ui.componentes.BotonAccionPrincipal
 import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
 import com.eter.salud.ui.componentes.CasillaDeclaracion
@@ -41,7 +43,6 @@ import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
-import salud.shared.generated.resources.a11y_boton_atras
 import salud.shared.generated.resources.a11y_login_mostrar_contrasena
 import salud.shared.generated.resources.a11y_login_ocultar_contrasena
 import salud.shared.generated.resources.a11y_registro_accion_crear
@@ -51,7 +52,6 @@ import salud.shared.generated.resources.a11y_registro_confirmacion_campo
 import salud.shared.generated.resources.a11y_registro_contrasena_campo
 import salud.shared.generated.resources.a11y_registro_correo_campo
 import salud.shared.generated.resources.a11y_registro_creando
-import salud.shared.generated.resources.accion_atras
 import salud.shared.generated.resources.login_accion_mostrar_contrasena
 import salud.shared.generated.resources.login_accion_ocultar_contrasena
 import salud.shared.generated.resources.registro_accion_crear
@@ -89,29 +89,27 @@ fun RegistroScreen(
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
 
-    LaunchedEffect(estado.sesion) { estado.sesion?.let(alCrearCuenta) }
+    LaunchedEffect(estado.sesion) {
+        estado.sesion?.let { sesion ->
+            alCrearCuenta(sesion)
+            viewModel.sesionEntregada()
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
                 title = {
                     Text(
                         text = stringResource(Res.string.registro_titulo),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 },
-                navigationIcon = {
-                    val descripcion = stringResource(Res.string.a11y_boton_atras)
-                    TextButton(
-                        onClick = alVolverAlAcceso,
-                        modifier = Modifier
-                            .heightIn(min = AreaTactilMinima)
-                            .semantics { contentDescription = descripcion },
-                    ) {
-                        Text(stringResource(Res.string.accion_atras))
-                    }
-                },
+                navigationIcon = { BotonAtras(alPulsar = alVolverAlAcceso) },
             )
         },
     ) { relleno ->

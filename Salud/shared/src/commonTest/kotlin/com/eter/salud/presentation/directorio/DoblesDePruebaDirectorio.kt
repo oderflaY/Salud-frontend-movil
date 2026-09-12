@@ -35,6 +35,24 @@ class DirectorioMedicoRepositorioFalso(
         }
     }
 
+    var perfilesPedidos: MutableList<String> = mutableListOf()
+        private set
+
+    override suspend fun obtenerMedicosVinculados(
+        idPaciente: String,
+    ): Result<List<MedicoVinculado>> =
+        // `map` y no `getOrNull`: un fallo tiene que PROPAGARSE. Envolverlo en
+        // un `success` con lista vacia haria que la bandeja mostrara "no tienes
+        // medicos" cuando lo que pasa es que no hay red.
+        medicoVinculado.map { listOfNotNull(it) }
+
+    override suspend fun obtenerPerfilDeMedico(
+        idMedico: String,
+    ): Result<PerfilDoctorDirectorio?> {
+        perfilesPedidos += idMedico
+        return Result.success(DOCTORES_DEMO.firstOrNull { it.idMedico == idMedico })
+    }
+
     override suspend fun solicitarVinculacion(
         idPaciente: String,
         idMedico: String,

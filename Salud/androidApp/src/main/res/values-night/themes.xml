@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Con el sistema en oscuro la ventana nace ya en negro OLED. Con el tema
+      claro heredado, la app destellaba en blanco al abrirse de noche antes de
+      que Compose pintara el primer fotograma.
+    -->
+    <style name="Theme.Salud" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fondo_ventana</item>
+    </style>
+
+    <color name="fondo_ventana">#FF000000</color>
+</resources>

@@ -9,8 +9,9 @@ import com.eter.salud.domain.model.PerfilDoctorDirectorio
  * (DM_Arquitectura_App.md, seccion 2: la Vista es pasiva).
  *
  * [debeMostrarDirectorio] decide toda la pantalla: sin un doctor vinculado se
- * ve el Directorio Medico, con uno se ve el chat. Nunca se llega a un chat
- * vacio sin haber pasado por una vinculacion real.
+ * ve el Directorio Medico, y con uno se ve su ficha clinica con la accion de
+ * iniciar la consulta. Nunca se llega a un chat vacio sin haber pasado por una
+ * vinculacion real.
  *
  * El estado de la lista vive aparte, en [directorio], como jerarquia sellada:
  * carga, exito, vacio y error son cuatro casos que la Vista esta obligada a
@@ -19,14 +20,39 @@ import com.eter.salud.domain.model.PerfilDoctorDirectorio
 data class DescubrimientoMedicoUiState(
     val idPaciente: String,
     val directorio: DirectorioUiState = DirectorioUiState.Cargando,
+    /**
+     * El primer medico con el que el paciente ya esta vinculado. Lo usa la barra
+     * inferior para contar mensajes sin leer; NO decide que muestra el
+     * directorio.
+     */
     val medicoVinculado: MedicoVinculado? = null,
+    /**
+     * El medico que el paciente acaba de escoger en el directorio. Mientras no
+     * sea nulo la pantalla muestra su ficha con "Iniciar consulta"; al cerrarla
+     * vuelve la lista.
+     */
+    val medicoElegido: MedicoVinculado? = null,
+    /**
+     * Ficha publica del medico elegido: cedula, universidad y disponibilidad.
+     *
+     * Puede ser nula aun habiendo vinculacion, y la Vista tiene que aguantarlo:
+     * significa que el doctor ya no figura en el directorio. En ese caso se
+     * muestra lo que la vinculacion si garantiza (nombre y especialidad) en vez
+     * de inventar unas credenciales que nadie ha verificado.
+     */
+    val perfilDelElegido: PerfilDoctorDirectorio? = null,
     val especialidadFiltro: Especialidad? = null,
     val textoBusqueda: String = "",
     /** idMedico de la solicitud en curso; la Vista desactiva ese boton mientras tanto. */
     val idSolicitandoVinculacion: String? = null,
     val errorVinculacion: Boolean = false,
 ) {
-    val debeMostrarDirectorio: Boolean get() = medicoVinculado == null
+    /**
+     * El directorio se muestra aunque el paciente ya tenga medico: un paciente
+     * real acumula especialistas, y a esta pantalla se llega justamente desde
+     * "buscar un especialista nuevo" en la bandeja.
+     */
+    val debeMostrarDirectorio: Boolean get() = medicoElegido == null
 
     /**
      * Doctores de [directorio] tras aplicar la busqueda por texto. El filtro se

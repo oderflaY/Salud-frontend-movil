@@ -1,5 +1,7 @@
 package com.eter.salud.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Sesion abierta tras el acceso de un profesional de la salud (medico o
  * paramedico). Espejo minimo de DM_PerfilMedico.md: solo lo que la Home y la
@@ -8,6 +10,7 @@ package com.eter.salud.domain.model
  * Vive separada de [SesionPaciente] a proposito: son credenciales de dos
  * portales distintos y nunca coexisten en la misma pantalla.
  */
+@Serializable
 data class SesionProfesional(
     val idMedico: String,
     val token: String,
@@ -25,6 +28,7 @@ data class SesionProfesional(
  * Legal). Un registro nuevo arranca en [PENDIENTE]; el backend lo sube a
  * [APROBADO] cuando el sistema o un administrador valida el numero.
  */
+@Serializable
 enum class EstadoVerificacionCedula {
     PENDIENTE,
     APROBADO,

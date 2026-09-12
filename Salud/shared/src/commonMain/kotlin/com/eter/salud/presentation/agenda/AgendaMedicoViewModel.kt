@@ -3,10 +3,13 @@ package com.eter.salud.presentation.agenda
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eter.salud.domain.model.Cita
+import com.eter.salud.domain.model.DatosContactoCita
 import com.eter.salud.domain.model.EstadoCita
 import com.eter.salud.domain.model.FranjaAgenda
 import com.eter.salud.domain.model.HorarioConsultorio
+import com.eter.salud.domain.model.PacienteVinculado
 import com.eter.salud.domain.repository.CitasRepositorio
+import com.eter.salud.domain.repository.PacientesVinculadosRepositorio
 import com.eter.salud.domain.time.CalendarioSalud
 import com.eter.salud.domain.time.RelojSalud
 import com.eter.salud.domain.time.relojDelSistema
@@ -36,6 +39,7 @@ class AgendaMedicoViewModel(
     private val repositorio: CitasRepositorio,
     private val idMedico: String,
     private val reloj: RelojSalud = relojDelSistema(),
+    private val pacientesVinculados: PacientesVinculadosRepositorio? = null,
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(
@@ -45,6 +49,47 @@ class AgendaMedicoViewModel(
 
     init {
         observarAgenda()
+        cargarPacientesVinculados()
+    }
+
+    /**
+     * Carga la cartera para el selector de "Agendar cita".
+     *
+     * Es opcional (`?`) y no un parametro obligatorio: las pruebas de la agenda
+     * de hoy no necesitan una cartera para verificar el calendario, y forzarlas
+     * a inventar una habria sido puro ruido en cada caso existente.
+     */
+    private fun cargarPacientesVinculados() {
+        val repo = pacientesVinculados ?: return
+        viewModelScope.launch {
+            val resultado = ejecutarSeguro { repo.obtenerPacientesVinculados(idMedico) }
+            resultado.getOrNull()?.let { pacientes ->
+                _estado.update { it.copy(pacientesVinculados = pacientes) }
+            }
+        }
+    }
+
+    /**
+     * Vuelve a pedir la agenda tras un fallo de carga.
+     *
+     * Hace falta porque la suscripcion del `init` no se reintenta sola: si la
+     * primera lectura falla, el `Flow` sigue conectado pero la pantalla se queda
+     * en error para siempre. Sin este metodo, la unica salida era cerrar la app.
+     */
+    fun reintentar() {
+        if (_estado.value.cargando) return
+        _estado.update { it.copy(cargando = true, errorCarga = false) }
+        viewModelScope.launch {
+            val resultado = ejecutarSeguro { repositorio.cargarAgenda(idMedico) }
+            _estado.update { previo ->
+                resultado.fold(
+                    onSuccess = { citas ->
+                        previo.copy(cargando = false, citas = citas, errorCarga = false)
+                    },
+                    onFailure = { previo.copy(cargando = false, errorCarga = true) },
+                )
+            }
+        }
     }
 
     private fun observarAgenda() {
@@ -61,8 +106,14 @@ class AgendaMedicoViewModel(
             // `collect` no vuelve nunca: se queda escuchando mientras el
             // ViewModel viva y se cancela solo con el, sin necesidad de soltarlo
             // a mano en `onCleared`.
+            //
+            // Solo escribe `citas`. No toca `errorCarga` ni `cargando` porque un
+            // `StateFlow` reemite su valor actual en cuanto alguien se suscribe:
+            // esa primera emision (una lista vacia de la cache) llegaria justo
+            // despues de una carga fallida y borraria el aviso de error, dejando
+            // al medico ante una agenda vacia que parece cierta.
             repositorio.agendaDelMedico(idMedico).collect { citas ->
-                _estado.update { it.copy(citas = citas, cargando = false, errorCarga = false) }
+                _estado.update { it.copy(citas = citas) }
             }
         }
     }
@@ -86,7 +137,7 @@ class AgendaMedicoViewModel(
         _estado.update { previo ->
             val nueva = when (previo.vista) {
                 VistaCalendario.DIARIA -> CalendarioSalud.sumarDias(previo.fechaAncla, signo)
-                VistaCalendario.SEMANAL -> CalendarioSalud.sumarDias(previo.fechaAncla, signo * DIAS_DE_LA_SEMANA)
+                VistaCalendario.DOS_SEMANAS -> CalendarioSalud.sumarDias(previo.fechaAncla, signo * DIAS_DOS_SEMANAS)
                 VistaCalendario.MENSUAL -> saltarUnMes(previo.fechaAncla, signo)
             }
             previo.copy(fechaAncla = nueva, inicioDeBloqueo = null)
@@ -284,7 +335,95 @@ class AgendaMedicoViewModel(
         _estado.update { it.copy(errorAccion = false) }
     }
 
+    // ------------------------------------------------------ Proponer una cita
+
+    /** Abre la hoja de "Agendar cita", vacia: primero se elige al paciente. */
+    fun iniciarPropuestaCita() {
+        _estado.update {
+            it.copy(
+                proponiendoCita = true,
+                pacienteParaPropuesta = null,
+                franjasParaPropuesta = emptyList(),
+                motivoPropuesta = "",
+                errorPropuesta = false,
+            )
+        }
+    }
+
+    /** Elegido el paciente, se piden los horarios libres del propio medico. */
+    fun elegirPacienteParaPropuesta(paciente: PacienteVinculado) {
+        _estado.update { it.copy(pacienteParaPropuesta = paciente, errorPropuesta = false) }
+        viewModelScope.launch {
+            val resultado = ejecutarSeguro {
+                repositorio.franjasLibres(
+                    idMedico = idMedico,
+                    desde = reloj.fechaHoy(),
+                    ahora = reloj.instanteActual(),
+                )
+            }
+            resultado.fold(
+                onSuccess = { libres -> _estado.update { it.copy(franjasParaPropuesta = libres) } },
+                onFailure = { _estado.update { it.copy(errorPropuesta = true) } },
+            )
+        }
+    }
+
+    fun actualizarMotivoPropuesta(valor: String) {
+        _estado.update { it.copy(motivoPropuesta = valor) }
+    }
+
+    /**
+     * Cierra el circuito: propone la franja elegida al paciente ya seleccionado.
+     * La cita nace en PROPUESTA_MEDICO y aparece sola en el calendario via el
+     * `Flow` de la agenda, igual que cualquier otra alta.
+     */
+    fun confirmarPropuestaCita(franja: FranjaAgenda) {
+        val paciente = _estado.value.pacienteParaPropuesta ?: return
+        _estado.update { it.copy(errorPropuesta = false) }
+        viewModelScope.launch {
+            val resultado = ejecutarSeguro {
+                repositorio.proponerCita(
+                    idMedico = idMedico,
+                    idPaciente = paciente.idPaciente,
+                    idFranja = franja.idFranja,
+                    contacto = DatosContactoCita(
+                        nombreCompleto = paciente.nombreCompleto,
+                        telefono = "",
+                        correo = "",
+                        motivo = _estado.value.motivoPropuesta.trim(),
+                    ),
+                    ahora = reloj.instanteActual(),
+                )
+            }
+            resultado.fold(
+                onSuccess = {
+                    _estado.update {
+                        it.copy(
+                            proponiendoCita = false,
+                            pacienteParaPropuesta = null,
+                            franjasParaPropuesta = emptyList(),
+                            motivoPropuesta = "",
+                        )
+                    }
+                },
+                onFailure = { _estado.update { it.copy(errorPropuesta = true) } },
+            )
+        }
+    }
+
+    fun cancelarPropuestaCita() {
+        _estado.update {
+            it.copy(
+                proponiendoCita = false,
+                pacienteParaPropuesta = null,
+                franjasParaPropuesta = emptyList(),
+                motivoPropuesta = "",
+                errorPropuesta = false,
+            )
+        }
+    }
+
     private companion object {
-        const val DIAS_DE_LA_SEMANA = 7
+        const val DIAS_DOS_SEMANAS = 14
     }
 }

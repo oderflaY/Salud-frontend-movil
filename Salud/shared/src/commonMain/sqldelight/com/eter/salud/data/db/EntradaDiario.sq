@@ -1,0 +1,84 @@
+-- ============================================================================
+-- Bitacora del diario del paciente: registro de auditoria (audit trail).
+--
+-- Cada fila guarda el texto EXACTO que escribio el paciente y el triage
+-- calculado EN ESE INSTANTE, con la version del diccionario que lo calculo.
+-- El expediente es inmutable: si el diccionario cambia dentro de meses, una
+-- entrada vieja conserva el color y las palabras con que se le mostro al
+-- medico. Eso lo garantizan los disparadores de abajo, no la buena voluntad
+-- del codigo que escribe.
+-- ============================================================================
+
+CREATE TABLE entrada_diario (
+    -- UUID generado en el dispositivo (Local-First: no espera al servidor).
+    id TEXT NOT NULL PRIMARY KEY,
+    id_paciente TEXT NOT NULL,
+    -- Instante ISO 8601 UTC en que se guardo: `YYYY-MM-DDTHH:MM:SSZ`.
+    timestamp TEXT NOT NULL,
+    -- Fecha civil `YYYY-MM-DD`, para agrupar por dia sin convertir zonas.
+    fecha TEXT NOT NULL,
+    texto_bitacora TEXT NOT NULL,
+    -- 0 = verde, 1 = ambar, 2 = rojo (SeveridadDiario.codigo).
+    severidad_calculada INTEGER NOT NULL CHECK (severidad_calculada IN (0, 1, 2)),
+    -- Palabras exactas que dispararon el semaforo, separadas por ", ".
+    palabras_clave_detectadas TEXT NOT NULL DEFAULT '',
+    -- TriageDelDiario.VERSION_DICCIONARIO con que se calculo esta fila.
+    version_diccionario INTEGER NOT NULL,
+    -- Baja logica: el paciente puede ocultar una entrada, pero no borrarla.
+    eliminada_en TEXT
+);
+
+CREATE INDEX entrada_diario_por_paciente ON entrada_diario(id_paciente, timestamp);
+
+-- Lo escrito y lo calculado no se reescriben. Solo `eliminada_en` admite cambio.
+CREATE TRIGGER entrada_diario_inmutable
+BEFORE UPDATE OF id, id_paciente, timestamp, fecha, texto_bitacora, severidad_calculada, palabras_clave_detectadas, version_diccionario
+ON entrada_diario
+BEGIN
+    SELECT RAISE(ABORT, 'entrada_diario es inmutable');
+END;
+
+-- Ni siquiera la app puede borrar una fila: se oculta con baja logica.
+CREATE TRIGGER entrada_diario_sin_borrado
+BEFORE DELETE ON entrada_diario
+BEGIN
+    SELECT RAISE(ABORT, 'entrada_diario no admite borrado fisico');
+END;
+
+insertar:
+INSERT INTO entrada_diario(
+    id, id_paciente, timestamp, fecha, texto_bitacora,
+    severidad_calculada, palabras_clave_detectadas, version_diccionario
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Siembra idempotente de datos de demostracion (ids fijos).
+insertarSiNoExiste:
+INSERT OR IGNORE INTO entrada_diario(
+    id, id_paciente, timestamp, fecha, texto_bitacora,
+    severidad_calculada, palabras_clave_detectadas, version_diccionario
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+entradasDe:
+SELECT *
+FROM entrada_diario
+WHERE id_paciente = ? AND eliminada_en IS NULL
+ORDER BY timestamp DESC;
+
+ultimaDe:
+SELECT *
+FROM entrada_diario
+WHERE id_paciente = ? AND eliminada_en IS NULL
+ORDER BY timestamp DESC
+LIMIT 1;
+
+-- Incluye las ocultas: es la vista del auditor, no la del paciente.
+historialCompletoDe:
+SELECT *
+FROM entrada_diario
+WHERE id_paciente = ?
+ORDER BY timestamp DESC;
+
+ocultar:
+UPDATE entrada_diario
+SET eliminada_en = ?
+WHERE id = ? AND eliminada_en IS NULL;

@@ -124,6 +124,23 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun entregada_la_sesion_el_formulario_queda_limpio_para_poder_salir_y_entrar_otra_vez() {
+        // Si la sesion se quedara en el estado, al cerrar sesion la pantalla de
+        // acceso volveria a entregarla y el paciente jamas podria salir.
+        val vm = viewModel(AutenticacionRepositorioFalso())
+        vm.actualizarCorreo("paciente@correo.com")
+        vm.actualizarContrasena("12345678")
+        vm.iniciarSesion()
+
+        vm.sesionEntregada()
+
+        val estado = vm.estado.value
+        assertNull(estado.sesion)
+        assertEquals("", estado.correo)
+        assertFalse(estado.autenticando)
+    }
+
+    @Test
     fun el_correo_viaja_normalizado_y_la_contrasena_intacta() {
         val repositorio = AutenticacionRepositorioFalso()
         val vm = viewModel(repositorio)

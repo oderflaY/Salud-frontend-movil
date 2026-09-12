@@ -22,5 +22,28 @@ interface DirectorioMedicoRepositorio {
     suspend fun buscarDirectorio(especialidad: Especialidad?): Result<List<PerfilDoctorDirectorio>>
 
     /** Vincula al paciente con el doctor elegido y abre el canal de chat. */
+    /**
+     * Todos los medicos con los que el paciente ya tiene conversacion abierta.
+     *
+     * Sustituye a la idea de "un unico medico vinculado". Un paciente real
+     * acumula especialistas -- su cardiologa, su dermatologo, el pediatra de su
+     * hijo -- y la bandeja de entrada existe justamente porque son varios.
+     */
+    suspend fun obtenerMedicosVinculados(idPaciente: String): Result<List<MedicoVinculado>>
+
+    /**
+     * Ficha publica de un doctor concreto.
+     *
+     * Existe aparte de [buscarDirectorio] porque el paciente que YA tiene medico
+     * necesita ver su cedula y su disponibilidad, pero no tiene por que
+     * descargar el catalogo entero para encontrar una sola ficha: en una red
+     * movil de hospital eso es traer decenas de perfiles para mostrar uno.
+     *
+     * Devuelve nulo si el doctor ya no figura en el directorio (baja, cedula
+     * revocada), caso en el que la Vista muestra lo que sabe por la vinculacion
+     * y no inventa credenciales.
+     */
+    suspend fun obtenerPerfilDeMedico(idMedico: String): Result<PerfilDoctorDirectorio?>
+
     suspend fun solicitarVinculacion(idPaciente: String, idMedico: String): Result<MedicoVinculado>
 }

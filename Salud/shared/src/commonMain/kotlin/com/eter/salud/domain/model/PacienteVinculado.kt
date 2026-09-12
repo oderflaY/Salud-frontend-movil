@@ -1,10 +1,13 @@
 package com.eter.salud.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Resumen ligero de un paciente vinculado a un profesional
  * (DM_PerfilMedico.md, seccion 2: solo lo que arma el semaforo de riesgo del
  * dashboard, sin descargar el expediente completo de cada paciente).
  */
+@Serializable
 data class PacienteVinculado(
     val idPaciente: String,
     val nombreCompleto: String,
@@ -17,6 +20,7 @@ data class PacienteVinculado(
 )
 
 /** Semaforo de riesgo del paciente, tal como lo entrega el backend. */
+@Serializable
 enum class RiesgoPaciente {
     ALTO,
     MEDIO,

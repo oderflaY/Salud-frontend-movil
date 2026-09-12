@@ -5,11 +5,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -23,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,13 +44,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eter.salud.presentation.perfil.PerfilMedicoViewModel
 import com.eter.salud.presentation.perfil.PerfilUiState
 import com.eter.salud.presentation.perfil.SeccionPerfil
+import com.eter.salud.ui.componentes.BotonAtras
+import com.eter.salud.ui.componentes.CabeceraGrande
 import com.eter.salud.ui.componentes.margenInferiorSeguro
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
-import salud.shared.generated.resources.a11y_boton_atras
 import salud.shared.generated.resources.a11y_perfil_cargando
 import salud.shared.generated.resources.a11y_perfil_cerrar_seccion
 import salud.shared.generated.resources.a11y_perfil_fila
@@ -52,7 +59,6 @@ import salud.shared.generated.resources.a11y_perfil_guardando
 import salud.shared.generated.resources.a11y_perfil_guardar_seccion
 import salud.shared.generated.resources.a11y_perfil_progreso
 import salud.shared.generated.resources.a11y_perfil_seccion_guardada
-import salud.shared.generated.resources.accion_atras
 import salud.shared.generated.resources.accion_guardar
 import salud.shared.generated.resources.perfil_accion_cerrar
 import salud.shared.generated.resources.perfil_estado_cargando
@@ -94,60 +100,44 @@ fun PerfilMedicoScreen(
 
     LaunchedEffect(idPaciente) { viewModel.cargarPerfil(idPaciente) }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(Res.string.perfil_titulo),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                },
-                navigationIcon = {
-                    if (alVolver != null) {
-                        val descripcion = stringResource(Res.string.a11y_boton_atras)
-                        TextButton(
-                            onClick = alVolver,
-                            modifier = Modifier
-                                .heightIn(min = AreaTactilMinima)
-                                .semantics { contentDescription = descripcion },
-                        ) {
-                            Text(stringResource(Res.string.accion_atras))
-                        }
-                    }
-                },
-            )
-        },
-    ) { relleno ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(relleno)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = espaciado.amplio)
-                .margenInferiorSeguro(),
-        ) {
-            Spacer(Modifier.height(espaciado.amplio))
-            CabeceraPerfil(estado)
-            Spacer(Modifier.height(espaciado.generoso))
-
-            if (estado.cargando) {
-                IndicadorCargando()
+    // Cabecera grande, igual que en las otras dos pestanas. La flecha de
+    // retroceso solo aparece cuando esta pantalla se abre APILADA (con
+    // `alVolver`); como raiz de pestana no hay a donde volver.
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = espaciado.amplio)
+            .margenInferiorSeguro(),
+    ) {
+        Spacer(Modifier.height(espaciado.medio))
+        CabeceraGrande(
+            titulo = stringResource(Res.string.perfil_titulo),
+            accion = if (alVolver != null) {
+                { BotonAtras(alPulsar = alVolver) }
             } else {
-                SeccionPerfil.entries.forEach { seccion ->
-                    FilaSeccion(
-                        seccion = seccion,
-                        completa = estado.estaCompleta(seccion),
-                        alAbrir = { viewModel.abrirSeccion(seccion) },
-                    )
-                }
-            }
+                null
+            },
+        )
+        Spacer(Modifier.height(espaciado.amplio))
+        CabeceraPerfil(estado)
+        Spacer(Modifier.height(espaciado.generoso))
 
-            AvisoDeGuardado(estado, viewModel::descartarConfirmacion)
-            Spacer(Modifier.height(espaciado.respiro))
+        if (estado.cargando) {
+            IndicadorCargando()
+        } else {
+            SeccionPerfil.entries.forEach { seccion ->
+                FilaSeccion(
+                    seccion = seccion,
+                    completa = estado.estaCompleta(seccion),
+                    alAbrir = { viewModel.abrirSeccion(seccion) },
+                )
+            }
         }
+
+        AvisoDeGuardado(estado, viewModel::descartarConfirmacion)
+        Spacer(Modifier.height(espaciado.respiro))
     }
 
     estado.seccionAbierta?.let { seccion ->

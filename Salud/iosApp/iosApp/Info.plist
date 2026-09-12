@@ -7,5 +7,23 @@
 	<!-- Exigido por CoreNFC: el texto que ve el usuario antes de conceder el permiso de lectura. -->
 	<key>NFCReaderUsageDescription</key>
 	<string>Necesitamos leer la tarjeta de emergencia del paciente para mostrar su perfil de supervivencia.</string>
+	<!-- Adjuntar una foto en el chat con tu medico. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Necesitamos acceder a tus fotos para que puedas adjuntarlas en el chat con tu medico.</string>
+	<!-- Escaner de documentos del chat: fotografiar una receta o un resultado de laboratorio. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Necesitamos la camara para que puedas escanear un documento y enviarlo en el chat con tu medico.</string>
+	<!--
+	  Permite HTTP sin cifrar SOLO hacia direcciones locales/privadas (loopback,
+	  .local, rangos 10.x/172.16-31.x/192.168.x) -- para apuntar el simulador o
+	  un dispositivo al backend de desarrollo corriendo en la misma maquina o
+	  red local (ver ConfiguracionApi.BASE_URL). Cualquier host publico sigue
+	  exigiendo HTTPS: esto no relaja ATS para produccion.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

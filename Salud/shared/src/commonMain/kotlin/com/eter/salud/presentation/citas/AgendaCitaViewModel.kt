@@ -127,9 +127,18 @@ class AgendaCitaViewModel(
 
     // -------------------------------------------------------------- Horarios
 
-    fun cargarFranjas() {
+    /**
+     * Trae los horarios libres y deja al paciente en el paso de eleccion.
+     *
+     * @param motivoDelRegreso por que se vuelve a la lista, cuando se llega aqui
+     * tras perder una franja. Si no se conservara, la propia recarga borraria el
+     * aviso y el paciente veria su horario desaparecer sin ninguna explicacion.
+     */
+    fun cargarFranjas(motivoDelRegreso: ErrorAgendaCita? = null) {
         val idMedico = _estado.value.medico?.idMedico ?: return
-        _estado.update { it.copy(cargando = true, error = null, paso = PasoAgenda.FRANJA) }
+        _estado.update {
+            it.copy(cargando = true, error = motivoDelRegreso, paso = PasoAgenda.FRANJA)
+        }
         viewModelScope.launch {
             val resultado = ejecutarSeguro {
                 citas.franjasLibres(
@@ -147,7 +156,8 @@ class AgendaCitaViewModel(
                             // Una agenda sin huecos no es un fallo, pero tampoco
                             // una lista vacia muda: el paciente tiene que saber
                             // que no hay nada que elegir.
-                            error = if (libres.isEmpty()) ErrorAgendaCita.SIN_HORARIOS else null,
+                            error = motivoDelRegreso
+                                ?: ErrorAgendaCita.SIN_HORARIOS.takeIf { libres.isEmpty() },
                         )
                     }
                 },
@@ -183,8 +193,11 @@ class AgendaCitaViewModel(
                 onFailure = { fallo ->
                     _estado.update { it.copy(cargando = false, error = fallo.aErrorDeAgenda()) }
                     // Otro se adelanto: se vuelve a pedir la disponibilidad para
-                    // que la lista deje de mostrar una hora que ya no existe.
-                    if (fallo.motivoDeCita() == MotivoFalloCita.FRANJA_OCUPADA) cargarFranjas()
+                    // que la lista deje de mostrar una hora que ya no existe, sin
+                    // perder por el camino el aviso de por que desaparecio.
+                    if (fallo.motivoDeCita() == MotivoFalloCita.FRANJA_OCUPADA) {
+                        cargarFranjas(motivoDelRegreso = ErrorAgendaCita.FRANJA_OCUPADA)
+                    }
                 },
             )
         }
@@ -273,15 +286,11 @@ class AgendaCitaViewModel(
                     // La franja se perdio: se devuelve al paciente a la lista de
                     // horarios con el motivo a la vista, en vez de dejarlo en un
                     // resumen que ya no se puede confirmar.
+                    val motivo = fallo.aErrorDeAgenda()
                     _estado.update {
-                        it.copy(
-                            cargando = false,
-                            error = fallo.aErrorDeAgenda(),
-                            franja = null,
-                            reserva = null,
-                        )
+                        it.copy(cargando = false, error = motivo, franja = null, reserva = null)
                     }
-                    cargarFranjas()
+                    cargarFranjas(motivoDelRegreso = motivo)
                 },
             )
         }

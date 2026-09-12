@@ -320,4 +320,86 @@ class CitasRepositorioEnMemoriaTest {
         assertTrue(resultado.isFailure)
         assertFalse(resultado.isSuccess)
     }
+
+    // ------------------------------------------------- Propuesta del medico
+
+    @Test
+    fun proponer_cita_nace_en_propuesta_medico_y_ocupa_la_franja() = runTest {
+        val repositorio = repositorio()
+        val franja = primeraFranja(repositorio)
+
+        val cita = repositorio.proponerCita(idMedico, "pac_01H8X9A", franja.idFranja, contacto, ahora)
+            .getOrThrow()
+
+        assertEquals(EstadoCita.PROPUESTA_MEDICO, cita.estado)
+        assertEquals("pac_01H8X9A", cita.idPaciente)
+        assertEquals(franja.fecha, cita.fecha)
+        assertTrue(cita.folio.isNotBlank())
+        // Ocupa la franja de inmediato: nadie mas puede tomarla mientras el
+        // paciente decide.
+        val libres = repositorio.franjasLibres(idMedico, hoy, ahora).getOrThrow()
+        assertTrue(libres.none { it.idFranja == franja.idFranja })
+    }
+
+    @Test
+    fun proponer_cita_sobre_una_franja_ya_ocupada_falla() = runTest {
+        val repositorio = repositorio()
+        val franja = primeraFranja(repositorio)
+        repositorio.proponerCita(idMedico, "pac_1", franja.idFranja, contacto, ahora).getOrThrow()
+
+        val resultado = repositorio.proponerCita(idMedico, "pac_2", franja.idFranja, contacto, ahora)
+
+        val fallo = assertIs<FalloCita>(resultado.exceptionOrNull())
+        assertEquals(MotivoFalloCita.FRANJA_OCUPADA, fallo.motivo)
+    }
+
+    @Test
+    fun aceptar_una_propuesta_la_confirma() = runTest {
+        val repositorio = repositorio()
+        val franja = primeraFranja(repositorio)
+        val propuesta = repositorio.proponerCita(idMedico, "pac_01H8X9A", franja.idFranja, contacto, ahora)
+            .getOrThrow()
+
+        val aceptada = repositorio.aceptarPropuesta(propuesta.idCita).getOrThrow()
+
+        assertEquals(EstadoCita.CONFIRMADA, aceptada.estado)
+        assertEquals(propuesta.idCita, aceptada.idCita)
+    }
+
+    @Test
+    fun rechazar_una_propuesta_la_cancela_y_libera_la_franja() = runTest {
+        val repositorio = repositorio()
+        val franja = primeraFranja(repositorio)
+        val propuesta = repositorio.proponerCita(idMedico, "pac_01H8X9A", franja.idFranja, contacto, ahora)
+            .getOrThrow()
+
+        val rechazada = repositorio.rechazarPropuesta(propuesta.idCita).getOrThrow()
+
+        assertEquals(EstadoCita.CANCELADA, rechazada.estado)
+        val libres = repositorio.franjasLibres(idMedico, hoy, ahora).getOrThrow()
+        assertTrue(libres.any { it.idFranja == franja.idFranja })
+    }
+
+    @Test
+    fun aceptar_una_propuesta_que_ya_se_resolvio_falla_en_vez_de_pisarla() = runTest {
+        val repositorio = repositorio()
+        val franja = primeraFranja(repositorio)
+        val propuesta = repositorio.proponerCita(idMedico, "pac_01H8X9A", franja.idFranja, contacto, ahora)
+            .getOrThrow()
+        repositorio.rechazarPropuesta(propuesta.idCita).getOrThrow()
+
+        val resultado = repositorio.aceptarPropuesta(propuesta.idCita)
+
+        assertTrue(resultado.isFailure)
+        // La cita se queda tal como la dejo el rechazo, no pasa a confirmada.
+        val cita = repositorio.agendaDelMedico(idMedico).first().first { it.idCita == propuesta.idCita }
+        assertEquals(EstadoCita.CANCELADA, cita.estado)
+    }
+
+    @Test
+    fun aceptar_una_propuesta_inexistente_falla() = runTest {
+        val resultado = repositorio().aceptarPropuesta("no_es_una_cita")
+
+        assertTrue(resultado.isFailure)
+    }
 }

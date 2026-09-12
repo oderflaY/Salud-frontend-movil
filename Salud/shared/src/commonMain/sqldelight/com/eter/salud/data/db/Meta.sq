@@ -1,0 +1,16 @@
+-- Datos sobre la propia base: que version de la siembra de demostracion corrio
+-- y cuando. Una clave por dato.
+
+CREATE TABLE meta (
+    clave TEXT NOT NULL PRIMARY KEY,
+    valor TEXT NOT NULL
+);
+
+valor:
+SELECT valor
+FROM meta
+WHERE clave = ?;
+
+fijar:
+INSERT OR REPLACE INTO meta(clave, valor)
+VALUES (?, ?);

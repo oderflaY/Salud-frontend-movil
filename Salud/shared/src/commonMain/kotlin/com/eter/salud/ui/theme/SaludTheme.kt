@@ -1,7 +1,12 @@
+// Hallmark - redesign 2026-09-11 (paleta especificada por el usuario) - genero: modern-minimal
+// tema: custom "Biotech Premium" - claro: #F0F1F4 / #FFFFFF / zafiro #0A4C86 - oscuro OLED: #000000 / #1C1C1E / neon #4DA3FF
+// tipografia: Manrope 400/500/600/700/800 (una familia) - ejes: light+oled / geometric-sans / cool-neutral
+// contraste: texto >= 14.9:1, secundario >= 5.1:1, estados >= 5.0:1, senales >= 3.4:1, acento con texto >= 8.0:1
 package com.eter.salud.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -19,6 +24,17 @@ import androidx.compose.ui.unit.dp
  */
 @Immutable
 data class ColoresSalud(
+    /**
+     * Fondo de pantalla: gris perla en claro, negro OLED en oscuro.
+     * Es el mismo valor que `MaterialTheme.colorScheme.background`.
+     */
+    val fondo: Color,
+    /**
+     * Texto principal y titulares ExtraBold: Slate en claro, IceWhite en oscuro.
+     * Es el mismo valor que `onBackground` y `onSurface`, asi que un `Text` sin
+     * color explicito dentro de una [fondoTarjeta] ya lo hereda.
+     */
+    val textoPrincipal: Color,
     /** Texto de apoyo, descripciones y ayudas. */
     val textoSecundario: Color,
     /** Lineas divisorias de baja jerarquia. */
@@ -29,15 +45,18 @@ data class ColoresSalud(
     val fondoCritico: Color,
     /** Confirmacion de una accion completada. */
     val exito: Color,
-    /** Relleno de la accion principal de una pantalla (Turquesa de Salud). */
+    /** Relleno de la accion principal de una pantalla: zafiro en claro, neon en oscuro. */
     val acentoAccion: Color,
     /** Texto sobre [acentoAccion]. */
     val sobreAcentoAccion: Color,
     /** Fondo de los campos de captura: contenedor suave, sin borde agresivo. */
     val fondoCampo: Color,
-    /** Fondo de las tarjetas y bloques agrupados del panel principal. */
+    /**
+     * Fondo de las tarjetas y bloques agrupados del panel principal: blanco en
+     * claro, Graphite en oscuro. Nunca lleva sombra; se despega por tono.
+     */
     val fondoTarjeta: Color,
-    /** Fondo de pantalla del Directorio Medico y del chat: un blanco levemente gris, distinto del fondo general. */
+    /** Fondo de pantalla del Directorio Medico y del chat. */
     val fondoConversacion: Color,
     /** Relleno de la burbuja de mensajes del medico (la del paciente usa `MaterialTheme.colorScheme.primary`). */
     val fondoBurbujaMedico: Color,
@@ -51,14 +70,7 @@ data class ColoresSalud(
     // --------------------------------------------------- Estados de la agenda
     //
     // Un par (texto, fondo) por estado de cita. El color NUNCA viaja solo en la
-    // pantalla: cada tarjeta lleva ademas el nombre del estado escrito, porque
-    // un calendario que solo distingue por tono es ilegible para quien no
-    // percibe el rojo y el verde, y es exactamente ahi donde se juega si el
-    // medico ve que un paciente no asistio.
-    //
-    // "Cancelada" y "No asistio" comparten par a proposito: son dos hechos
-    // distintos con la misma consecuencia visual ("esta cita no va a ocurrir"),
-    // y su diferencia la dice el texto de la tarjeta.
+    // pantalla: cada tarjeta lleva ademas el nombre del estado escrito.
 
     /** Cita pendiente de que el consultorio la confirme. */
     val citaPendiente: Color,
@@ -75,6 +87,38 @@ data class ColoresSalud(
     /** Horario que el medico reservo para si (comida, cirugia, vacaciones). */
     val citaBloqueada: Color,
     val fondoCitaBloqueada: Color,
+
+    /** Superficie de las zonas heroe y de los discos de avatar: zafiro suave. */
+    val veloAcento: Color,
+
+    // --------------------------------------------------- Semaforo de triage
+    //
+    // El tono SENAL de cada nivel: puntos, halos y el trazo del anillo. Pasan
+    // 3:1 contra el fondo (minimo de un elemento no textual) y son algo mas
+    // vivos que su version de texto, porque de ellos depende que la alerta se
+    // vea sin buscarla. En oscuro son los tonos Glow: el LED sobre el negro
+    // OLED. El texto de un nivel sigue usando [exito], [textoAdvertencia] y
+    // [acentoCritico].
+
+    /** Paciente sin senales de alarma. */
+    val senalEstable: Color,
+    /** Conviene revisarlo antes que al resto. */
+    val senalVigilancia: Color,
+    /** Requiere atencion pronta. */
+    val senalCritico: Color,
+
+    /**
+     * Fondo de lo destacado y lo seleccionado: el dia elegido del calendario,
+     * la tarjeta de la proxima medicina, los circulos de icono. Es el zafiro
+     * rebajado (en oscuro, hundido) hasta poder llevar texto principal encima.
+     */
+    val acentoSuave: Color,
+
+    /** Fondo de una confirmacion ("Ya la tomaste"). */
+    val fondoExito: Color,
+
+    /** Si la paleta activa es la oscura. */
+    val esModoOscuro: Boolean,
 )
 
 /**
@@ -89,6 +133,15 @@ data class EspaciadoSalud(
     val amplio: Dp = 24.dp,
     val generoso: Dp = 32.dp,
     val respiro: Dp = 48.dp,
+    /**
+     * Separacion entre bloques mayores de una portada.
+     *
+     * Existe porque [respiro] es el aire ENTRE piezas de una misma idea, y el
+     * salto de "quien eres" a "como vas hoy" es un cambio de tema: con el mismo
+     * hueco que separa dos tarjetas, la cifra heroe se leia como un bloque mas
+     * de la lista en lugar de como la pantalla.
+     */
+    val seccion: Dp = 64.dp,
 )
 
 /** Separacion vertical por defecto entre bloques de una pregunta. */
@@ -98,129 +151,238 @@ val PasoOnboardingEspaciado: Dp = 24.dp
 val AreaTactilMinima: Dp = 48.dp
 
 /**
- * Paleta clinica en Modo Claro. Azul institucional sobre blanco clinico, con el
- * gris contenedor reservado a los campos de captura.
+ * Alto de las acciones de pantalla completa (entrar, guardar, confirmar).
+ *
+ * Por encima del minimo accesible a proposito: el minimo garantiza que se pueda
+ * pulsar, no que se vea como la decision principal de la vista.
+ */
+val AlturaAccion: Dp = 60.dp
+
+/**
+ * Alto de la accion que una persona mayor repite a diario ("Ya me la tome").
+ *
+ * 72dp: la guia de accesibilidad para mayores recomienda objetivos de al menos
+ * 60dp porque la precision del dedo cae con la edad y con el temblor; esta
+ * accion va un escalon por encima porque es LA accion de la app.
+ */
+val AlturaAccionMayor: Dp = 72.dp
+
+/**
+ * Medidas de las piezas que se repiten en varias pantallas.
+ *
+ * Existen porque estaban duplicadas: el mismo punto de estado media 7, 8, 10 y
+ * 14dp en cuatro archivos. Era la misma pieza visual con cuatro medidas, y eso
+ * es lo que hace que una app parezca ensamblada por partes en vez de disenada.
+ */
+object MedidaSalud {
+    /** Punto de estado (semaforo, cumplimiento, severidad). */
+    val punto: Dp = 8.dp
+
+    /** Punto con aro, cuando se posa sobre otra pieza y necesita despegarse. */
+    val puntoConAro: Dp = 14.dp
+
+    /** Grosor del aro de [puntoConAro]. */
+    val aroDelPunto: Dp = 2.dp
+
+    /** Punto de semaforo clinico con halo (triage de un paciente en la cartera). */
+    val puntoTriage: Dp = 12.dp
+
+    /** Disco con la inicial: avatar de paciente y de medico. */
+    val disco: Dp = 44.dp
+
+    /**
+     * Disco de avatar de la bandeja clinica.
+     *
+     * Mas grande que [disco] porque en la bandeja el avatar no identifica
+     * solamente: es el soporte del punto de triage, y el punto necesita un
+     * borde de disco lo bastante grande para posarse sin tapar la inicial.
+     */
+    val discoBandeja: Dp = 52.dp
+
+    /** Glifo dentro de una pildora de estado. */
+    val glifoEnPildora: Dp = 16.dp
+
+    /** Tope de ancho de una burbuja de chat. */
+    val anchoBurbuja: Dp = 280.dp
+}
+
+/**
+ * Esquema de Material en Modo Claro.
+ *
+ * Se declaran TODOS los roles de superficie, contenedores incluidos: los que no
+ * se declaran heredan el esquema base de Material -- un lila -- y se cuelan en
+ * las hojas, los menus y los dialogos que la app no dibuja a mano.
+ *
+ * `outline` y `outlineVariant` no son lo mismo: `outline` es el borde de lo que
+ * se puede TOCAR (campos de texto, el pulgar del interruptor) y necesita 3:1;
+ * `outlineVariant` es el filete decorativo de los divisores de Material.
  */
 private val ColoresClaros = lightColorScheme(
-    primary = Color(0xFF0055FF),
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFE3ECFF),
-    onPrimaryContainer = Color(0xFF001A4D),
-    secondary = Color(0xFF4B5563),
-    onSecondary = Color(0xFFFFFFFF),
-    background = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF111827),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF111827),
-    surfaceVariant = Color(0xFFF4F5F7),
-    onSurfaceVariant = Color(0xFF4B5563),
-    outline = Color(0xFFC7CBD1),
-    error = Color(0xFFE63946),
-    onError = Color(0xFFFFFFFF),
-    errorContainer = Color(0xFFFDE7E9),
-    onErrorContainer = Color(0xFF4A0A10),
+    primary = Sapphire,
+    onPrimary = White,
+    primaryContainer = SapphireMist,
+    onPrimaryContainer = Slate,
+    inversePrimary = NeonSky,
+    secondary = Ash,
+    onSecondary = White,
+    secondaryContainer = Fog,
+    onSecondaryContainer = Slate,
+    tertiary = Emerald,
+    onTertiary = White,
+    tertiaryContainer = EmeraldMist,
+    onTertiaryContainer = Emerald,
+    background = PearlGray,
+    onBackground = Slate,
+    surface = White,
+    onSurface = Slate,
+    surfaceVariant = Fog,
+    onSurfaceVariant = Ash,
+    // La tinta tonal de Material mezcla `primary` sobre las superficies
+    // elevadas y las volveria azuladas y sucias; se neutraliza.
+    surfaceTint = White,
+    inverseSurface = Slate,
+    inverseOnSurface = IceWhite,
+    error = Crimson,
+    onError = White,
+    errorContainer = CrimsonMist,
+    onErrorContainer = Crimson,
+    outline = Pewter,
+    outlineVariant = Hairline,
+    scrim = OledBlack,
+    surfaceBright = White,
+    surfaceDim = Fog,
+    surfaceContainerLowest = White,
+    surfaceContainerLow = White,
+    surfaceContainer = White,
+    surfaceContainerHigh = PearlGray,
+    surfaceContainerHighest = Fog,
 )
 
 /**
- * Paleta clinica en Modo Oscuro sobre el negro pizarra `#0F1115`.
+ * Esquema de Material en Modo Oscuro OLED.
  *
- * El azul institucional `#0055FF` se aclara a `#7FA6FF` SOLO aqui: sobre fondo
- * oscuro el original queda en 2.5:1 de contraste y el DM exige no perder
- * legibilidad (seccion 3). El resto de la paleta conserva los tonos exactos.
+ * La escalera de superficies sube en luz, nunca en sombra: negro (fondo) ->
+ * Graphite (tarjetas, hojas, dialogos) -> Onyx (campos, menus) -> Carbon (lo
+ * mas alto). Ningun rol de superficie queda en un tono claro, tampoco
+ * `inverseSurface`: en Material oscuro es un gris casi blanco que pintaria
+ * cualquier snackbar o tooltip futuro como un parche encendido en la pantalla,
+ * asi que aqui es el escalon mas alto de la escalera.
  */
 private val ColoresOscuros = darkColorScheme(
-    primary = Color(0xFF7FA6FF),
-    onPrimary = Color(0xFF001A4D),
-    primaryContainer = Color(0xFF003AAD),
-    onPrimaryContainer = Color(0xFFE3ECFF),
-    secondary = Color(0xFFA8B0BC),
-    onSecondary = Color(0xFF1B1F27),
-    background = Color(0xFF0F1115),
-    onBackground = Color(0xFFE7E9EE),
-    surface = Color(0xFF14171D),
-    onSurface = Color(0xFFE7E9EE),
-    surfaceVariant = Color(0xFF1B1F27),
-    onSurfaceVariant = Color(0xFFA8B0BC),
-    outline = Color(0xFF6B7280),
-    error = Color(0xFFFF8A8F),
-    onError = Color(0xFF4A0A10),
-    errorContainer = Color(0xFF7A1C24),
-    onErrorContainer = Color(0xFFFFE1E3),
+    primary = NeonSky,
+    onPrimary = OledBlack,
+    primaryContainer = SapphireDeep,
+    onPrimaryContainer = IceWhite,
+    inversePrimary = NeonSky,
+    secondary = PaleAsh,
+    onSecondary = OledBlack,
+    secondaryContainer = Onyx,
+    onSecondaryContainer = IceWhite,
+    tertiary = EmeraldGlow,
+    onTertiary = OledBlack,
+    tertiaryContainer = EmeraldDeep,
+    onTertiaryContainer = EmeraldGlow,
+    background = OledBlack,
+    onBackground = IceWhite,
+    surface = Graphite,
+    onSurface = IceWhite,
+    surfaceVariant = Onyx,
+    onSurfaceVariant = PaleAsh,
+    surfaceTint = Graphite,
+    inverseSurface = Carbon,
+    inverseOnSurface = IceWhite,
+    error = CrimsonGlow,
+    onError = OledBlack,
+    errorContainer = CrimsonDeep,
+    onErrorContainer = CrimsonGlow,
+    outline = Smoke,
+    outlineVariant = Carbon,
+    scrim = OledBlack,
+    surfaceBright = Onyx,
+    surfaceDim = OledBlack,
+    surfaceContainerLowest = OledBlack,
+    surfaceContainerLow = Graphite,
+    surfaceContainer = Graphite,
+    surfaceContainerHigh = Onyx,
+    surfaceContainerHighest = Carbon,
 )
 
-/**
- * El Turquesa de Salud `#00A896` se conserva exacto como relleno de la accion
- * principal, pero su texto va en negro pizarra: blanco sobre turquesa da 3:1 y
- * no alcanza el minimo legible; con `#0F1115` sube a 7:1.
- */
+/** Roles semanticos en Modo Claro: la capa que las pantallas consumen. */
 private val ColoresSaludClaros = ColoresSalud(
-    textoSecundario = Color(0xFF4B5563),
-    separador = Color(0xFFE5E7EB),
-    acentoCritico = Color(0xFFE63946),
-    fondoCritico = Color(0xFFFDE7E9),
-    exito = Color(0xFF00806F),
-    acentoAccion = Color(0xFF00A896),
-    sobreAcentoAccion = Color(0xFF0F1115),
-    fondoCampo = Color(0xFFF4F5F7),
-    fondoTarjeta = Color(0xFFF4F5F7),
-    fondoConversacion = Color(0xFFF8F9FA),
-    fondoBurbujaMedico = Color(0xFFE5E7EB),
-    sobreBurbujaMedico = Color(0xFF111827),
-    fondoAdvertencia = Color(0xFFFFF3CD),
-    textoAdvertencia = Color(0xFF664D03),
-    // El ambar se oscurece hasta `#B45309` para el texto: el amarillo puro del
-    // codigo de colores del requerimiento sobre su propio fondo claro no llega
-    // al minimo legible, y una etiqueta de estado que no se lee no es un estado.
-    citaPendiente = Color(0xFFB45309),
-    fondoCitaPendiente = Color(0xFFFEF3C7),
-    citaConfirmada = Color(0xFF00806F),
-    fondoCitaConfirmada = Color(0xFFD1FAE5),
-    citaEnCurso = Color(0xFF0055FF),
-    fondoCitaEnCurso = Color(0xFFE3ECFF),
-    citaCancelada = Color(0xFFE63946),
-    fondoCitaCancelada = Color(0xFFFDE7E9),
-    citaBloqueada = Color(0xFF4B5563),
-    fondoCitaBloqueada = Color(0xFFF4F5F7),
+    fondo = PearlGray,
+    textoPrincipal = Slate,
+    textoSecundario = Ash,
+    separador = Hairline,
+    acentoCritico = Crimson,
+    fondoCritico = CrimsonMist,
+    exito = Emerald,
+    acentoAccion = Sapphire,
+    sobreAcentoAccion = White,
+    fondoCampo = Fog,
+    fondoTarjeta = White,
+    fondoConversacion = PearlGray,
+    fondoBurbujaMedico = White,
+    sobreBurbujaMedico = Slate,
+    fondoAdvertencia = AmberMist,
+    textoAdvertencia = Amber,
+    citaPendiente = Amber,
+    fondoCitaPendiente = AmberMist,
+    citaConfirmada = Emerald,
+    fondoCitaConfirmada = EmeraldMist,
+    citaEnCurso = Sapphire,
+    fondoCitaEnCurso = SapphireMist,
+    citaCancelada = Crimson,
+    fondoCitaCancelada = CrimsonMist,
+    citaBloqueada = Ash,
+    fondoCitaBloqueada = Fog,
+    veloAcento = SapphireMist,
+    senalEstable = EmeraldSignal,
+    senalVigilancia = AmberSignal,
+    senalCritico = CrimsonSignal,
+    acentoSuave = SapphireMist,
+    fondoExito = EmeraldMist,
+    esModoOscuro = false,
 )
 
 /**
- * El banner de advertencia SI cambia de valores entre modos, a diferencia del
- * resto de la paleta: el amarillo pastel `#FFF3CD` que pide el diseno pierde
- * todo su proposito (una nota de aviso, no una luz de neon) sobre el negro
- * pizarra del Modo Oscuro. Se sustituye por un ambar oscuro de baja saturacion
- * con texto ambar claro, que conserva el mismo significado -- "esto es una
- * nota, no un error" -- con el mismo criterio que ya se aplico al turquesa y
- * al azul institucional en este archivo.
+ * Roles semanticos en Modo Oscuro OLED: mismo tono por rol, otra luminosidad.
+ * Cada fondo es negro, Graphite, Onyx o un tono hundido casi hasta el negro;
+ * ninguno es claro.
  */
 private val ColoresSaludOscuros = ColoresSalud(
-    textoSecundario = Color(0xFFA8B0BC),
-    separador = Color(0xFF262A33),
-    acentoCritico = Color(0xFFFF8A8F),
-    fondoCritico = Color(0xFF3A1216),
-    exito = Color(0xFF3FD5C2),
-    acentoAccion = Color(0xFF00A896),
-    sobreAcentoAccion = Color(0xFF0F1115),
-    fondoCampo = Color(0xFF1B1F27),
-    fondoTarjeta = Color(0xFF1B1F27),
-    fondoConversacion = Color(0xFF121212),
-    fondoBurbujaMedico = Color(0xFF2A2D35),
-    sobreBurbujaMedico = Color(0xFFE7E9EE),
-    fondoAdvertencia = Color(0xFF3A2F12),
-    textoAdvertencia = Color(0xFFFFD98A),
-    // Mismo criterio que el resto del Modo Oscuro: se conserva el SIGNIFICADO
-    // del codigo de colores (ambar, verde, azul, rojo, gris) invirtiendo la
-    // pareja, con el tono saturado en el texto y un fondo apagado detras. Los
-    // rellenos claros del Modo Claro sobre el negro pizarra serian faros.
-    citaPendiente = Color(0xFFFFD98A),
-    fondoCitaPendiente = Color(0xFF3A2F12),
-    citaConfirmada = Color(0xFF3FD5C2),
-    fondoCitaConfirmada = Color(0xFF0F2E2A),
-    citaEnCurso = Color(0xFF7FA6FF),
-    fondoCitaEnCurso = Color(0xFF17203A),
-    citaCancelada = Color(0xFFFF8A8F),
-    fondoCitaCancelada = Color(0xFF3A1216),
-    citaBloqueada = Color(0xFFA8B0BC),
-    fondoCitaBloqueada = Color(0xFF1B1F27),
+    fondo = OledBlack,
+    textoPrincipal = IceWhite,
+    textoSecundario = PaleAsh,
+    separador = Carbon,
+    acentoCritico = CrimsonGlow,
+    fondoCritico = CrimsonDeep,
+    exito = EmeraldGlow,
+    acentoAccion = NeonSky,
+    sobreAcentoAccion = OledBlack,
+    fondoCampo = Onyx,
+    fondoTarjeta = Graphite,
+    fondoConversacion = OledBlack,
+    fondoBurbujaMedico = Graphite,
+    sobreBurbujaMedico = IceWhite,
+    fondoAdvertencia = AmberDeep,
+    textoAdvertencia = AmberGlow,
+    citaPendiente = AmberGlow,
+    fondoCitaPendiente = AmberDeep,
+    citaConfirmada = EmeraldGlow,
+    fondoCitaConfirmada = EmeraldDeep,
+    citaEnCurso = NeonSky,
+    fondoCitaEnCurso = SapphireDeep,
+    citaCancelada = CrimsonGlow,
+    fondoCitaCancelada = CrimsonDeep,
+    citaBloqueada = PaleAsh,
+    fondoCitaBloqueada = Onyx,
+    veloAcento = SapphireDeep,
+    senalEstable = EmeraldGlow,
+    senalVigilancia = AmberGlow,
+    senalCritico = CrimsonGlow,
+    acentoSuave = SapphireDeep,
+    fondoExito = EmeraldDeep,
+    esModoOscuro = true,
 )
 
 val LocalColoresSalud = staticCompositionLocalOf { ColoresSaludClaros }
@@ -242,6 +404,17 @@ fun SaludTheme(
     ) {
         MaterialTheme(
             colorScheme = if (modoOscuro) ColoresOscuros else ColoresClaros,
+            typography = tipografiaSalud(),
+            // Los componentes de Material (hojas modales, tarjetas, menus) leen
+            // su forma de aqui. Sin este puente adoptarian el radio por defecto
+            // de la libreria y desentonarian justo al lado de las piezas propias.
+            shapes = Shapes(
+                extraSmall = FormaSalud.sutil,
+                small = FormaSalud.sutil,
+                medium = FormaSalud.media,
+                large = FormaSalud.grande,
+                extraLarge = FormaSalud.destacada,
+            ),
             content = contenido,
         )
     }

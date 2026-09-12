@@ -18,7 +18,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,23 +42,28 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.RiesgoPaciente
 import com.eter.salud.presentation.chatmedico.ChatMedicoUiState
 import com.eter.salud.presentation.chatmedico.ChatMedicoViewModel
+import com.eter.salud.presentation.chatmedico.EstadoResumenIa
 import com.eter.salud.presentation.chatmedico.HistorialChatUiState
 import com.eter.salud.presentation.chatmedico.MensajeVisibleChat
 import com.eter.salud.ui.componentes.BarraAccionInferior
+import com.eter.salud.ui.componentes.BloqueDeError
+import com.eter.salud.ui.componentes.BotonAtras
 import com.eter.salud.ui.componentes.BurbujaMensaje
+import com.eter.salud.ui.componentes.ClinicalAiSummaryCard
 import com.eter.salud.ui.componentes.GlifoSalud
 import com.eter.salud.ui.componentes.IconoSalud
 import com.eter.salud.ui.profesional.recurso
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.ColoresSalud
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
-import salud.shared.generated.resources.a11y_boton_atras
 import salud.shared.generated.resources.a11y_chatmedico_accion_enviar
 import salud.shared.generated.resources.a11y_chatmedico_accion_expediente
 import salud.shared.generated.resources.a11y_chatmedico_cabecera
@@ -67,7 +71,6 @@ import salud.shared.generated.resources.a11y_chatmedico_campo_mensaje
 import salud.shared.generated.resources.a11y_chatmedico_cargando
 import salud.shared.generated.resources.a11y_chatmedico_mensaje_paciente
 import salud.shared.generated.resources.a11y_chatmedico_mensaje_propio
-import salud.shared.generated.resources.accion_atras
 import salud.shared.generated.resources.chatmedico_accion_expediente
 import salud.shared.generated.resources.chatmedico_campo_placeholder
 import salud.shared.generated.resources.chatmedico_estado_cargando
@@ -137,7 +140,10 @@ fun ChatMedicoScreen(
             when (val historial = estado.historial) {
                 HistorialChatUiState.Cargando -> IndicadorCargando()
 
-                is HistorialChatUiState.Error -> MensajeErrorCarga()
+                is HistorialChatUiState.Error -> BloqueDeError(
+                    mensaje = stringResource(Res.string.chatmedico_estado_error_carga),
+                    alReintentar = viewModel::cargar,
+                )
 
                 is HistorialChatUiState.ConMensajes -> {
                     if (historial.mensajes.isEmpty()) {
@@ -155,7 +161,13 @@ fun ChatMedicoScreen(
                             verticalArrangement = Arrangement.spacedBy(espaciado.medio),
                         ) {
                             items(historial.mensajes, key = { it.idMensaje }) { mensaje ->
-                                MensajeDelChat(mensaje = mensaje, nombrePaciente = estado.nombrePaciente)
+                                MensajeDelChat(
+                                    mensaje = mensaje,
+                                    nombrePaciente = estado.nombrePaciente,
+                                    resumenIa = estado.resumenesIa[mensaje.idMensaje],
+                                    originalExpandido = mensaje.idMensaje in estado.originalExpandido,
+                                    alAlternarOriginal = { viewModel.alternarOriginal(mensaje.idMensaje) },
+                                )
                             }
                         }
                     }
@@ -228,17 +240,7 @@ private fun CabeceraClinica(
                 }
             }
         },
-        navigationIcon = {
-            val descripcion = stringResource(Res.string.a11y_boton_atras)
-            TextButton(
-                onClick = alVolver,
-                modifier = Modifier
-                    .heightIn(min = AreaTactilMinima)
-                    .semantics { contentDescription = descripcion },
-            ) {
-                Text(stringResource(Res.string.accion_atras))
-            }
-        },
+        navigationIcon = { BotonAtras(alPulsar = alVolver) },
         actions = {
             TextButton(
                 onClick = alAbrirExpediente,
@@ -261,8 +263,28 @@ private fun RiesgoPaciente.color(colores: ColoresSalud): Color = when (this) {
     RiesgoPaciente.BAJO -> colores.exito
 }
 
+/**
+ * Si el mensaje del paciente ya tiene (o esta esperando) un resumen de IA,
+ * se pinta la [ClinicalAiSummaryCard] en vez de la burbuja normal: son
+ * mutuamente excluyentes, nunca las dos a la vez para el mismo mensaje.
+ */
 @Composable
-private fun MensajeDelChat(mensaje: MensajeVisibleChat, nombrePaciente: String) {
+private fun MensajeDelChat(
+    mensaje: MensajeVisibleChat,
+    nombrePaciente: String,
+    resumenIa: EstadoResumenIa?,
+    originalExpandido: Boolean,
+    alAlternarOriginal: () -> Unit,
+) {
+    if (resumenIa != null) {
+        ClinicalAiSummaryCard(
+            estado = resumenIa,
+            original = originalExpandido,
+            alAlternarOriginal = alAlternarOriginal,
+        )
+        return
+    }
+
     val descripcion = if (mensaje.esPropio) {
         stringResource(Res.string.a11y_chatmedico_mensaje_propio, mensaje.texto, mensaje.horaLocal)
     } else {
@@ -278,6 +300,10 @@ private fun MensajeDelChat(mensaje: MensajeVisibleChat, nombrePaciente: String) 
         texto = mensaje.texto,
         horaLocal = mensaje.horaLocal,
         esPropio = mensaje.esPropio,
+        // Aqui coinciden -- el medico ES quien mira -- pero se pasan por
+        // separado: son dos preguntas distintas y fundirlas volveria a atar el
+        // color a la propiedad del mensaje.
+        esDelMedico = mensaje.autor == AutorMensaje.MEDICO,
         descripcionAccesible = descripcion,
     )
 }
@@ -315,7 +341,7 @@ private fun CampoMensaje(valor: String, alCambiar: (String) -> Unit, modifier: M
     Box(
         modifier = modifier
             .heightIn(min = AreaTactilMinima)
-            .background(colores.fondoCampo, RoundedCornerShape(espaciado.generoso))
+            .background(colores.fondoCampo, FormaSalud.destacada)
             .padding(horizontal = espaciado.medio, vertical = espaciado.compacto)
             .semantics { contentDescription = descripcion },
         contentAlignment = Alignment.CenterStart,
@@ -386,17 +412,6 @@ private fun IndicadorCargando() {
     }
 }
 
-@Composable
-private fun MensajeErrorCarga() {
-    Box(Modifier.fillMaxSize().padding(LocalEspaciadoSalud.current.amplio)) {
-        Text(
-            text = stringResource(Res.string.chatmedico_estado_error_carga),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
-        )
-    }
-}
 
 /** Paciente vinculado que aun no escribe: el medico puede abrir la orientacion. */
 @Composable

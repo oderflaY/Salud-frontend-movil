@@ -8,19 +8,25 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -43,28 +49,36 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eter.salud.domain.model.Especialidad
+import com.eter.salud.domain.model.MedicoVinculado
 import com.eter.salud.domain.model.PerfilDoctorDirectorio
 import com.eter.salud.presentation.directorio.DescubrimientoMedicoUiState
 import com.eter.salud.presentation.directorio.DescubrimientoMedicoViewModel
 import com.eter.salud.presentation.directorio.DirectorioUiState
 import com.eter.salud.presentation.directorio.ErrorDirectorio
+import com.eter.salud.ui.componentes.BloqueDeError
 import com.eter.salud.ui.componentes.BotonAccionPrincipal
+import com.eter.salud.ui.componentes.BotonAtras
+import com.eter.salud.ui.componentes.CabeceraGrande
 import com.eter.salud.ui.componentes.GlifoSalud
 import com.eter.salud.ui.componentes.IconoSalud
+import com.eter.salud.ui.componentes.TarjetaSalud
+import com.eter.salud.ui.componentes.bordeDeTarjeta
+import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.componentes.margenInferiorSeguro
 import com.eter.salud.ui.theme.AreaTactilMinima
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
-import salud.shared.generated.resources.a11y_boton_atras
 import salud.shared.generated.resources.a11y_directorio_accion_contactar
 import salud.shared.generated.resources.a11y_directorio_busqueda
 import salud.shared.generated.resources.a11y_directorio_doctor_sin_verificar
 import salud.shared.generated.resources.a11y_directorio_doctor_verificado
 import salud.shared.generated.resources.a11y_directorio_filtro_especialidad
+import salud.shared.generated.resources.a11y_mimedico_accion_iniciar_consulta
 import salud.shared.generated.resources.a11y_mimedico_cargando
-import salud.shared.generated.resources.accion_atras
+import salud.shared.generated.resources.a11y_mimedico_ficha
 import salud.shared.generated.resources.directorio_accion_contactar
 import salud.shared.generated.resources.directorio_accion_solicitando
 import salud.shared.generated.resources.directorio_busqueda_placeholder
@@ -74,9 +88,15 @@ import salud.shared.generated.resources.directorio_sin_doctores
 import salud.shared.generated.resources.directorio_sin_resultados
 import salud.shared.generated.resources.directorio_titulo
 import salud.shared.generated.resources.directorio_universidad_egresado
+import salud.shared.generated.resources.mimedico_accion_iniciar_consulta
 import salud.shared.generated.resources.mimedico_estado_cargando
 import salud.shared.generated.resources.mimedico_estado_vacio_descripcion
 import salud.shared.generated.resources.mimedico_estado_vacio_titulo
+import salud.shared.generated.resources.mimedico_ficha_cedula_pendiente
+import salud.shared.generated.resources.mimedico_ficha_cedula_verificada
+import salud.shared.generated.resources.mimedico_ficha_disponibilidad
+import salud.shared.generated.resources.mimedico_ficha_titulo
+import salud.shared.generated.resources.mimedico_ficha_universidad
 import salud.shared.generated.resources.mimedico_titulo
 
 /**
@@ -101,54 +121,66 @@ import salud.shared.generated.resources.mimedico_titulo
 fun MiMedicoScreen(
     viewModel: DescubrimientoMedicoViewModel,
     modifier: Modifier = Modifier,
+    /**
+     * Lanza la teleconsulta a pantalla completa.
+     *
+     * El chat NO se dibuja dentro de esta seccion: una consulta clinica necesita
+     * el alto entero de la pantalla para un diagnostico largo, y con la barra de
+     * secciones abajo el teclado colisiona con el campo de texto. Esta pantalla
+     * es la ficha del medico; la conversacion es otro destino.
+     */
     alVolver: () -> Unit = {},
+    alIniciarConsulta: (MedicoVinculado) -> Unit = {},
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = colores.fondoConversacion,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(Res.string.mimedico_titulo),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+    // Sin barra superior ni flecha: esto es una PESTANA, no una pantalla
+    // apilada, y una flecha de retroceso sobre una raiz de navegacion promete
+    // una vuelta atras que no existe.
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
+        contentPadding = PaddingValues(
+            start = espaciado.amplio,
+            end = espaciado.amplio,
+            top = espaciado.medio,
+            bottom = espaciado.respiro,
+        ),
+        verticalArrangement = Arrangement.spacedBy(espaciado.medio),
+    ) {
+        item(key = "cabecera_seccion") {
+            // Ahora es una pantalla apilada (se llega desde el boton flotante de
+            // la bandeja), asi que si lleva flecha de retroceso.
+            CabeceraGrande(
+                titulo = stringResource(Res.string.directorio_titulo),
+                // Con una ficha abierta, la flecha vuelve a la lista: el
+                // paciente puede estar comparando medicos.
+                accion = {
+                    BotonAtras(alPulsar = if (estado.medicoElegido != null) viewModel::cerrarFicha else alVolver)
                 },
-                navigationIcon = {
-                    val descripcion = stringResource(Res.string.a11y_boton_atras)
-                    TextButton(
-                        onClick = alVolver,
-                        modifier = Modifier
-                            .heightIn(min = AreaTactilMinima)
-                            .semantics { contentDescription = descripcion },
-                    ) {
-                        Text(stringResource(Res.string.accion_atras))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colores.fondoConversacion,
-                ),
             )
-        },
-    ) { relleno ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(relleno)
-                .margenInferiorSeguro(),
-            contentPadding = PaddingValues(
-                start = espaciado.amplio,
-                end = espaciado.amplio,
-                top = espaciado.amplio,
-                bottom = espaciado.respiro,
-            ),
-            verticalArrangement = Arrangement.spacedBy(espaciado.medio),
-        ) {
-            item(key = "cabecera") { EstadoVacio() }
+        }
+        run {
+            val elegido = estado.medicoElegido
+            if (elegido != null) {
+                item(key = "ficha_medico") {
+                    FichaDelMedico(
+                        medico = elegido,
+                        perfil = estado.perfilDelElegido,
+                        alIniciarConsulta = { alIniciarConsulta(elegido) },
+                    )
+                }
+                return@LazyColumn
+            }
+
+            // "Aun no tienes medico" solo es verdad sin ninguna vinculacion; con
+            // una ya hecha, el directorio es para sumar un especialista.
+            if (estado.medicoVinculado == null) {
+                item(key = "cabecera") { EstadoVacio() }
+            }
 
             item(key = "titulo_directorio") {
                 Text(
@@ -185,7 +217,10 @@ fun MiMedicoScreen(
                 DirectorioUiState.Vacio -> item(key = "vacio") { MensajeSinDoctores() }
 
                 is DirectorioUiState.Error -> item(key = "error") {
-                    MensajeError(directorio.motivo)
+                    BloqueDeError(
+                        mensaje = stringResource(directorio.motivo.recurso()),
+                        alReintentar = viewModel::cargar,
+                    )
                 }
 
                 is DirectorioUiState.ConDoctores -> listaDeDoctores(estado, viewModel)
@@ -193,6 +228,118 @@ fun MiMedicoScreen(
         }
     }
 }
+
+/**
+ * Ficha clinica del medico vinculado.
+ *
+ * Es lo que el paciente ve al entrar en su seccion "Mi medico": quien le
+ * atiende, con que credenciales y cuando esta disponible, mas la unica accion
+ * que importa aqui. Las credenciales van ANTES que el boton a proposito -- se
+ * decide consultar a alguien despues de ver quien es, no al reves.
+ */
+@Composable
+private fun FichaDelMedico(
+    medico: MedicoVinculado,
+    perfil: PerfilDoctorDirectorio?,
+    alIniciarConsulta: () -> Unit,
+) {
+    val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
+    val especialidad = stringResource(medico.especialidad.recurso())
+
+    // Sin ficha descargada se dice lo que la vinculacion SI garantiza. Mostrar
+    // "cedula verificada" sin haberla comprobado seria una credencial inventada.
+    val estadoCedula = perfil?.let {
+        stringResource(
+            if (it.cedulaVerificada) Res.string.mimedico_ficha_cedula_verificada
+            else Res.string.mimedico_ficha_cedula_pendiente,
+        )
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(espaciado.medio)) {
+        Text(
+            text = stringResource(Res.string.mimedico_ficha_titulo),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.semantics { heading() },
+        )
+
+        val descripcion = stringResource(
+            Res.string.a11y_mimedico_ficha,
+            medico.nombreCompleto,
+            especialidad,
+            estadoCedula.orEmpty(),
+        )
+        TarjetaSalud(
+            modifier = Modifier.semantics(mergeDescendants = true) {
+                contentDescription = descripcion
+            },
+        ) {
+            Text(
+                text = medico.nombreCompleto,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = especialidad,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colores.textoSecundario,
+            )
+
+            if (estadoCedula != null) {
+                Spacer(Modifier.height(espaciado.compacto))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconoSalud(
+                        glifo = if (perfil.cedulaVerificada) GlifoSalud.VERIFICADO else GlifoSalud.HISTORIAL,
+                        lado = LADO_GLIFO_CEDULA,
+                        color = if (perfil.cedulaVerificada) colores.exito else colores.textoAdvertencia,
+                    )
+                    Spacer(Modifier.width(espaciado.compacto))
+                    Text(
+                        text = estadoCedula,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (perfil.cedulaVerificada) colores.exito else colores.textoAdvertencia,
+                    )
+                }
+            }
+
+            if (perfil != null && perfil.universidad.isNotBlank()) {
+                Text(
+                    text = stringResource(Res.string.mimedico_ficha_universidad, perfil.universidad),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colores.textoSecundario,
+                )
+            }
+
+            if (perfil != null && perfil.disponibilidad.isNotBlank()) {
+                Spacer(Modifier.height(espaciado.compacto))
+                HorizontalDivider(color = colores.separador)
+                Spacer(Modifier.height(espaciado.compacto))
+                Text(
+                    text = stringResource(Res.string.mimedico_ficha_disponibilidad),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colores.textoSecundario,
+                )
+                Text(
+                    text = perfil.disponibilidad,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+
+        BotonAccionPrincipal(
+            etiqueta = stringResource(Res.string.mimedico_accion_iniciar_consulta),
+            alPulsar = alIniciarConsulta,
+            descripcionAccesible = stringResource(
+                Res.string.a11y_mimedico_accion_iniciar_consulta,
+                medico.nombreCompleto,
+            ),
+        )
+    }
+}
+
+private val LADO_GLIFO_CEDULA = 18.dp
 
 /**
  * Tarjetas de los doctores ya filtrados por la busqueda. Si el filtro de texto
@@ -249,7 +396,7 @@ private fun BarraBusqueda(valor: String, alCambiar: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = AreaTactilMinima)
-            .background(colores.fondoCampo, RoundedCornerShape(espaciado.medio))
+            .background(colores.fondoCampo, FormaSalud.media)
             .padding(horizontal = espaciado.medio)
             .semantics { contentDescription = descripcion },
         verticalAlignment = Alignment.CenterVertically,
@@ -314,7 +461,7 @@ private fun FiltrosEspecialidad(
 private fun ChipFiltro(etiqueta: String, elegido: Boolean, alPulsar: () -> Unit) {
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
-    val forma = RoundedCornerShape(percent = 50)
+    val forma = FormaSalud.pastilla
 
     Text(
         text = etiqueta,
@@ -361,7 +508,9 @@ private fun TarjetaDoctor(
             .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = descripcionTarjeta },
         color = colores.fondoTarjeta,
-        shape = RoundedCornerShape(espaciado.medio),
+        border = bordeDeTarjeta(),
+        shadowElevation = elevacionDeTarjeta(),
+        shape = FormaSalud.media,
     ) {
         Column(Modifier.padding(espaciado.amplio)) {
             Text(
@@ -473,14 +622,3 @@ private fun MensajeErrorVinculacion() {
     )
 }
 
-@Composable
-private fun MensajeError(motivo: ErrorDirectorio) {
-    Text(
-        text = stringResource(motivo.recurso()),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { liveRegion = LiveRegionMode.Assertive },
-    )
-}

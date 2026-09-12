@@ -1,9 +1,15 @@
 package com.eter.salud.presentation.chat
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
+import com.eter.salud.domain.model.ResumenClinicoIa
 import com.eter.salud.domain.model.TipoMensaje
 import com.eter.salud.domain.repository.ChatRepositorio
+import com.eter.salud.domain.repository.ResumenIaNoDisponible
 
 /** Chat falso: registra lo enviado y permite simular fallos de envio o de historial. */
 class ChatRepositorioFalso(
@@ -20,6 +26,7 @@ class ChatRepositorioFalso(
     ),
     private val resultadoEnvio: Result<MensajeChat>? = null,
     private val resultadoRespuestaAutomatica: Result<MensajeChat>? = null,
+    private val resultadoResumenIa: Result<ResumenClinicoIa>? = null,
 ) : ChatRepositorio {
 
     var mensajesEnviados: MutableList<String> = mutableListOf()
@@ -35,22 +42,45 @@ class ChatRepositorioFalso(
     var ultimoAutorEnviado: AutorMensaje? = null
         private set
 
+    var ultimoAdjuntoEnviado: Adjunto? = null
+        private set
+
     override suspend fun enviarMensaje(
         idConversacion: String,
         texto: String,
         instante: String,
         autor: AutorMensaje,
+        adjunto: Adjunto?,
     ): Result<MensajeChat> {
         mensajesEnviados += texto
         ultimoAutorEnviado = autor
+        ultimoAdjuntoEnviado = adjunto
         return resultadoEnvio ?: Result.success(
             MensajeChat(
                 idMensaje = "msg_confirmado_${siguienteId++}",
                 autor = autor,
                 texto = texto,
                 instante = instante,
+                adjunto = adjunto,
             ),
         )
+    }
+
+    private val pendientes = MutableStateFlow(0)
+
+    var vecesMarcadaLeida: Int = 0
+        private set
+
+    override fun mensajesSinLeer(idConversacion: String): Flow<Int> = pendientes.asStateFlow()
+
+    override suspend fun marcarConversacionLeida(idConversacion: String) {
+        vecesMarcadaLeida++
+        pendientes.value = 0
+    }
+
+    /** Simula la llegada de mensajes del medico con el paciente en otra pantalla. */
+    fun simularSinLeer(cantidad: Int) {
+        pendientes.value = cantidad
     }
 
     override suspend fun obtenerRespuestaAutomatica(
@@ -66,5 +96,13 @@ class ChatRepositorioFalso(
                 instante = instante,
             ),
         )
+    }
+
+    var vecesResumenPedido: Int = 0
+        private set
+
+    override suspend fun obtenerResumenClinico(idMensaje: String): Result<ResumenClinicoIa> {
+        vecesResumenPedido++
+        return resultadoResumenIa ?: Result.failure(ResumenIaNoDisponible())
     }
 }

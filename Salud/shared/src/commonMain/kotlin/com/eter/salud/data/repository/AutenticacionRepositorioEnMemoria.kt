@@ -17,6 +17,12 @@ import com.eter.salud.domain.repository.FalloRegistro
  */
 class AutenticacionRepositorioEnMemoria(
     cuentaDemo: Pair<String, String> = CORREO_DEMO to CONTRASENA_DEMO,
+    /**
+     * Cuentas de pacientes de demostracion ya con su perfil completo:
+     * correo -> (contrasena, idPaciente). Entran directo al panel, sin
+     * cuestionario de emergencia.
+     */
+    cuentasCompletas: Map<String, Pair<String, String>> = emptyMap(),
 ) : AutenticacionRepositorio {
 
     private data class Cuenta(
@@ -31,7 +37,11 @@ class AutenticacionRepositorioEnMemoria(
             idPaciente = ID_PACIENTE_DEMO,
             requiereOnboarding = true,
         ),
-    )
+    ).apply {
+        cuentasCompletas.forEach { (correo, datos) ->
+            put(correo, Cuenta(contrasena = datos.first, idPaciente = datos.second, requiereOnboarding = false))
+        }
+    }
 
     private var siguienteId = 1
 

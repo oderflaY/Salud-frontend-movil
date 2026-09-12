@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
@@ -71,7 +71,7 @@ private fun ChipRespuestaRapida(texto: String, alPulsar: () -> Unit) {
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier
             .heightIn(min = AreaTactilMinima)
-            .background(colores.fondoCampo, RoundedCornerShape(percent = 50))
+            .background(colores.fondoCampo, FormaSalud.pastilla)
             .clickable(onClick = alPulsar)
             .semantics { contentDescription = descripcion }
             .padding(horizontal = espaciado.medio, vertical = espaciado.compacto + 2.dp),

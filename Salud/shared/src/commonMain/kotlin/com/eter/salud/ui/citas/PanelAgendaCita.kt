@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +50,7 @@ import com.eter.salud.ui.componentes.BotonSecundarioSalud
 import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
 import com.eter.salud.ui.componentes.margenInferiorSeguro
 import com.eter.salud.ui.directorio.recurso
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
@@ -307,7 +307,7 @@ private fun FichaDeHora(franja: FranjaAgenda, alElegir: (FranjaAgenda) -> Unit) 
             .clickable { alElegir(franja) }
             .semantics(mergeDescendants = true) { contentDescription = descripcion },
         color = colores.fondoCampo,
-        shape = RoundedCornerShape(espaciado.compacto),
+        shape = FormaSalud.sutil,
     ) {
         Text(
             text = franja.horaInicio,

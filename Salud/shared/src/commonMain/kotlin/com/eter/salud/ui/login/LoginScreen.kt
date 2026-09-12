@@ -1,6 +1,8 @@
 package com.eter.salud.ui.login
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,6 +28,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.presentation.login.ErrorCampoLogin
@@ -34,6 +40,7 @@ import com.eter.salud.ui.componentes.BotonSecundarioSalud
 import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
 import com.eter.salud.ui.componentes.DivisorConTexto
 import com.eter.salud.ui.componentes.IsotipoSalud
+import com.eter.salud.ui.componentes.TarjetaSalud
 import com.eter.salud.ui.componentes.margenInferiorSeguro
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
@@ -89,8 +96,14 @@ fun LoginScreen(
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
 
-    LaunchedEffect(estado.sesion) { estado.sesion?.let(alIniciarSesion) }
+    LaunchedEffect(estado.sesion) {
+        estado.sesion?.let { sesion ->
+            alIniciarSesion(sesion)
+            viewModel.sesionEntregada()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -101,16 +114,33 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(espaciado.respiro + espaciado.generoso))
-        IsotipoSalud()
+        // El isotipo se posa sobre un velo del color institucional en vez de
+        // flotar sobre el blanco: da profundidad sin meter una superficie de
+        // color, que en una app clinica leeria como alerta antes que como marca.
+        Box(
+            modifier = Modifier
+                .size(DIAMETRO_VELO)
+                .background(colores.veloAcento, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            IsotipoSalud()
+        }
         Spacer(Modifier.height(espaciado.generoso))
         Cabecera()
 
+        // El formulario vive sobre una tarjeta y no suelto sobre el fondo.
+        // Con el fondo perla, una tarjeta blanca agrupa los dos campos en una
+        // sola pieza y separa "identificarse" de todo lo que hay debajo, que son
+        // salidas a otros sitios. Antes, campos y enlaces flotaban en la misma
+        // columna sin nada que dijera donde acababa una cosa y empezaba la otra.
         Spacer(Modifier.height(espaciado.generoso))
-        Formulario(
-            estado = estado,
-            viewModel = viewModel,
-            alRecuperarContrasena = alRecuperarContrasena,
-        )
+        TarjetaSalud {
+            Formulario(
+                estado = estado,
+                viewModel = viewModel,
+                alRecuperarContrasena = alRecuperarContrasena,
+            )
+        }
 
         Spacer(Modifier.height(espaciado.medio))
         BotonAccionPrincipal(
@@ -173,15 +203,21 @@ private fun Cabecera() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = stringResource(Res.string.login_titulo),
-            style = MaterialTheme.typography.headlineLarge,
+            // `displaySmall` y no `headlineLarge`: en la unica pantalla sin
+            // contenido que leer, el titulo puede permitirse ser la pieza
+            // dominante en vez de competir con un formulario.
+            style = MaterialTheme.typography.displaySmall,
             color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
             modifier = Modifier.semantics { heading() },
         )
-        Spacer(Modifier.height(espaciado.compacto))
+        Spacer(Modifier.height(espaciado.medio))
         Text(
             text = stringResource(Res.string.login_subtitulo),
             style = MaterialTheme.typography.bodyMedium,
             color = colores.textoSecundario,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = espaciado.medio),
         )
     }
 }
@@ -287,3 +323,5 @@ private fun errorTexto(
     errores: List<ErrorCampoLogin>,
     vararg propios: ErrorCampoLogin,
 ): String? = errores.firstOrNull { it in propios }?.let { stringResource(it.recurso()) }
+
+private val DIAMETRO_VELO = 128.dp

@@ -49,6 +49,7 @@ class HomeViewModel(
             val perfil = ejecutarSeguro { historial.obtenerPaciente(idPaciente) }
             val tomas = ejecutarSeguro { adherencia.obtenerTomasDelDia(idPaciente, hoy) }
             val resumen = ejecutarSeguro { adherencia.obtenerResumenSemanal(idPaciente, hoy) }
+            val semana = ejecutarSeguro { adherencia.obtenerSemana(idPaciente, hoy) }
 
             if (perfil.isFailure || tomas.isFailure || resumen.isFailure) {
                 _estado.update { it.copy(cargando = false, errorCarga = true) }
@@ -64,9 +65,19 @@ class HomeViewModel(
                     tarjetaRfidActiva = paciente.dispositivosRfid.any { it.estado == RFID_ACTIVA },
                     tomasDelDia = tomas.getOrThrow().ordenadasPorHora(),
                     resumenSemanal = resumen.getOrThrow(),
+                    // La franja NO tumba la pantalla si falla: es contexto, no
+                    // el dato con el que el paciente actua hoy. Sin ella el
+                    // panel sigue sirviendo; sin las tomas, no.
+                    semana = semana.getOrNull().orEmpty(),
+                    fechaSeleccionada = hoy,
                 )
             }
         }
+    }
+
+    /** Resalta un dia de la franja semanal. No recarga nada: ya esta en memoria. */
+    fun elegirDia(fecha: String) {
+        _estado.update { it.copy(fechaSeleccionada = fecha) }
     }
 
     fun marcarTomada(idToma: String) = registrar(idToma, EstadoToma.TOMADO)

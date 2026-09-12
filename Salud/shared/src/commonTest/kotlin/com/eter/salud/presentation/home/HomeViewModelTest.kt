@@ -1,17 +1,15 @@
 package com.eter.salud.presentation.home
 
 import com.eter.salud.domain.model.DatosPersonales
+import com.eter.salud.domain.model.DiaDeAdherencia
 import com.eter.salud.domain.model.DispositivoRfid
+import com.eter.salud.domain.model.EstadoDia
 import com.eter.salud.domain.model.EstadoToma
 import com.eter.salud.domain.model.PacienteDto
+import com.eter.salud.domain.model.RecordatorioMedicacion
 import com.eter.salud.domain.model.ResumenAdherencia
 import com.eter.salud.domain.model.TomaDelDia
 import com.eter.salud.presentation.onboarding.RelojFijo
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -19,6 +17,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 
 /**
  * Panel principal del paciente: identidad, tomas del dia y adherencia semanal.
@@ -275,5 +278,146 @@ class HomeViewModelTest {
             ),
             vm.estado.value.accesosRapidos,
         )
+    }
+}
+
+/**
+ * Adherencia del dia y franja semanal.
+ *
+ * Lo que se fija aqui es la REGLA, no el numero: omitir una toma no puede subir
+ * el anillo, y un dia en curso no puede pintarse como incumplido. Las dos cosas
+ * son juicios sobre el paciente, y equivocarse en ellas es lo que hace que la
+ * gente deje de abrir la pantalla.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class AdherenciaDiariaTest {
+
+    @BeforeTest
+    fun configurar() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
+    @AfterTest
+    fun limpiar() {
+        Dispatchers.resetMain()
+    }
+
+    private fun estadoCon(tomas: List<TomaDelDia>) = HomeUiState(
+        idPaciente = "pac_01H8X9A",
+        tomasDelDia = tomas,
+    )
+
+    private fun toma(id: String, estado: EstadoToma) = TomaDelDia(
+        idToma = id,
+        idTratamiento = "trat_1",
+        medicamento = "Paracetamol",
+        dosis = "500 mg",
+        horaProgramada = "08:00",
+        estado = estado,
+    )
+
+    @Test
+    fun sin_tomas_programadas_la_adherencia_del_dia_es_cero_y_no_revienta() {
+        assertEquals(0, estadoCon(emptyList()).adherenciaDeHoy)
+    }
+
+    @Test
+    fun todas_las_tomas_cumplidas_dan_el_cien_por_ciento() {
+        val estado = estadoCon(
+            listOf(toma("1", EstadoToma.TOMADO), toma("2", EstadoToma.TOMADO_TARDE)),
+        )
+
+        assertEquals(100, estado.adherenciaDeHoy)
+    }
+
+    @Test
+    fun omitir_una_toma_NO_sube_la_adherencia() {
+        // El paciente hizo su parte informando, pero la pastilla no se tomo. Un
+        // anillo que subiera al omitir premiaria lo contrario de lo que busca.
+        val estado = estadoCon(
+            listOf(toma("1", EstadoToma.TOMADO), toma("2", EstadoToma.OMITIDO)),
+        )
+
+        assertEquals(50, estado.adherenciaDeHoy)
+    }
+
+    @Test
+    fun solo_las_tomas_pendientes_merecen_recordatorio() {
+        val estado = estadoCon(
+            listOf(
+                toma("1", EstadoToma.TOMADO),
+                toma("2", EstadoToma.PENDIENTE),
+                toma("3", EstadoToma.OMITIDO),
+            ),
+        )
+
+        assertEquals(listOf("2"), estado.tomasPorRecordar.map { it.idToma })
+    }
+
+    @Test
+    fun un_dia_en_curso_nunca_se_marca_incumplido() {
+        val hoy = DiaDeAdherencia("2026-09-08", tomasProgramadas = 3, tomasCumplidas = 1, enCurso = true)
+
+        assertEquals(EstadoDia.EN_CURSO, hoy.estado)
+    }
+
+    @Test
+    fun un_dia_sin_tratamiento_no_es_un_incumplimiento() {
+        // Pintarlo de rojo culparia al paciente de algo que nunca tuvo que hacer.
+        assertEquals(EstadoDia.SIN_TOMAS, DiaDeAdherencia("2026-09-05", 0, 0).estado)
+    }
+
+    @Test
+    fun un_dia_cerrado_con_tomas_pendientes_si_es_incumplimiento() {
+        assertEquals(EstadoDia.INCOMPLETO, DiaDeAdherencia("2026-09-03", 3, 1).estado)
+    }
+
+    @Test
+    fun la_clave_del_recordatorio_es_estable_para_la_misma_toma() {
+        // De esto depende que reprogramar REEMPLACE la alarma en vez de anadir
+        // una segunda del mismo medicamento.
+        val a = RecordatorioMedicacion("toma_9", "Paracetamol", "500 mg", "2026-09-08", "08:00")
+        val b = a.copy(medicamento = "Otro nombre")
+
+        assertEquals(a.claveSistema, b.claveSistema)
+    }
+
+    @Test
+    fun la_franja_semanal_llega_al_estado_tras_cargar() {
+        val vm = HomeViewModel(
+            historial = HistorialParaInicioFalso(),
+            adherencia = AdherenciaRepositorioFalso(),
+            idPaciente = "pac_01H8X9A",
+            perfilEmergenciaPendiente = false,
+            reloj = RelojFijo(),
+        )
+
+        vm.cargar()
+
+        assertEquals(7, vm.estado.value.semana.size)
+    }
+
+    @Test
+    fun si_la_semana_falla_el_panel_sigue_funcionando() {
+        // La franja es contexto, no el dato con el que el paciente actua hoy.
+        val vm = HomeViewModel(
+            historial = HistorialParaInicioFalso(),
+            adherencia = AdherenciaRepositorioFalso(
+                semana = Result.failure(IllegalStateException("sin red")),
+                // Con tomas de verdad: sin ellas la prueba pasaria por estar
+                // todo vacio, sin demostrar que el panel sobrevive.
+                tomas = Result.success(listOf(toma("1", EstadoToma.PENDIENTE))),
+            ),
+            idPaciente = "pac_01H8X9A",
+            perfilEmergenciaPendiente = false,
+            reloj = RelojFijo(),
+        )
+
+        vm.cargar()
+
+        val estado = vm.estado.value
+        assertFalse(estado.errorCarga)
+        assertTrue(estado.semana.isEmpty())
+        assertTrue(estado.tomasDelDia.isNotEmpty())
     }
 }

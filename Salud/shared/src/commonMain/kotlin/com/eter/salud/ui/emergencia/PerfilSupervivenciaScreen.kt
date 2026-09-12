@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -34,9 +33,12 @@ import androidx.compose.ui.unit.dp
 import com.eter.salud.domain.model.Alergia
 import com.eter.salud.domain.model.IdentidadSupervivencia
 import com.eter.salud.domain.model.PerfilSupervivencia
+import com.eter.salud.ui.componentes.bordeDeTarjeta
+import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.componentes.BarraAccionInferior
 import com.eter.salud.ui.componentes.BotonAccionPrincipal
 import com.eter.salud.ui.componentes.BotonSecundarioSalud
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
@@ -301,21 +303,22 @@ private fun TarjetaTriage(
 ) {
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
+    // Un bloque critico se tine ENTERO, no se marca con una franja de 4dp en el
+    // borde. Dos razones, y la segunda es la que manda:
+    //
+    //  - La franja lateral de color es un patron que delata interfaz generada:
+    //    senala importancia con un adorno en vez de con jerarquia.
+    //  - Un paramedico lee esta pantalla en segundos y de reojo. Una superficie
+    //    tenida se reconoce con vision periferica; un filete de 4dp en el canto
+    //    izquierdo, no.
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = colores.fondoTarjeta,
-        shape = RoundedCornerShape(espaciado.medio),
-        shadowElevation = 1.dp,
+        color = if (colorAcento != null) colores.fondoCritico else colores.fondoTarjeta,
+        border = bordeDeTarjeta(),
+        shadowElevation = elevacionDeTarjeta(),
+        shape = FormaSalud.grande,
     ) {
         Row(Modifier.fillMaxWidth()) {
-            if (colorAcento != null) {
-                Box(
-                    Modifier
-                        .fillMaxHeight()
-                        .width(FRANJA_ACENTO)
-                        .background(colorAcento),
-                )
-            }
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -324,8 +327,10 @@ private fun TarjetaTriage(
             ) {
                 Text(
                     text = titulo,
+                    // El titulo hereda el acento del bloque: es lo que dice QUE
+                    // es critico, y ahora lo dice en color ademas de en palabra.
                     style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    color = colorAcento ?: MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.semantics { heading() },
                 )
                 contenido()
@@ -375,4 +380,3 @@ private fun TextoSinDatos(texto: String) {
 }
 
 private val TAMANO_INSIGNIA = 96.dp
-private val FRANJA_ACENTO = 4.dp

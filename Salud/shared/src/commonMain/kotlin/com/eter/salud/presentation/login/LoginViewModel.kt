@@ -107,4 +107,16 @@ class LoginViewModel(
             bloque(it).copy(erroresCampo = emptyList(), errorAutenticacion = null)
         }
     }
+
+    /**
+     * La Vista ya entrego la sesion a la app: el formulario vuelve a nacer.
+     *
+     * Sin esto, la sesion lograda se quedaba en el estado. Al cerrar sesion la
+     * pantalla de acceso reaparecia, veia ese acceso "pendiente de entregar" y
+     * volvia a entrar sola: era imposible salir de la cuenta. Tambien borra el
+     * correo escrito, que no le corresponde ver a quien use el telefono despues.
+     */
+    fun sesionEntregada() {
+        _estado.value = LoginUiState()
+    }
 }

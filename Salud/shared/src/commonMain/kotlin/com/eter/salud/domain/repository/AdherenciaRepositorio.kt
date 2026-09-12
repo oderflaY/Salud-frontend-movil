@@ -1,5 +1,6 @@
 package com.eter.salud.domain.repository
 
+import com.eter.salud.domain.model.DiaDeAdherencia
 import com.eter.salud.domain.model.EstadoToma
 import com.eter.salud.domain.model.ResumenAdherencia
 import com.eter.salud.domain.model.TomaDelDia
@@ -30,6 +31,18 @@ interface AdherenciaRepositorio {
         estado: EstadoToma,
         instante: String,
     ): Result<Unit>
+
+    /**
+     * Cumplimiento dia a dia de la semana que termina en [fechaFinal].
+     *
+     * Devuelve siempre siete entradas en orden, incluidas las de los dias sin
+     * tratamiento: la franja del panel dibuja una casilla por dia y un hueco
+     * ausente descuadraria la semana entera.
+     */
+    suspend fun obtenerSemana(
+        idPaciente: String,
+        fechaFinal: String,
+    ): Result<List<DiaDeAdherencia>>
 
     /** Cumplimiento de los siete dias que terminan en [fechaFinal]. */
     suspend fun obtenerResumenSemanal(

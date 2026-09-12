@@ -8,18 +8,22 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,20 +56,30 @@ import com.eter.salud.presentation.agenda.AgendaMedicoViewModel
 import com.eter.salud.presentation.agenda.CeldaDelMes
 import com.eter.salud.presentation.agenda.RenglonDelDia
 import com.eter.salud.presentation.agenda.VistaCalendario
+import com.eter.salud.ui.componentes.AccionExtendidaFlotante
 import com.eter.salud.ui.componentes.BarraAccionInferior
+import com.eter.salud.ui.componentes.BloqueDeError
 import com.eter.salud.ui.componentes.BotonAccionPrincipal
+import com.eter.salud.ui.componentes.BotonAtras
 import com.eter.salud.ui.componentes.BotonSecundarioSalud
+import com.eter.salud.ui.componentes.CabeceraGrande
 import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
+import com.eter.salud.ui.componentes.GlifoSalud
+import com.eter.salud.ui.componentes.bordeDeTarjeta
+import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.componentes.margenInferiorSeguro
 import com.eter.salud.ui.theme.AreaTactilMinima
+import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.a11y_agenda_accion_agendar_cita
 import salud.shared.generated.resources.a11y_agenda_accion_anterior
 import salud.shared.generated.resources.a11y_agenda_accion_hoy
 import salud.shared.generated.resources.a11y_agenda_accion_siguiente
+import salud.shared.generated.resources.agenda_accion_agendar_cita
 import salud.shared.generated.resources.a11y_agenda_bloqueo_campo_nota
 import salud.shared.generated.resources.a11y_agenda_cargando
 import salud.shared.generated.resources.a11y_agenda_celda_mes
@@ -73,8 +88,6 @@ import salud.shared.generated.resources.a11y_agenda_leyenda
 import salud.shared.generated.resources.a11y_agenda_renglon_libre
 import salud.shared.generated.resources.a11y_agenda_renglon_ocupado
 import salud.shared.generated.resources.a11y_agenda_vista
-import salud.shared.generated.resources.a11y_boton_atras
-import salud.shared.generated.resources.accion_atras
 import salud.shared.generated.resources.agenda_accion_anterior
 import salud.shared.generated.resources.agenda_accion_cancelar_bloqueo
 import salud.shared.generated.resources.agenda_accion_hoy
@@ -120,7 +133,6 @@ import salud.shared.generated.resources.rango_horas
 fun AgendaMedicoScreen(
     viewModel: AgendaMedicoViewModel,
     modifier: Modifier = Modifier,
-    alVolver: () -> Unit = {},
     alAbrirExpediente: (Cita) -> Unit = {},
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
@@ -128,26 +140,18 @@ fun AgendaMedicoScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        // Cabecera grande y sin flecha, igual que las demas pestanas: la agenda
+        // es raiz de navegacion del portal medico, no una pantalla apilada.
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(Res.string.agenda_titulo),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.semantics { heading() },
-                    )
-                },
-                navigationIcon = {
-                    val descripcion = stringResource(Res.string.a11y_boton_atras)
-                    TextButton(
-                        onClick = alVolver,
-                        modifier = Modifier
-                            .heightIn(min = AreaTactilMinima)
-                            .semantics { contentDescription = descripcion },
-                    ) {
-                        Text(stringResource(Res.string.accion_atras))
-                    }
-                },
+            CabeceraGrande(
+                titulo = stringResource(Res.string.agenda_titulo),
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                    .padding(
+                        start = LocalEspaciadoSalud.current.amplio,
+                        end = LocalEspaciadoSalud.current.amplio,
+                        top = LocalEspaciadoSalud.current.medio,
+                    ),
             )
         },
         // La barra de bloqueo solo existe mientras hay un rango a medio marcar:
@@ -157,6 +161,14 @@ fun AgendaMedicoScreen(
             if (estado.hayBloqueoEnCurso) {
                 BarraDeBloqueo(estado = estado, viewModel = viewModel)
             }
+        },
+        floatingActionButton = {
+            AccionExtendidaFlotante(
+                etiqueta = stringResource(Res.string.agenda_accion_agendar_cita),
+                glifo = GlifoSalud.EVENTO,
+                descripcionAccesible = stringResource(Res.string.a11y_agenda_accion_agendar_cita),
+                alPulsar = viewModel::iniciarPropuestaCita,
+            )
         },
     ) { relleno ->
         Column(
@@ -184,7 +196,10 @@ fun AgendaMedicoScreen(
 
             when {
                 estado.cargando -> IndicadorCargando()
-                estado.errorCarga -> MensajeErrorCarga()
+                estado.errorCarga -> BloqueDeError(
+                    mensaje = stringResource(Res.string.agenda_estado_error),
+                    alReintentar = viewModel::reintentar,
+                )
                 else -> when (estado.vista) {
                     VistaCalendario.DIARIA -> VistaDiaria(
                         estado = estado,
@@ -199,7 +214,7 @@ fun AgendaMedicoScreen(
                         modifier = Modifier.weight(1f),
                     )
 
-                    VistaCalendario.SEMANAL -> VistaSemanal(
+                    VistaCalendario.DOS_SEMANAS -> VistaDosSemanas(
                         estado = estado,
                         alTocarCita = viewModel::abrirCita,
                         alTocarDia = viewModel::abrirDia,
@@ -227,6 +242,10 @@ fun AgendaMedicoScreen(
             alAbrirExpediente = alAbrirExpediente,
         )
     }
+
+    if (estado.proponiendoCita) {
+        HojaProponerCita(estado = estado, viewModel = viewModel)
+    }
 }
 
 // --------------------------------------------------------------- Cabeceras
@@ -247,7 +266,7 @@ private fun SelectorDeVista(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = colores.fondoCampo,
-        shape = RoundedCornerShape(espaciado.compacto + espaciado.minimo),
+        shape = FormaSalud.media,
     ) {
         Row(modifier = Modifier.padding(espaciado.minimo)) {
             VistaCalendario.entries.forEach { vista ->
@@ -261,7 +280,7 @@ private fun SelectorDeVista(
                         .clickable { alElegir(vista) }
                         .semantics { contentDescription = descripcion },
                     color = if (activa) MaterialTheme.colorScheme.surface else colores.fondoCampo,
-                    shape = RoundedCornerShape(espaciado.compacto),
+                    shape = FormaSalud.sutil,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
@@ -424,7 +443,7 @@ private fun RenglonDeHora(
                     .weight(1f)
                     .heightIn(min = AreaTactilMinima),
                 color = if (marcado) colores.fondoCitaEnCurso else colores.fondoCampo,
-                shape = RoundedCornerShape(espaciado.compacto),
+                shape = FormaSalud.sutil,
             ) {
                 Box(contentAlignment = Alignment.CenterStart) {
                     Text(
@@ -441,10 +460,10 @@ private fun RenglonDeHora(
     }
 }
 
-// ------------------------------------------------------------ Vista semanal
+// ------------------------------------------------------- Vista de dos semanas
 
 @Composable
-private fun VistaSemanal(
+private fun VistaDosSemanas(
     estado: AgendaMedicoUiState,
     alTocarCita: (Cita) -> Unit,
     alTocarDia: (String) -> Unit,
@@ -576,7 +595,7 @@ private fun CeldaDeDia(
             .padding(espaciado.minimo)
             .background(
                 color = if (esAncla) colores.fondoCitaEnCurso else MaterialTheme.colorScheme.background,
-                shape = RoundedCornerShape(espaciado.compacto),
+                shape = FormaSalud.sutil,
             )
             .clickable { alTocar(celda.fecha) }
             .semantics(mergeDescendants = true) { contentDescription = descripcion },
@@ -608,33 +627,33 @@ private fun CeldaDeDia(
 // ----------------------------------------------------------------- Tarjeta
 
 /**
- * Tarjeta de una cita. El estado va escrito ademas de en color: es la unica
- * forma de que el codigo de colores del requerimiento siga siendo legible sin
- * distinguir tonos.
+ * Tarjeta de una cita en el calendario.
+ *
+ * La superficie es la de cualquier tarjeta del sistema, NO el color del estado:
+ * con la superficie tenida, una semana llena convertia el calendario en un
+ * mosaico de colores donde ya no se leia ningun nombre. El estado lo lleva la
+ * insignia, que es donde el ojo lo busca.
  */
 @Composable
 private fun TarjetaDeCita(cita: Cita, modifier: Modifier = Modifier) {
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
-    val (tinta, fondo) = colores.parDeEstado(cita.estado)
 
     Surface(
         modifier = modifier.heightIn(min = AreaTactilMinima),
-        color = fondo,
-        shape = RoundedCornerShape(espaciado.compacto),
+        color = colores.fondoTarjeta,
+        shape = FormaSalud.grande,
+        border = bordeDeTarjeta(),
+        shadowElevation = elevacionDeTarjeta(),
     ) {
         Column(Modifier.padding(espaciado.medio)) {
             Text(
                 text = tituloDe(cita),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(Modifier.height(espaciado.minimo))
-            Text(
-                text = stringResource(cita.estado.recurso()),
-                style = MaterialTheme.typography.labelMedium,
-                color = tinta,
-            )
+            Spacer(Modifier.height(espaciado.compacto))
+            InsigniaEstado(cita.estado)
         }
     }
 }
@@ -755,20 +774,6 @@ private fun IndicadorCargando() {
     }
 }
 
-@Composable
-private fun MensajeErrorCarga() {
-    val espaciado = LocalEspaciadoSalud.current
-    Text(
-        text = stringResource(Res.string.agenda_estado_error),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.error,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(espaciado.amplio)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-    )
-}
 
 @Composable
 private fun AvisoErrorAccion() {

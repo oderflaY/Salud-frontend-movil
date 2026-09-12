@@ -19,6 +19,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -33,12 +34,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eter.salud.presentation.onboarding.OnboardingPacienteViewModel
 import com.eter.salud.presentation.onboarding.OnboardingUiState
 import com.eter.salud.presentation.onboarding.PasoOnboarding
+import com.eter.salud.ui.componentes.BotonAtras
 import com.eter.salud.ui.componentes.BarraAccionInferior
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.accion_cerrar_sesion
 import salud.shared.generated.resources.a11y_boton_atras
 import salud.shared.generated.resources.a11y_boton_continuar
 import salud.shared.generated.resources.a11y_boton_finalizar
@@ -76,6 +79,12 @@ fun OnboardingPacienteScreen(
     viewModel: OnboardingPacienteViewModel,
     modifier: Modifier = Modifier,
     alTerminarRegistro: () -> Unit = {},
+    /**
+     * Salida del cuestionario cuando es obligatorio (cuenta recien creada). Solo
+     * se ofrece en la primera pantalla: a media captura, "Cerrar sesion" al lado
+     * de "Siguiente" invitaria a un toque equivocado que tira lo escrito.
+     */
+    alCerrarSesion: (() -> Unit)? = null,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
@@ -85,6 +94,9 @@ fun OnboardingPacienteScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
                 title = {
                     val numero = estado.numeroPregunta
                     Text(
@@ -97,15 +109,21 @@ fun OnboardingPacienteScreen(
                     )
                 },
                 navigationIcon = {
+                    // Aqui la flecha retrocede una PREGUNTA, no una pantalla, y
+                    // solo aparece si hay pregunta anterior: en la primera, una
+                    // flecha apagada invitaria a salir del cuestionario.
                     if (estado.puedeRetroceder) {
-                        val descripcion = stringResource(Res.string.a11y_boton_atras)
-                        TextButton(
-                            onClick = viewModel::retroceder,
-                            modifier = Modifier
-                                .heightIn(min = AreaTactilMinima)
-                                .semantics { contentDescription = descripcion },
-                        ) {
-                            Text(stringResource(Res.string.accion_atras))
+                        BotonAtras(alPulsar = viewModel::retroceder)
+                    }
+                },
+                actions = {
+                    if (alCerrarSesion != null && !estado.puedeRetroceder) {
+                        TextButton(onClick = alCerrarSesion) {
+                            Text(
+                                text = stringResource(Res.string.accion_cerrar_sesion),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = colores.acentoAccion,
+                            )
                         }
                     }
                 },

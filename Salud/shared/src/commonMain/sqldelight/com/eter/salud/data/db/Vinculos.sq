@@ -1,0 +1,33 @@
+-- ============================================================================
+-- Que paciente esta vinculado con que medico.
+--
+-- De aqui salen dos vistas de la misma relacion: la bandeja del paciente
+-- (sus medicos) y la cartera del medico (sus pacientes).
+-- ============================================================================
+
+CREATE TABLE vinculo (
+    id_paciente TEXT NOT NULL,
+    id_medico TEXT NOT NULL,
+    -- Instante ISO 8601 UTC: ordena la bandeja por antiguedad.
+    creado_en TEXT NOT NULL,
+    PRIMARY KEY (id_paciente, id_medico)
+);
+
+CREATE INDEX vinculo_por_medico ON vinculo(id_medico);
+
+medicosDe:
+SELECT id_medico
+FROM vinculo
+WHERE id_paciente = ?
+ORDER BY creado_en, rowid;
+
+pacientesDe:
+SELECT id_paciente
+FROM vinculo
+WHERE id_medico = ?
+ORDER BY creado_en, rowid;
+
+-- Vincularse dos veces con el mismo medico no abre una segunda conversacion.
+vincular:
+INSERT OR IGNORE INTO vinculo(id_paciente, id_medico, creado_en)
+VALUES (?, ?, ?);

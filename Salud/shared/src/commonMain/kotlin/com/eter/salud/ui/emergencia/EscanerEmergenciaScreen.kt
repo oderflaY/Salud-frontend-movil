@@ -144,10 +144,15 @@ private fun PantallaDeEscaneo(
     val colores = LocalColoresSalud.current
 
     Column(modifier = modifier.fillMaxSize()) {
+        // La zona de lectura se separa del resto con el velo de acento. No es
+        // decoracion: marca fisicamente donde hay que acercar la tarjeta y
+        // concentra la mirada ahi, que es lo unico que importa en los segundos
+        // en que un paramedico usa esta pantalla.
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .background(colores.veloAcento)
                 .padding(espaciado.generoso),
             contentAlignment = Alignment.Center,
         ) {

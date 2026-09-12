@@ -36,13 +36,21 @@ class CitasRepositorioFalso(
     private val franjas: Result<List<FranjaAgenda>> = Result.success(FRANJAS_DEMO),
     private val resultadoReserva: Result<ReservaFranja>? = null,
     private val resultadoConfirmacion: Result<ConfirmacionCita>? = null,
-    private val agendaInicial: Result<List<Cita>> = Result.success(emptyList()),
+    agendaInicial: Result<List<Cita>> = Result.success(emptyList()),
     private val resultadoCambioEstado: Result<Cita>? = null,
     private val resultadoBloqueo: Result<Cita>? = null,
     private val resultadoReprogramacion: Result<Cita>? = null,
+    private val resultadoPropuesta: Result<Cita>? = null,
 ) : CitasRepositorio {
 
     private val flujo = MutableStateFlow(agendaInicial.getOrNull().orEmpty())
+
+    /**
+     * Resultado de la carga puntual. Es `var` y no `val` para poder simular que
+     * la red VUELVE: un doble que devuelve siempre el mismo fallo no permite
+     * probar un reintento con exito, que es justo lo que hay que garantizar.
+     */
+    private var resultadoDeCarga: Result<List<Cita>> = agendaInicial
 
     var franjasPedidas: Int = 0
         private set
@@ -53,6 +61,9 @@ class CitasRepositorioFalso(
     val estadosPedidos: MutableList<Pair<String, EstadoCita>> = mutableListOf()
     val bloqueosPedidos: MutableList<Triple<String, String, String>> = mutableListOf()
     val reprogramacionesPedidas: MutableList<Pair<String, String>> = mutableListOf()
+    val propuestasPedidas: MutableList<Triple<String, String, DatosContactoCita>> = mutableListOf()
+    val propuestasAceptadas: MutableList<String> = mutableListOf()
+    val propuestasRechazadas: MutableList<String> = mutableListOf()
 
     override suspend fun franjasLibres(
         idMedico: String,
@@ -99,7 +110,7 @@ class CitasRepositorioFalso(
 
     override fun agendaDelMedico(idMedico: String): Flow<List<Cita>> = flujo.asStateFlow()
 
-    override suspend fun cargarAgenda(idMedico: String): Result<List<Cita>> = agendaInicial
+    override suspend fun cargarAgenda(idMedico: String): Result<List<Cita>> = resultadoDeCarga
 
     override suspend fun cambiarEstado(idCita: String, nuevo: EstadoCita): Result<Cita> {
         estadosPedidos += idCita to nuevo
@@ -141,9 +152,54 @@ class CitasRepositorioFalso(
         return resultadoReprogramacion ?: Result.success(CITA_DEMO)
     }
 
-    /** Empuja una agenda nueva por el flujo, como haria el backend en tiempo real. */
+    override suspend fun proponerCita(
+        idMedico: String,
+        idPaciente: String,
+        idFranja: String,
+        contacto: DatosContactoCita,
+        ahora: String,
+    ): Result<Cita> {
+        propuestasPedidas += Triple(idPaciente, idFranja, contacto)
+        return resultadoPropuesta ?: Result.success(
+            CITA_DEMO.copy(
+                idCita = "cita_propuesta_${propuestasPedidas.size}",
+                idPaciente = idPaciente,
+                contacto = contacto,
+                estado = EstadoCita.PROPUESTA_MEDICO,
+            ),
+        )
+    }
+
+    override suspend fun aceptarPropuesta(idCita: String): Result<Cita> {
+        propuestasAceptadas += idCita
+        val resultado = resultadoPropuesta
+            ?: Result.success(flujo.value.first { it.idCita == idCita }.copy(estado = EstadoCita.CONFIRMADA))
+        resultado.getOrNull()?.let { actualizada ->
+            flujo.value = flujo.value.map { if (it.idCita == idCita) actualizada else it }
+        }
+        return resultado
+    }
+
+    override suspend fun rechazarPropuesta(idCita: String): Result<Cita> {
+        propuestasRechazadas += idCita
+        val resultado = resultadoPropuesta
+            ?: Result.success(flujo.value.first { it.idCita == idCita }.copy(estado = EstadoCita.CANCELADA))
+        resultado.getOrNull()?.let { actualizada ->
+            flujo.value = flujo.value.map { if (it.idCita == idCita) actualizada else it }
+        }
+        return resultado
+    }
+
+    /**
+     * Empuja una agenda nueva, como haria el backend en tiempo real.
+     *
+     * Repara ademas la carga puntual: si la red se cayo y vuelve, las dos vias
+     * de lectura tienen que coincidir. Dejar una en fallo y la otra en exito
+     * seria un doble que nunca podria existir en produccion.
+     */
     fun emitirAgenda(citas: List<Cita>) {
         flujo.value = citas
+        resultadoDeCarga = Result.success(citas)
     }
 
     companion object {
