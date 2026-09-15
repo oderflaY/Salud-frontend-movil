@@ -1,5 +1,15 @@
 package com.eter.salud.ui.chatmedico
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.eter.salud.domain.adjuntos.rememberAbridorDeAdjuntos
+import com.eter.salud.domain.adjuntos.rememberSelectorDeAdjuntos
+import com.eter.salud.ui.chat.BotonAdjuntar
+import com.eter.salud.ui.chat.ChipDeAdjunto
+import com.eter.salud.ui.chat.HojaAdjuntar
+import com.eter.salud.ui.chat.VistaPreviaAdjunto
+import salud.shared.generated.resources.a11y_chat_mensaje_con_adjunto
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -285,7 +295,7 @@ private fun MensajeDelChat(
         return
     }
 
-    val descripcion = if (mensaje.esPropio) {
+    val descripcionBase = if (mensaje.esPropio) {
         stringResource(Res.string.a11y_chatmedico_mensaje_propio, mensaje.texto, mensaje.horaLocal)
     } else {
         stringResource(
@@ -295,6 +305,13 @@ private fun MensajeDelChat(
             mensaje.horaLocal,
         )
     }
+    val adjunto = mensaje.adjunto
+    val descripcion = if (adjunto != null) {
+        descripcionBase + " " + stringResource(Res.string.a11y_chat_mensaje_con_adjunto, adjunto.nombre)
+    } else {
+        descripcionBase
+    }
+    val abridor = rememberAbridorDeAdjuntos()
 
     BurbujaMensaje(
         texto = mensaje.texto,
@@ -305,24 +322,49 @@ private fun MensajeDelChat(
         // color a la propiedad del mensaje.
         esDelMedico = mensaje.autor == AutorMensaje.MEDICO,
         descripcionAccesible = descripcion,
+        adjunto = adjunto?.let { archivo ->
+            { colorTexto -> ChipDeAdjunto(adjunto = archivo, colorTexto = colorTexto, abridor = abridor) }
+        },
     )
 }
 
-/** Campo expandible y boton de enviar. */
+/**
+ * Vista previa del adjunto, boton de adjuntar (foto, archivo o escaner), campo
+ * expandible y boton de enviar: lo mismo que el chat del paciente, porque el
+ * medico tambien manda recetas, ordenes de laboratorio y estudios.
+ */
 @Composable
 private fun FilaEnvio(estado: ChatMedicoUiState, viewModel: ChatMedicoViewModel) {
     val espaciado = LocalEspaciadoSalud.current
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
-    ) {
-        CampoMensaje(
-            valor = estado.textoEnCurso,
-            alCambiar = viewModel::actualizarTexto,
-            modifier = Modifier.weight(1f),
+    val selectorDeAdjuntos = rememberSelectorDeAdjuntos(estado.idConversacion)
+    var mostrandoHojaAdjuntar by remember { mutableStateOf(false) }
+
+    Column {
+        estado.adjuntoEnCurso?.let { adjunto ->
+            VistaPreviaAdjunto(adjunto = adjunto, alQuitar = viewModel::quitarAdjunto)
+            Spacer(Modifier.height(espaciado.compacto))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
+        ) {
+            BotonAdjuntar(alPulsar = { mostrandoHojaAdjuntar = true })
+            CampoMensaje(
+                valor = estado.textoEnCurso,
+                alCambiar = viewModel::actualizarTexto,
+                modifier = Modifier.weight(1f),
+            )
+            BotonEnviar(habilitado = estado.puedeEnviar, alPulsar = viewModel::enviarMensaje)
+        }
+    }
+
+    if (mostrandoHojaAdjuntar) {
+        HojaAdjuntar(
+            selector = selectorDeAdjuntos,
+            alAdjuntar = viewModel::adjuntar,
+            onDismissRequest = { mostrandoHojaAdjuntar = false },
         )
-        BotonEnviar(habilitado = estado.puedeEnviar, alPulsar = viewModel::enviarMensaje)
     }
 }
 

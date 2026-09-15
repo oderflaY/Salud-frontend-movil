@@ -1,8 +1,10 @@
 package com.eter.salud.presentation.chatmedico
 
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
 import com.eter.salud.domain.model.RiesgoPaciente
+import com.eter.salud.domain.model.TipoAdjunto
 import com.eter.salud.presentation.chat.ChatRepositorioFalso
 import com.eter.salud.presentation.onboarding.RelojFijo
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -211,5 +214,52 @@ class ChatMedicoViewModelTest {
         vm.actualizarTexto("Hola de nuevo")
 
         assertFalse(vm.estado.value.errorEnvio)
+    }
+
+    // ---------------------------------------------------------------- Adjuntos
+
+    private val receta = Adjunto(
+        idAdjunto = "adj_local_1",
+        tipo = TipoAdjunto.ESCANEO,
+        nombre = "orden_laboratorio.jpg",
+        rutaLocal = "memoria://adjuntos/orden_laboratorio.jpg",
+        tipoMime = "image/jpeg",
+    )
+
+    @Test
+    fun el_medico_puede_enviar_solo_un_adjunto_sin_texto() {
+        val repositorio = ChatRepositorioFalso()
+        val vm = viewModel(repositorio)
+
+        vm.adjuntar(receta)
+        assertTrue(vm.estado.value.puedeEnviar, "un adjunto solo ya es un mensaje")
+        vm.enviarMensaje()
+
+        assertEquals(receta, repositorio.ultimoAdjuntoEnviado)
+        assertNull(vm.estado.value.adjuntoEnCurso)
+        val historial = assertIs<HistorialChatUiState.ConMensajes>(vm.estado.value.historial)
+        assertEquals("orden_laboratorio.jpg", historial.mensajes.last().adjunto?.nombre)
+    }
+
+    @Test
+    fun si_el_envio_falla_el_adjunto_vuelve_al_campo() {
+        val vm = viewModel(ChatRepositorioFalso(resultadoEnvio = Result.failure(IllegalStateException("sin red"))))
+
+        vm.adjuntar(receta)
+        vm.enviarMensaje()
+
+        assertEquals(receta, vm.estado.value.adjuntoEnCurso, "perder el archivo elegido obligaria a buscarlo otra vez")
+        assertTrue(vm.estado.value.errorEnvio)
+    }
+
+    @Test
+    fun quitar_el_adjunto_lo_retira_antes_de_enviar() {
+        val vm = viewModel()
+
+        vm.adjuntar(receta)
+        vm.quitarAdjunto()
+
+        assertNull(vm.estado.value.adjuntoEnCurso)
+        assertFalse(vm.estado.value.puedeEnviar)
     }
 }

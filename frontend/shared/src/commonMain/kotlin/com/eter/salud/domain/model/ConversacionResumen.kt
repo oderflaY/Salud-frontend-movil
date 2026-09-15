@@ -13,7 +13,7 @@ data class ConversacionResumen(
     val idConversacion: String,
     val idMedico: String,
     val nombreMedico: String,
-    val especialidad: Especialidad,
+    val especialidad: Especialidad?,
     /** Texto del ultimo mensaje, sin recortar: el recorte es decision de la Vista. */
     val ultimoMensaje: String,
     /** Instante ISO 8601 UTC del ultimo mensaje. La Vista lo pasa a hora local. */

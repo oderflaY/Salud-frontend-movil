@@ -38,6 +38,18 @@ exactamente con los DTOs de ese documento salvo donde se anota lo contrario.
 `SesionPaciente`: `{"idPaciente","token","requiereOnboarding"}`.
 `SesionProfesional`: `{"idMedico","token","nombre","apellidos","tratamiento","estadoVerificacion"}`.
 
+### Baja de cuenta (Axum, sin sesión)
+
+| Método | Endpoint | Body | Respuesta |
+|---|---|---|---|
+| POST | `/auth/pacientes/baja` | `{"correo","contrasena"}` | 204 · 401 `CREDENCIALES_INVALIDAS` |
+| POST | `/auth/profesionales/baja` | `{"correo","contrasena"}` | 204 · 401 `CREDENCIALES_INVALIDAS` |
+| POST | `/auth/pacientes/contrasena` | Bearer de paciente · `{"contrasenaActual"?,"contrasenaNueva"}` | 200 `SesionPaciente` con token nuevo · 422 `CONTRASENA_NO_VALIDA` · 401 `CREDENCIALES_INVALIDAS` / `CONTRASENA_TEMPORAL_VENCIDA` |
+| GET | `/auth/eliminar-cuenta` | — | Página HTML pública que exige Google Play |
+
+Pide las credenciales otra vez a propósito (sirve a la app y a la página web,
+donde no hay sesión). Qué se borra y qué se conserva: `db/migrations/0012_baja_de_cuentas.sql`.
+
 ## 3. Expediente del paciente
 
 | Método | Endpoint | Notas |
@@ -94,6 +106,23 @@ Sujeto a rate limit por IP (1 req/s, ráfaga de 10) — pasado eso responde 429.
 | `/rpc/enviar_mensaje` | `{"id_conversacion","texto_mensaje","instante_enviado","autor_remitente"}` (`autor_remitente`: `PACIENTE\|MEDICO`) | array con 1 `MensajeChat` |
 | `/rpc/marcar_conversacion_leida` | `{"id_conversacion"}` | 204 |
 | `/rpc/obtener_respuesta_automatica` | `{"id_conversacion","instante_recibido"}` | array con 1 `MensajeChat` (idempotente: la 2ª llamada devuelve el mismo mensaje) |
+| `/rpc/mensajes_sin_leer` | `{"id_conversacion"}` | integer: mensajes de la otra parte posteriores a tu última lectura |
+
+`enviar_mensaje` acepta además `"id_adjunto"` (opcional), y `MensajeChat`
+trae `"adjunto"`: `{"idAdjunto","tipo","nombre","tipoMime","url"}` o `null`.
+El `autor_remitente` tiene que coincidir con el rol del JWT (400 si no): un
+paciente no puede firmar como `MEDICO`.
+
+### Adjuntos (Axum)
+
+| Método | Endpoint | Body | Respuesta |
+|---|---|---|---|
+| POST | `/chat/{idConversacion}/adjuntos` | `multipart/form-data`: `tipo` (`FOTO`\|`ARCHIVO`\|`ESCANEO`) y `archivo` | `{"idAdjunto","tipo","nombre","tipoMime","url"}` · 413 `ADJUNTO_DEMASIADO_GRANDE` (> 10 MB) |
+| GET | `/chat/{idConversacion}/adjuntos/{idAdjunto}` | — | el binario, con `Content-Disposition: attachment` y `nosniff` |
+
+Solo participantes de la conversación. `url` es relativa: el cliente la
+resuelve contra su `BASE_URL`. Flujo: subir, y luego `enviar_mensaje` con el
+`id_adjunto` recibido.
 
 Nota: los nombres de parámetro no son `texto`/`instante`/`autor` sino
 `texto_mensaje`/`instante_enviado`/`autor_remitente` — Postgres no permite un
@@ -114,6 +143,21 @@ sí es `texto`/`instante`/`autor` tal como dice el contrato.
 | `/rpc/cambiar_estado` | `{"id_cita","nuevo_estado"}` | `Cita` | médico |
 | `/rpc/bloquear_horario` | `{"id_medico","fecha","hora_inicio","hora_fin","nota"}` | array `Cita` (una por franja bloqueada) | médico |
 | `/rpc/reprogramar` | `{"id_cita","id_franja_nueva","ahora"}` | `Cita` (vuelve a `PENDIENTE`) | paciente o médico |
+
+### Propuesta de cita desde el médico
+
+| Endpoint | Body | Respuesta | Quién |
+|---|---|---|---|
+| `/rpc/proponer_cita` | `{"id_franja","id_paciente","contacto":{...},"ahora"}` | `Cita` en `PROPUESTA_MEDICO` | médico, franja propia, paciente vinculado |
+| `/rpc/aceptar_propuesta` | `{"id_cita"}` | `Cita` en `CONFIRMADA` | el paciente destinatario |
+| `/rpc/rechazar_propuesta` | `{"id_cita"}` | `Cita` en `CANCELADA` (libera la franja) | el paciente destinatario |
+
+409 `PROPUESTA_NO_DISPONIBLE` si la cita ya no está en propuesta. El médico
+nunca confirma su propia propuesta: `cambiar_estado` sobre una
+`PROPUESTA_MEDICO` solo admite `CANCELADA`.
+
+El canal `agenda:{idMedico}` avisa con `{"idCita"}` (o `{}` al bloquear), no
+con la agenda completa: el cliente vuelve a llamar `cargar_agenda`.
 
 `canalesNotificados` siempre viene `[]`: no hay integración de correo/WhatsApp
 implementada todavía (se reporta honestamente, no se simula éxito).
@@ -169,6 +213,7 @@ endpoint.
 |---|---|---|---|---|
 | POST | `/chat/{idConversacion}/resumen` | (sin body) | `{"resumen": string}` | paciente o médico, solo si participan en esa conversación |
 | POST | `/chat/traducir` | `{"texto","idiomaDestino"}` | `{"traduccion": string}` | cualquier usuario autenticado, texto arbitrario |
+| POST | `/chat/mensajes/{idMensaje}/resumen-ia` | (sin body) | `{"puntos":[{"etiqueta","valor"}],"mensajeOriginal"}` | participantes de esa conversación |
 
 Nota: `/chat/{id}/resumen` da 401 si el llamador no es participante de la
 conversación (misma verificación en Rust que usa `realtime::ws` para los
@@ -177,3 +222,14 @@ canales — esta conexión de Axum a Postgres no tiene el GUC
 (502) significa que la llamada a DeepSeek falló (red, cuota agotada, etc.) —
 se reintenta del lado del cliente si tiene sentido, no es un error del
 paciente/médico.
+
+## Dashboard web del médico (`/api/v1`, Axum)
+
+Contrato completo, con los tipos TypeScript, en [dashboard-medico.md](dashboard-medico.md).
+Entra el médico con su cuenta de la app y ve solo a sus pacientes vinculados.
+`login` del paciente devuelve además `requiereCambioContrasena`: es `true` tras un reset desde el
+dashboard, y hasta cambiarla la API responde `403 CAMBIO_CONTRASENA_REQUERIDO` a todo lo demás.
+
+**Sesiones revocables (0016).** Cualquier token emitido antes de un reset, o de una cuenta bloqueada o
+dada de baja, se rechaza con `401 SESION_REVOCADA` / `CUENTA_INACTIVA`: en PostgREST (`db-pre-request`
+`app.verificar_sesion`), en Axum y en el WebSocket.

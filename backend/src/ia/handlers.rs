@@ -5,22 +5,10 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::jwt, error::AppError, state::AppState};
+use crate::{auth::sesion, error::AppError, state::AppState};
 
-use super::deepseek::ClienteDeepSeek;
+use super::deepseek::{ClienteDeepSeek, PuntoResumen};
 
-/// Misma razón que `realtime::ws::canal_autorizado`: la conexión de Axum a
-/// Postgres es la del rol dueño y no pasa por PostgREST, así que no existe el
-/// GUC `request.jwt.claims` que las funciones RPC leen — el JWT se valida a
-/// mano aquí, a partir del header `Authorization: Bearer <token>`.
-fn autenticar(headers: &HeaderMap, jwt_secret: &str) -> Result<jwt::Claims, AppError> {
-    let valor = headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .ok_or(AppError::NoAutorizado)?;
-    let token = valor.strip_prefix("Bearer ").ok_or(AppError::NoAutorizado)?;
-    jwt::verificar(token, jwt_secret).map_err(|_| AppError::NoAutorizado)
-}
 
 fn cliente_deepseek(state: &AppState) -> Result<ClienteDeepSeek, AppError> {
     let api_key = state
@@ -58,7 +46,7 @@ pub async fn resumir_conversacion(
     Path(id_conversacion): Path<String>,
     headers: HeaderMap,
 ) -> Result<Json<RespuestaResumen>, AppError> {
-    let claims = autenticar(&headers, &state.config.jwt_secret)?;
+    let claims = sesion::autenticar(&headers, &state).await?;
     let cliente = cliente_deepseek(&state)?;
 
     let autorizado = sqlx::query_scalar::<_, bool>(
@@ -122,7 +110,7 @@ pub async fn traducir_texto(
     headers: HeaderMap,
     Json(body): Json<SolicitudTraduccion>,
 ) -> Result<Json<RespuestaTraduccion>, AppError> {
-    autenticar(&headers, &state.config.jwt_secret)?;
+    sesion::autenticar(&headers, &state).await?;
 
     if body.texto.trim().is_empty() || body.idioma_destino.trim().is_empty() {
         return Err(AppError::SolicitudInvalida);
@@ -131,4 +119,38 @@ pub async fn traducir_texto(
     let cliente = cliente_deepseek(&state)?;
     let traduccion = cliente.traducir(&body.texto, &body.idioma_destino).await?;
     Ok(Json(RespuestaTraduccion { traduccion }))
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RespuestaResumenClinico {
+    pub puntos: Vec<PuntoResumen>,
+    pub mensaje_original: String,
+}
+
+/// `POST /chat/mensajes/{idMensaje}/resumen-ia` — puntos clinicos de un
+/// mensaje largo del paciente, para la tarjeta de resumen del chat del medico.
+/// Solo para quien participa en esa conversacion. Un mensaje inexistente y uno
+/// ajeno responden igual, para no confirmar que un id existe.
+pub async fn resumir_mensaje(
+    State(state): State<AppState>,
+    Path(id_mensaje): Path<String>,
+    headers: HeaderMap,
+) -> Result<Json<RespuestaResumenClinico>, AppError> {
+    let claims = sesion::autenticar(&headers, &state).await?;
+
+    let texto: String = sqlx::query_scalar(
+        "select m.texto from app.mensajes m
+         join app.conversaciones c on c.id_conversacion = m.id_conversacion
+         where m.id_mensaje = $1 and (c.id_paciente = $2 or c.id_medico = $2)",
+    )
+    .bind(&id_mensaje)
+    .bind(&claims.sub)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NoAutorizado)?;
+
+    let cliente = cliente_deepseek(&state)?;
+    let puntos = cliente.resumir_mensaje_clinico(&texto).await?;
+    Ok(Json(RespuestaResumenClinico { puntos, mensaje_original: texto }))
 }

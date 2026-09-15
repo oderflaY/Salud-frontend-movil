@@ -15,5 +15,6 @@ enum class ErrorCampoLogin {
 enum class ErrorAutenticacion {
     CREDENCIALES_INVALIDAS,
     CUENTA_BLOQUEADA,
+    CONTRASENA_TEMPORAL_VENCIDA,
     SIN_CONEXION,
 }

@@ -19,6 +19,22 @@ pub struct Config {
     pub deepseek_api_key: Option<String>,
     pub deepseek_base_url: String,
     pub deepseek_modelo: String,
+    /// Orígenes web que pueden llamar a `/api/v1` desde el navegador (el
+    /// dashboard del médico). La app móvil no pasa por CORS. `*` abre a
+    /// cualquiera: solo para pruebas, nunca en producción.
+    pub cors_origenes: Vec<String>,
+}
+
+/// Vite en desarrollo (`npm run dev`) y en vista previa (`npm run preview`).
+pub const CORS_ORIGENES_POR_DEFECTO: &str =
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173";
+
+pub fn separar_origenes(valor: &str) -> Vec<String> {
+    valor
+        .split(',')
+        .map(|o| o.trim().trim_end_matches('/').to_string())
+        .filter(|o| !o.is_empty())
+        .collect()
 }
 
 impl Config {
@@ -38,7 +54,26 @@ impl Config {
             deepseek_base_url: env::var("DEEPSEEK_BASE_URL")
                 .unwrap_or_else(|_| "https://api.deepseek.com".to_string()),
             deepseek_modelo: env::var("DEEPSEEK_MODELO").unwrap_or_else(|_| "deepseek-chat".to_string()),
+            cors_origenes: separar_origenes(
+                &env::var("CORS_ORIGENES")
+                    .ok()
+                    .filter(|v| !v.trim().is_empty())
+                    .unwrap_or_else(|| CORS_ORIGENES_POR_DEFECTO.to_string()),
+            ),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn los_origenes_se_separan_por_coma_y_pierden_la_barra_final() {
+        assert_eq!(
+            separar_origenes(" https://panel.salud.mx/ , http://localhost:5173,,"),
+            vec!["https://panel.salud.mx", "http://localhost:5173"]
+        );
     }
 }
 

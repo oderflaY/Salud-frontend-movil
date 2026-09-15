@@ -59,6 +59,7 @@ async fn preparar_entorno() -> (ContainerAsync<Postgres>, Router) {
         deepseek_api_key: None,
         deepseek_base_url: "https://api.deepseek.com".to_string(),
         deepseek_modelo: "deepseek-chat".to_string(),
+        cors_origenes: vec!["http://localhost:5173".to_string()],
     };
 
     let state = AppState {
@@ -225,4 +226,115 @@ async fn alta_de_profesional_valida_tratamiento_y_unicidad_de_cedula() {
         .await
         .unwrap();
     assert_eq!(respuesta_mal.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn baja_de_paciente_exige_la_contrasena_y_libera_el_correo() {
+    let (_contenedor, app) = preparar_entorno().await;
+    let correo = "baja.integracion@example.com";
+    let credenciales = json!({ "correo": correo, "contrasena": "clave-super-segura" });
+
+    let alta = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/pacientes", credenciales.clone()))
+        .await
+        .unwrap();
+    assert_eq!(alta.status(), StatusCode::OK);
+
+    // Sin la contraseña correcta no se borra nada.
+    let intento = app
+        .clone()
+        .oneshot(peticion_json(
+            "POST",
+            "/auth/pacientes/baja",
+            json!({ "correo": correo, "contrasena": "otra-clave" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(intento.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(cuerpo_json(intento).await["message"], "CREDENCIALES_INVALIDAS");
+
+    let baja = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/pacientes/baja", credenciales.clone()))
+        .await
+        .unwrap();
+    assert_eq!(baja.status(), StatusCode::NO_CONTENT);
+
+    // La cuenta ya no entra, y darla de baja otra vez tampoco la encuentra.
+    let login = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/pacientes/sesion", credenciales.clone()))
+        .await
+        .unwrap();
+    assert_eq!(login.status(), StatusCode::UNAUTHORIZED);
+    let repetida = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/pacientes/baja", credenciales.clone()))
+        .await
+        .unwrap();
+    assert_eq!(repetida.status(), StatusCode::UNAUTHORIZED);
+
+    // El correo queda libre: la misma persona puede volver a registrarse.
+    let realta = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/pacientes", credenciales))
+        .await
+        .unwrap();
+    assert_eq!(realta.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn baja_de_profesional_lo_saca_del_acceso() {
+    let (_contenedor, app) = preparar_entorno().await;
+    let correo = "medico.baja@example.com";
+    let alta = json!({
+        "correo": correo,
+        "contrasena": "clave-super-segura",
+        "nombre": "Elena",
+        "apellidos": "Ruiz",
+        "tratamiento": "Dra.",
+        "cedulaProfesional": "CED-BAJA-1",
+    });
+    let respuesta = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/profesionales", alta))
+        .await
+        .unwrap();
+    assert_eq!(respuesta.status(), StatusCode::OK);
+
+    let credenciales = json!({ "correo": correo, "contrasena": "clave-super-segura" });
+    let baja = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/profesionales/baja", credenciales.clone()))
+        .await
+        .unwrap();
+    assert_eq!(baja.status(), StatusCode::NO_CONTENT);
+
+    let login = app
+        .clone()
+        .oneshot(peticion_json("POST", "/auth/profesionales/sesion", credenciales))
+        .await
+        .unwrap();
+    assert_eq!(login.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn la_pagina_publica_de_baja_se_sirve_sin_sesion() {
+    let (_contenedor, app) = preparar_entorno().await;
+    let respuesta = app
+        .oneshot(
+            Request::builder()
+                .uri("/auth/eliminar-cuenta")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(respuesta.status(), StatusCode::OK);
+    let bytes = respuesta.into_body().collect().await.unwrap().to_bytes();
+    let html = String::from_utf8(bytes.to_vec()).unwrap();
+    // Play exige que la pagina diga que se borra y que se conserva.
+    assert!(html.contains("Qué se borra"));
+    assert!(html.contains("Qué se conserva"));
 }

@@ -2,8 +2,12 @@ pub mod handlers;
 pub mod jwt;
 pub mod models;
 pub mod password;
+pub mod sesion;
 
-use axum::{routing::post, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
 use crate::state::AppState;
 
@@ -18,6 +22,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/auth/pacientes", post(handlers::crear_cuenta_paciente))
         .route(
+            "/auth/pacientes/contrasena",
+            post(handlers::cambiar_contrasena_paciente),
+        )
+        .route(
             "/auth/profesionales/sesion",
             post(handlers::iniciar_sesion_profesional),
         )
@@ -25,4 +33,10 @@ pub fn router() -> Router<AppState> {
             "/auth/profesionales",
             post(handlers::crear_cuenta_profesional),
         )
+        .route("/auth/pacientes/baja", post(handlers::dar_de_baja_paciente))
+        .route(
+            "/auth/profesionales/baja",
+            post(handlers::dar_de_baja_profesional),
+        )
+        .route("/auth/eliminar-cuenta", get(handlers::pagina_eliminar_cuenta))
 }

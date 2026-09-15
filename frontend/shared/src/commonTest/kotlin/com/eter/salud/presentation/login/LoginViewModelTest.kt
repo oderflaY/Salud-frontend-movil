@@ -251,6 +251,31 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun una_contrasena_temporal_vencida_se_explica_y_se_borra() {
+        // Reintentar con la misma no sirve: hay que pedirle otra al medico.
+        val vm = viewModel(falloPor(MotivoFalloAutenticacion.CONTRASENA_TEMPORAL_VENCIDA))
+        vm.actualizarCorreo("paciente@correo.com")
+        vm.actualizarContrasena("k7m4p-9qx2h")
+
+        vm.iniciarSesion()
+
+        assertEquals(ErrorAutenticacion.CONTRASENA_TEMPORAL_VENCIDA, vm.estado.value.errorAutenticacion)
+        assertEquals("", vm.estado.value.contrasena)
+    }
+
+    @Test
+    fun entrar_con_la_temporal_entrega_la_sesion_con_la_marca_de_cambio() {
+        val sesion = SesionPaciente("pac_1", "jwt", requiereOnboarding = false, requiereCambioContrasena = true)
+        val vm = viewModel(AutenticacionRepositorioFalso(Result.success(sesion)))
+        vm.actualizarCorreo("paciente@correo.com")
+        vm.actualizarContrasena("k7m4p-9qx2h")
+
+        vm.iniciarSesion()
+
+        assertEquals(true, vm.estado.value.sesion?.requiereCambioContrasena)
+    }
+
+    @Test
     fun descartar_el_error_lo_retira_del_estado_para_reintentar() {
         val vm = viewModel(falloPor(MotivoFalloAutenticacion.SIN_CONEXION))
         vm.actualizarCorreo("paciente@correo.com")

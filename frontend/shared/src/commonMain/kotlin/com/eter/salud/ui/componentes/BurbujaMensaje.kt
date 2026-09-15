@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +49,12 @@ fun BurbujaMensaje(
     esDelMedico: Boolean,
     descripcionAccesible: String,
     modifier: Modifier = Modifier,
+    /**
+     * El adjunto del mensaje (el rotulo del archivo), pintado sobre el texto con
+     * el mismo color que el texto de la burbuja. Un mensaje puede ser solo un
+     * adjunto: entonces el texto va vacio y no se pinta.
+     */
+    adjunto: (@Composable (colorTexto: Color) -> Unit)? = null,
 ) {
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
@@ -81,12 +88,16 @@ fun BurbujaMensaje(
                     vertical = espaciado.compacto,
                 ),
                 horizontalAlignment = if (esPropio) Alignment.End else Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(espaciado.minimo),
             ) {
-                Text(
-                    text = texto,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colorTexto,
-                )
+                adjunto?.invoke(colorTexto)
+                if (texto.isNotBlank()) {
+                    Text(
+                        text = texto,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorTexto,
+                    )
+                }
                 if (horaLocal.isNotBlank()) {
                     Text(
                         text = horaLocal,

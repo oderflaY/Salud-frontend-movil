@@ -304,7 +304,7 @@
     <string name="a11y_login_mostrar_contrasena">Show the password on screen</string>
     <string name="a11y_login_ocultar_contrasena">Hide the password</string>
     <string name="a11y_login_accion_entrar">Sign in with the email and password entered</string>
-    <string name="a11y_login_accion_recuperar">Recover your password by email</string>
+    <string name="a11y_login_accion_recuperar">How to recover access to your account</string>
     <string name="a11y_login_accion_registrarse">Create a new patient account</string>
     <string name="a11y_login_autenticando">Verifying your details, please wait</string>
     <string name="error_correo_vacio">Enter your email address</string>
@@ -348,6 +348,13 @@
     <string name="home_acceso_completar_perfil">Complete my emergency profile</string>
     <string name="home_acceso_historial">My medical history</string>
     <string name="a11y_home_acceso_completar_perfil">Open the setup for your emergency profile</string>
+    <string name="home_recordatorios_apagados_titulo">Your reminders are off</string>
+    <string name="home_recordatorios_apagados_descripcion">Turn on notifications so the app reminds you of each dose on time, even when it is closed.</string>
+    <string name="home_recordatorios_tardios_titulo">Your reminders may arrive late</string>
+    <string name="home_recordatorios_tardios_descripcion">Allow exact alarms so the reminder rings right at your medicine time.</string>
+    <string name="home_recordatorios_accion_activar">Turn on reminders</string>
+    <string name="home_recordatorios_accion_exactas">Allow exact alarms</string>
+    <string name="a11y_home_activar_recordatorios">Turn on medication reminders</string>
     <string name="a11y_home_acceso_historial">Open your medical history and profile settings</string>
     <string name="a11y_home_estado_perfil">Emergency profile status: %1$s</string>
     <string name="home_saludo_con_nombre">Hello, %1$s</string>
@@ -512,6 +519,7 @@
     <string name="directorio_especialidad_endocrinologia">Endocrinology</string>
     <string name="directorio_especialidad_neumologia">Pulmonology</string>
     <string name="directorio_especialidad_neurologia">Neurology</string>
+    <string name="directorio_especialidad_sin_registrar">Specialty not provided</string>
     <string name="directorio_sin_doctores">No doctors available</string>
     <string name="directorio_sin_resultados">We found no doctors matching that filter</string>
     <string name="directorio_accion_contactar">Contact</string>
@@ -550,6 +558,8 @@
     <string name="chat_adjunto_tipo_archivo">File</string>
     <string name="chat_adjunto_tipo_escaneo">Scanned document</string>
     <string name="chat_adjunto_accion_quitar">Remove</string>
+    <string name="chat_adjunto_no_se_pudo_abrir">No app can open it, or it is still downloading</string>
+    <string name="a11y_chat_adjunto_abrir">Open %1$s</string>
     <string name="a11y_chat_adjunto_quitar">Remove %1$s before sending</string>
     <string name="a11y_chat_mensaje_con_adjunto">With an attachment: %1$s</string>
 
@@ -827,6 +837,26 @@
     <string name="accion_cerrar_sesion">Sign out</string>
     <string name="config_cerrar_sesion_apoyo">Your record, doses and appointments stay saved on this phone. They will be here when you sign back in.</string>
     <string name="a11y_accion_cerrar_sesion">Sign out. Your data stays saved on this phone</string>
+    <string name="config_baja_apoyo">Permanently removes your access. Your medical record is kept for 5 years, as the law requires, and then deleted automatically.</string>
+    <string name="config_baja_accion">Delete account</string>
+    <string name="a11y_config_baja_accion">Permanently delete your account</string>
+    <string name="config_baja_titulo">Delete your account</string>
+    <string name="config_baja_se_borra_paciente">Deleted right away: your access, phone number, emergency contacts, CURP and NSS. Your emergency card stops working, no doctor can see your information again, and your upcoming appointments are cancelled.</string>
+    <string name="config_baja_se_conserva_paciente">Your medical record is kept for 5 years, as required by NOM-004. Nobody can open it from the app during that time.</string>
+    <string name="config_baja_se_borra_profesional">Deleted right away: your access, university and schedule. You leave the directory, lose access to your patients' records, and your upcoming appointments are cancelled.</string>
+    <string name="config_baja_se_conserva_profesional">Your name and license number stay on the prescriptions and appointments you issued: they are part of your patients' records.</string>
+    <string name="config_baja_correo">Email</string>
+    <string name="a11y_config_baja_correo">Your account email</string>
+    <string name="config_baja_contrasena">Password</string>
+    <string name="a11y_config_baja_contrasena">Your account password</string>
+    <string name="config_baja_confirmacion">I understand this is permanent and cannot be undone</string>
+    <string name="config_baja_boton">Delete my account</string>
+    <string name="config_baja_boton_enviando">Deleting your account</string>
+    <string name="a11y_config_baja_boton">Permanently delete my account</string>
+    <string name="config_baja_cancelar">Cancel</string>
+    <string name="a11y_config_baja_cancelar">Cancel account deletion</string>
+    <string name="config_baja_error_credenciales">The email or password does not match.</string>
+    <string name="config_baja_error_conexion">The account could not be deleted. Check your connection and try again.</string>
     <string name="accion_cancelar_generico">Cancel</string>
     <string name="diario_titulo">My diary</string>
     <string name="diario_descripcion">Note how you feel. Your doctor will see it alongside your consultations.</string>
@@ -1030,6 +1060,7 @@
     <string name="a11y_agenda_pac_propuesta_aceptar">Accept the appointment %1$s proposes on %2$s at %3$s</string>
     <string name="a11y_agenda_pac_propuesta_rechazar">Decline the appointment %1$s proposes on %2$s at %3$s</string>
     <string name="agenda_pac_propuesta_error">Couldn't respond to the appointment. Try again.</string>
+    <string name="agenda_pac_propuesta_retirada">Your doctor already withdrew this proposal, or you had already answered it.</string>
     <string name="agenda_pac_citas_no_disponibles">We couldn't load your appointments. Your medicines are up to date.</string>
     <string name="agenda_pac_cargando">Loading your schedule</string>
     <string name="agenda_pac_error">We couldn't load your schedule. Check your connection.</string>
@@ -1042,5 +1073,37 @@
     <string name="a11y_agenda_pac_con_cita">you have an appointment</string>
     <string name="a11y_agenda_pac_seleccionado">selected day</string>
     <string name="a11y_agenda_pac_evento">At %1$s. %2$s. %3$s. %4$s</string>
+
+    <!-- Temporary password and password change (reset from the doctor's web panel) -->
+    <string name="error_contrasena_temporal_vencida">Your temporary password has expired. Ask your doctor to reset your account again.</string>
+    <string name="login_recuperar_titulo">Forgot your password</string>
+    <string name="login_recuperar_cuerpo">Ask your doctor to reset your account from their panel. They'll give you a temporary password: sign in with your email and that password, and the app will ask you to choose a new one.</string>
+    <string name="login_recuperar_entendido">Got it</string>
+    <string name="login_aviso_sesion_cerrada">Your session was closed for security. Please sign in again.</string>
+    <string name="a11y_login_aviso_sesion_cerrada">Notice: your session was closed for security. Tap to dismiss.</string>
+    <string name="contrasena_obligatoria_titulo">Create your new password</string>
+    <string name="contrasena_obligatoria_explicacion">You signed in with the temporary password your doctor gave you. Choose a new one to continue; the temporary one will stop working.</string>
+    <string name="contrasena_actual_campo">Current password</string>
+    <string name="contrasena_nueva_campo">New password</string>
+    <string name="contrasena_nueva_apoyo">At least 8 characters.</string>
+    <string name="contrasena_confirmacion_campo">Repeat the new password</string>
+    <string name="contrasena_accion_guardar_continuar">Save and continue</string>
+    <string name="contrasena_accion_guardar">Save password</string>
+    <string name="contrasena_estado_guardando">Saving</string>
+    <string name="contrasena_accion_cancelar">Cancel</string>
+    <string name="contrasena_error_actual_vacia">Enter your current password</string>
+    <string name="contrasena_error_nueva_corta">Use at least 8 characters</string>
+    <string name="contrasena_error_no_coinciden">The two passwords don't match</string>
+    <string name="contrasena_error_igual">Choose a password different from your current one</string>
+    <string name="contrasena_error_actual_incorrecta">Your current password is incorrect</string>
+    <string name="contrasena_error_no_valida">Choose a password different from the temporary one, at least 8 characters long</string>
+    <string name="contrasena_error_sesion">Your session was closed. Please sign in again.</string>
+    <string name="contrasena_error_conexion">We couldn't save your password. Check your connection.</string>
+    <string name="a11y_contrasena_guardar">Save the new password</string>
+    <string name="config_contrasena_apoyo">Change it if you think someone else knows it. You'll be signed out on your other phones.</string>
+    <string name="config_contrasena_accion">Change password</string>
+    <string name="config_contrasena_actualizada">Password updated. You're now signed in only on this phone.</string>
+    <string name="a11y_config_contrasena_accion">Open the form to change your password</string>
+    <string name="a11y_contrasena_cancelar">Cancel the password change</string>
 
 </resources>

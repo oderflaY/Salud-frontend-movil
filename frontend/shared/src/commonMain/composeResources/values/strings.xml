@@ -412,7 +412,7 @@
     <string name="a11y_login_mostrar_contrasena">Mostrar la contrasena en pantalla</string>
     <string name="a11y_login_ocultar_contrasena">Ocultar la contrasena</string>
     <string name="a11y_login_accion_entrar">Iniciar sesion con el correo y la contrasena escritos</string>
-    <string name="a11y_login_accion_recuperar">Recuperar tu contrasena por correo</string>
+    <string name="a11y_login_accion_recuperar">Como recuperar el acceso a tu cuenta</string>
     <string name="a11y_login_accion_registrarse">Crear una cuenta nueva de paciente</string>
     <string name="a11y_login_autenticando">Verificando tus datos, espera un momento</string>
 
@@ -468,6 +468,13 @@
     <string name="home_acceso_historial">Mi historial medico</string>
 
     <string name="a11y_home_acceso_completar_perfil">Abrir el registro de tu perfil de emergencia</string>
+    <string name="home_recordatorios_apagados_titulo">Tus recordatorios estan apagados</string>
+    <string name="home_recordatorios_apagados_descripcion">Activa los avisos para que la app te recuerde cada toma a su hora, aunque este cerrada.</string>
+    <string name="home_recordatorios_tardios_titulo">Tus recordatorios pueden llegar tarde</string>
+    <string name="home_recordatorios_tardios_descripcion">Permite las alarmas exactas para que el aviso suene justo a la hora de tu medicina.</string>
+    <string name="home_recordatorios_accion_activar">Activar recordatorios</string>
+    <string name="home_recordatorios_accion_exactas">Permitir alarmas exactas</string>
+    <string name="a11y_home_activar_recordatorios">Activar los recordatorios de medicacion</string>
     <string name="a11y_home_acceso_historial">Abrir tu historial medico y tus ajustes de perfil</string>
     <string name="a11y_home_estado_perfil">Estado de tu perfil de emergencia: %1$s</string>
 
@@ -679,6 +686,7 @@
     <string name="directorio_especialidad_endocrinologia">Endocrinologia</string>
     <string name="directorio_especialidad_neumologia">Neumologia</string>
     <string name="directorio_especialidad_neurologia">Neurologia</string>
+    <string name="directorio_especialidad_sin_registrar">Especialidad sin registrar</string>
     <string name="directorio_sin_doctores">No hay medicos disponibles</string>
     <string name="directorio_sin_resultados">No encontramos doctores con ese filtro</string>
     <string name="directorio_accion_contactar">Contactar</string>
@@ -722,6 +730,8 @@
     <string name="chat_adjunto_tipo_archivo">Archivo</string>
     <string name="chat_adjunto_tipo_escaneo">Documento escaneado</string>
     <string name="chat_adjunto_accion_quitar">Quitar</string>
+    <string name="chat_adjunto_no_se_pudo_abrir">No hay una app para abrirlo, o aun se esta descargando</string>
+    <string name="a11y_chat_adjunto_abrir">Abrir %1$s</string>
     <string name="a11y_chat_adjunto_quitar">Quitar %1$s antes de enviar</string>
     <string name="a11y_chat_mensaje_con_adjunto">Con un adjunto: %1$s</string>
 
@@ -1114,6 +1124,26 @@
     <string name="accion_cerrar_sesion">Cerrar sesion</string>
     <string name="config_cerrar_sesion_apoyo">Tu expediente, tus tomas y tus citas se quedan guardados en este telefono. Al volver a entrar los encontraras igual.</string>
     <string name="a11y_accion_cerrar_sesion">Cerrar sesion. Tus datos se quedan guardados en este telefono</string>
+    <string name="config_baja_apoyo">Borra tu acceso de forma definitiva. Tu expediente clinico se conserva 5 anos, como exige la ley, y despues se borra solo.</string>
+    <string name="config_baja_accion">Eliminar cuenta</string>
+    <string name="a11y_config_baja_accion">Eliminar tu cuenta de forma definitiva</string>
+    <string name="config_baja_titulo">Eliminar tu cuenta</string>
+    <string name="config_baja_se_borra_paciente">Se borra al momento: tu acceso, tu telefono, tus contactos de emergencia, CURP y NSS. Tu tarjeta de emergencia deja de funcionar, ningun medico vuelve a ver tu informacion y se cancelan tus citas futuras.</string>
+    <string name="config_baja_se_conserva_paciente">Se conserva 5 anos tu expediente clinico, como exige la NOM-004. Nadie puede consultarlo desde la app en ese tiempo.</string>
+    <string name="config_baja_se_borra_profesional">Se borra al momento: tu acceso, tu universidad y tu horario. Sales del directorio, pierdes el acceso a los expedientes de tus pacientes y se cancelan tus citas futuras.</string>
+    <string name="config_baja_se_conserva_profesional">Se conservan tu nombre y tu cedula en las recetas y citas que emitiste: forman parte del expediente de tus pacientes.</string>
+    <string name="config_baja_correo">Correo</string>
+    <string name="a11y_config_baja_correo">Correo de tu cuenta</string>
+    <string name="config_baja_contrasena">Contrasena</string>
+    <string name="a11y_config_baja_contrasena">Contrasena de tu cuenta</string>
+    <string name="config_baja_confirmacion">Entiendo que la baja es definitiva y no se puede deshacer</string>
+    <string name="config_baja_boton">Eliminar mi cuenta</string>
+    <string name="config_baja_boton_enviando">Eliminando tu cuenta</string>
+    <string name="a11y_config_baja_boton">Eliminar mi cuenta de forma definitiva</string>
+    <string name="config_baja_cancelar">Cancelar</string>
+    <string name="a11y_config_baja_cancelar">Cancelar la baja de la cuenta</string>
+    <string name="config_baja_error_credenciales">El correo o la contrasena no coinciden.</string>
+    <string name="config_baja_error_conexion">No se pudo completar la baja. Revisa tu conexion e intenta de nuevo.</string>
     <string name="accion_cancelar_generico">Cancelar</string>
 
     <!-- ============================================================= -->
@@ -1238,6 +1268,7 @@
     <string name="a11y_agenda_pac_propuesta_aceptar">Aceptar la cita que propone %1$s el %2$s a las %3$s</string>
     <string name="a11y_agenda_pac_propuesta_rechazar">Rechazar la cita que propone %1$s el %2$s a las %3$s</string>
     <string name="agenda_pac_propuesta_error">No se pudo responder a la cita. Intenta de nuevo.</string>
+    <string name="agenda_pac_propuesta_retirada">Tu medico ya retiro esta propuesta, o ya la habias respondido.</string>
     <string name="agenda_pac_citas_no_disponibles">No pudimos cargar tus citas. Tus medicinas si estan al dia.</string>
     <string name="agenda_pac_cargando">Cargando tu agenda</string>
     <string name="agenda_pac_error">No pudimos cargar tu agenda. Revisa tu conexion.</string>
@@ -1250,5 +1281,37 @@
     <string name="a11y_agenda_pac_con_cita">tienes cita</string>
     <string name="a11y_agenda_pac_seleccionado">dia elegido</string>
     <string name="a11y_agenda_pac_evento">A las %1$s. %2$s. %3$s. %4$s</string>
+
+    <!-- Contrasena temporal y cambio de contrasena (reset desde el panel web del medico) -->
+    <string name="error_contrasena_temporal_vencida">Tu contrasena temporal ya vencio. Pide a tu medico que restablezca tu cuenta otra vez.</string>
+    <string name="login_recuperar_titulo">Olvidaste tu contrasena</string>
+    <string name="login_recuperar_cuerpo">Pide a tu medico que restablezca tu cuenta desde su panel. Te dara una contrasena temporal: entra con tu correo y esa contrasena, y la app te pedira elegir una nueva.</string>
+    <string name="login_recuperar_entendido">Entendido</string>
+    <string name="login_aviso_sesion_cerrada">Tu sesion se cerro por seguridad. Vuelve a entrar.</string>
+    <string name="a11y_login_aviso_sesion_cerrada">Aviso: tu sesion se cerro por seguridad. Pulsa para descartar.</string>
+    <string name="contrasena_obligatoria_titulo">Crea tu nueva contrasena</string>
+    <string name="contrasena_obligatoria_explicacion">Entraste con la contrasena temporal que te dio tu medico. Elige una nueva para seguir; la temporal dejara de funcionar.</string>
+    <string name="contrasena_actual_campo">Contrasena actual</string>
+    <string name="contrasena_nueva_campo">Contrasena nueva</string>
+    <string name="contrasena_nueva_apoyo">Al menos 8 caracteres.</string>
+    <string name="contrasena_confirmacion_campo">Repite la contrasena nueva</string>
+    <string name="contrasena_accion_guardar_continuar">Guardar y continuar</string>
+    <string name="contrasena_accion_guardar">Guardar contrasena</string>
+    <string name="contrasena_estado_guardando">Guardando</string>
+    <string name="contrasena_accion_cancelar">Cancelar</string>
+    <string name="contrasena_error_actual_vacia">Escribe tu contrasena actual</string>
+    <string name="contrasena_error_nueva_corta">Usa al menos 8 caracteres</string>
+    <string name="contrasena_error_no_coinciden">Las dos contrasenas no coinciden</string>
+    <string name="contrasena_error_igual">Elige una contrasena distinta de la actual</string>
+    <string name="contrasena_error_actual_incorrecta">Tu contrasena actual no es correcta</string>
+    <string name="contrasena_error_no_valida">Elige una contrasena distinta de la temporal, de al menos 8 caracteres</string>
+    <string name="contrasena_error_sesion">Tu sesion se cerro. Vuelve a entrar.</string>
+    <string name="contrasena_error_conexion">No pudimos guardar tu contrasena. Revisa tu conexion.</string>
+    <string name="a11y_contrasena_guardar">Guardar la contrasena nueva</string>
+    <string name="config_contrasena_apoyo">Cambiala si crees que alguien mas la conoce. Tu sesion se cerrara en los demas telefonos.</string>
+    <string name="config_contrasena_accion">Cambiar contrasena</string>
+    <string name="config_contrasena_actualizada">Contrasena actualizada. Tu sesion sigue abierta solo en este telefono.</string>
+    <string name="a11y_config_contrasena_accion">Abrir el formulario para cambiar tu contrasena</string>
+    <string name="a11y_contrasena_cancelar">Cancelar el cambio de contrasena</string>
 
 </resources>

@@ -29,11 +29,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eter.salud.data.local.recordarContenedorSalud
 import com.eter.salud.data.red.ConfiguracionApi
 import com.eter.salud.data.red.recordarContenedorRed
+import com.eter.salud.data.sesion.TipoAvisoDeSesion
 import com.eter.salud.data.sesion.recordarAlmacenDeSesion
 import com.eter.salud.domain.model.MedicoVinculado
 import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.domain.model.SesionProfesional
 import com.eter.salud.domain.nfc.rememberLectorTarjetaNfc
+import com.eter.salud.domain.repository.BajaDeCuentaRepositorio
+import com.eter.salud.domain.repository.CambioDeContrasenaRepositorio
+import com.eter.salud.domain.repository.TipoDeCuenta
 import com.eter.salud.domain.repository.AdherenciaRepositorio
 import com.eter.salud.domain.repository.AutenticacionProfesionalRepositorio
 import com.eter.salud.domain.repository.AutenticacionRepositorio
@@ -52,7 +56,9 @@ import com.eter.salud.presentation.agendapaciente.AgendaPacienteViewModel
 import com.eter.salud.presentation.chat.ChatViewModel
 import com.eter.salud.presentation.chatmedico.ChatMedicoViewModel
 import com.eter.salud.presentation.citas.AgendaCitaViewModel
+import com.eter.salud.presentation.configuracion.BajaDeCuentaViewModel
 import com.eter.salud.presentation.configuracion.ConfiguracionViewModel
+import com.eter.salud.presentation.contrasena.CambioContrasenaViewModel
 import com.eter.salud.presentation.diario.DiarioViewModel
 import com.eter.salud.presentation.directorio.DescubrimientoMedicoViewModel
 import com.eter.salud.presentation.emergencia.EscanerEmergenciaViewModel
@@ -80,6 +86,7 @@ import com.eter.salud.ui.chatmedico.ChatMedicoScreen
 import com.eter.salud.ui.citas.PanelAgendaCita
 import com.eter.salud.ui.componentes.IsotipoSalud
 import com.eter.salud.ui.configuracion.ConfiguracionScreen
+import com.eter.salud.ui.contrasena.CambioContrasenaObligatorioScreen
 import com.eter.salud.ui.diario.DiarioScreen
 import com.eter.salud.ui.directorio.MiMedicoScreen
 import com.eter.salud.ui.emergencia.EscanerEmergenciaScreen
@@ -207,6 +214,22 @@ fun App() {
             null
         }
         val repositorioCuentas = contenedorRed?.cuentasPacientes ?: contenedor.cuentasPacientes
+        // Sin contraparte local: en modo local no hay cuenta en ningun servidor que borrar.
+        val repositorioBaja = contenedorRed?.bajaDeCuenta
+        // Tampoco hay contrasena en ningun servidor que cambiar, ni medico que la resetee.
+        val repositorioCambioContrasena = contenedorRed?.cambioDeContrasena
+
+        // El servidor puede cerrar la sesion por su cuenta: el medico reseteo la
+        // cuenta desde su panel web, o la cuenta se bloqueo o se dio de baja.
+        // Sin esto cada pantalla se quedaba en "sin conexion" para siempre.
+        LaunchedEffect(contenedorRed) {
+            contenedorRed?.avisosDeSesion?.collect { aviso ->
+                val eraProfesional = sesiones.estado.value.profesional != null
+                if (sesiones.sesionRechazada(aviso) && aviso.tipo == TipoAvisoDeSesion.CERRADA) {
+                    navegacion.reiniciarEn(if (eraProfesional) Destino.AccesoProfesional else Destino.Acceso)
+                }
+            }
+        }
         val repositorioHistorial = contenedorRed?.historial ?: contenedor.historial
         val repositorioAdherencia = contenedorRed?.adherencia ?: contenedor.adherencia
         val repositorioCuentasProfesionales = contenedorRed?.cuentasProfesionales ?: contenedor.cuentasProfesionales
@@ -221,19 +244,31 @@ fun App() {
         // El diario se queda SIEMPRE local-first, incluso con el backend
         // encendido: es una decision de diseno del contrato, no una pieza
         // pendiente de conectar (ver `ContenedorRed` y `DiarioRepositorioRemoto`).
-        val repositorioDiario = contenedor.diario
+        // El paciente escribe en su telefono y sube despues; el medico lee lo
+        // que ya se subio. Con la app en modo local, los dos son la base local.
+        val repositorioDiarioPaciente = remember(contenedorRed, contenedor) {
+            contenedorRed?.diarioSincronizado(contenedor.diario) ?: contenedor.diario
+        }
+        val repositorioDiarioMedico = contenedorRed?.diario ?: contenedor.diario
         val expedienteNuevo: (String) -> PacienteRepositorio = { idPaciente ->
             contenedorRed?.expediente ?: contenedor.expedienteNuevo(idPaciente)
         }
 
         val profesionalActual = estadoSesion.profesional
         val pacienteActual = estadoSesion.paciente
+        // Con la contrasena temporal del medico, el backend rechaza todo salvo
+        // el cambio de contrasena. Los ViewModels del panel NO se crean hasta
+        // entonces: cargarian con esa sesion, fallarian, y el panel abriria con
+        // errores justo despues de elegir la contrasena nueva.
+        val cambioDeContrasenaPendiente =
+            pacienteActual?.requiereCambioContrasena == true && repositorioCambioContrasena != null
+        val pacienteHabilitado = pacienteActual?.takeUnless { cambioDeContrasenaPendiente }
 
         // El panel del paciente se crea FUERA del reparto de destinos porque dos
         // pantallas distintas lo necesitan: el propio Inicio y el final del
         // onboarding, que le avisa de que el perfil quedo completo. Creado
         // dentro, cada una tendria su copia y el aviso se perderia.
-        val inicioPaciente = pacienteActual?.let { activa ->
+        val inicioPaciente = pacienteHabilitado?.let { activa ->
             viewModel(key = "$CLAVE_INICIO${activa.idPaciente}") {
                 HomeViewModel(
                     historial = repositorioHistorial,
@@ -248,7 +283,7 @@ fun App() {
         // medico" y la barra inferior, que cuenta los mensajes sin leer de la
         // conversacion con ese doctor. La clave es la misma, asi que sigue
         // siendo una sola instancia.
-        val descubrimiento = pacienteActual?.let { activa ->
+        val descubrimiento = pacienteHabilitado?.let { activa ->
             viewModel(key = "$CLAVE_DIRECTORIO${activa.idPaciente}") {
                 DescubrimientoMedicoViewModel(repositorioDirectorio, activa.idPaciente)
             }
@@ -267,8 +302,9 @@ fun App() {
         val secciones = when {
             profesionalActual != null -> SECCIONES_PROFESIONAL
             // Sin expediente no hay pestanas: la unica salida del cuestionario
-            // es terminarlo (o cerrar sesion desde su primera pantalla).
-            pacienteActual != null && !pacienteActual.requiereOnboarding -> SECCIONES_PACIENTE
+            // es terminarlo (o cerrar sesion desde su primera pantalla). Igual
+            // con la contrasena temporal pendiente de cambiar.
+            pacienteHabilitado != null && !pacienteHabilitado.requiereOnboarding -> SECCIONES_PACIENTE
             else -> emptyList()
         }
         val raizDeSeccion =
@@ -285,13 +321,35 @@ fun App() {
                         repositorioEmergencia = repositorioEmergencia,
                         repositorioChat = repositorioChat,
                         repositorioCitas = repositorioCitas,
-                        repositorioDiario = repositorioDiario,
+                        repositorioDiario = repositorioDiarioMedico,
                         repositorioHistorial = repositorioHistorial,
+                        repositorioBaja = repositorioBaja,
                         alCerrarSesion = {
                             sesiones.cerrar()
                             navegacion.reiniciarEn(Destino.AccesoProfesional)
                         },
                     )
+
+                    // Entro con la contrasena temporal que le dio su medico. Va
+                    // antes que el expediente: sin contrasena nueva el backend
+                    // no le deja guardar nada. Como el expediente, no depende
+                    // del destino de la pila y reaparece si cierra la app.
+                    pacienteActual != null && cambioDeContrasenaPendiente && repositorioCambioContrasena != null -> {
+                        val cambio = viewModel(key = "$CLAVE_CONTRASENA_OBLIGATORIA${pacienteActual.idPaciente}") {
+                            CambioContrasenaViewModel(repositorioCambioContrasena, obligatorio = true)
+                        }
+                        CambioContrasenaObligatorioScreen(
+                            viewModel = cambio,
+                            alTerminar = { nueva ->
+                                sesiones.abrirComoPaciente(nueva)
+                                navegacion.reiniciarEn(Destino.Inicio)
+                            },
+                            alCerrarSesion = {
+                                sesiones.cerrar()
+                                navegacion.reiniciarEn(Destino.Acceso)
+                            },
+                        )
+                    }
 
                     // Una cuenta recien creada TIENE que capturar su expediente
                     // antes de ver nada mas. La compuerta no depende del destino
@@ -326,11 +384,15 @@ fun App() {
                         repositorioDirectorio = repositorioDirectorio,
                         repositorioChat = repositorioChat,
                         repositorioCitas = repositorioCitas,
-                        repositorioDiario = repositorioDiario,
+                        repositorioDiario = repositorioDiarioPaciente,
                         repositorioAdherencia = repositorioAdherencia,
                         repositorioExpediente = remember(pacienteActual.idPaciente) {
                             expedienteNuevo(pacienteActual.idPaciente)
                         },
+                        repositorioBaja = repositorioBaja,
+                        repositorioCambioContrasena = repositorioCambioContrasena,
+                        // Token nuevo: el backend cerro las demas sesiones, esta incluida.
+                        alContrasenaCambiada = sesiones::abrirComoPaciente,
                         alCerrarSesion = {
                             sesiones.cerrar()
                             navegacion.reiniciarEn(Destino.Acceso)
@@ -342,6 +404,8 @@ fun App() {
                         navegacion = navegacion,
                         repositorioCuentas = repositorioCuentas,
                         repositorioCuentasProfesionales = repositorioCuentasProfesionales,
+                        avisoSesionCerrada = estadoSesion.cerradaPorElServidor,
+                        alDescartarAviso = sesiones::avisoDeCierreVisto,
                         // `reiniciarEn` vacia la pila entera: tras entrar, el
                         // boton Atras NO puede devolver al formulario de acceso.
                         alAbrirSesionPaciente = { nueva ->
@@ -420,6 +484,8 @@ private fun PantallaDeAcceso(
     navegacion: NavegacionViewModel,
     repositorioCuentas: AutenticacionRepositorio,
     repositorioCuentasProfesionales: AutenticacionProfesionalRepositorio,
+    avisoSesionCerrada: Boolean,
+    alDescartarAviso: () -> Unit,
     alAbrirSesionPaciente: (SesionPaciente) -> Unit,
     alAbrirSesionProfesional: (SesionProfesional) -> Unit,
 ) {
@@ -449,6 +515,8 @@ private fun PantallaDeAcceso(
                 alIniciarSesion = alAbrirSesionProfesional,
                 alRegistrarse = { navegacion.ir(Destino.RegistroProfesional) },
                 alVolverAPaciente = { navegacion.reiniciarEn(Destino.Acceso) },
+                avisoSesionCerrada = avisoSesionCerrada,
+                alDescartarAviso = alDescartarAviso,
             )
         }
 
@@ -462,6 +530,8 @@ private fun PantallaDeAcceso(
                 alIniciarSesion = alAbrirSesionPaciente,
                 alRegistrarse = { navegacion.ir(Destino.Registro) },
                 alAccesoProfesional = { navegacion.reiniciarEn(Destino.AccesoProfesional) },
+                avisoSesionCerrada = avisoSesionCerrada,
+                alDescartarAviso = alDescartarAviso,
             )
         }
     }
@@ -483,6 +553,9 @@ private fun PantallaPaciente(
     repositorioDiario: DiarioRepositorio,
     repositorioAdherencia: AdherenciaRepositorio,
     repositorioExpediente: PacienteRepositorio,
+    repositorioBaja: BajaDeCuentaRepositorio?,
+    repositorioCambioContrasena: CambioDeContrasenaRepositorio?,
+    alContrasenaCambiada: (SesionPaciente) -> Unit,
     alCerrarSesion: () -> Unit,
 ) {
     when (destino) {
@@ -558,10 +631,24 @@ private fun PantallaPaciente(
 
         Destino.Configuracion -> {
             val configuracion = viewModel(key = CLAVE_CONFIGURACION) { ConfiguracionViewModel() }
+            val baja = repositorioBaja?.let { repositorio ->
+                viewModel(key = "$CLAVE_BAJA${sesion.idPaciente}") { BajaDeCuentaViewModel(repositorio, TipoDeCuenta.PACIENTE) }
+            }
+            val cambioDeContrasena = repositorioCambioContrasena?.let { repositorio ->
+                viewModel(key = "$CLAVE_CONTRASENA${sesion.idPaciente}") {
+                    CambioContrasenaViewModel(repositorio, obligatorio = false)
+                }
+            }
             ConfiguracionScreen(
                 viewModel = configuracion,
                 alVolver = navegacion::volver,
                 alCerrarSesion = alCerrarSesion,
+                bajaDeCuenta = baja,
+                // Tras la baja no queda cuenta a la que volver: se sale igual que
+                // al cerrar sesion, y el acceso queda limpio para otra persona.
+                alCuentaEliminada = alCerrarSesion,
+                cambioDeContrasena = cambioDeContrasena,
+                alContrasenaCambiada = alContrasenaCambiada,
             )
         }
 
@@ -659,6 +746,7 @@ private fun PantallaProfesional(
     repositorioCitas: CitasRepositorio,
     repositorioDiario: DiarioRepositorio,
     repositorioHistorial: HistorialMedicoRepositorio,
+    repositorioBaja: BajaDeCuentaRepositorio?,
     alCerrarSesion: () -> Unit,
 ) {
     when (destino) {
@@ -708,10 +796,17 @@ private fun PantallaProfesional(
 
         Destino.Configuracion -> {
             val configuracion = viewModel(key = CLAVE_CONFIGURACION) { ConfiguracionViewModel() }
+            val baja = repositorioBaja?.let { repositorio ->
+                viewModel(key = "$CLAVE_BAJA${sesion.idMedico}") { BajaDeCuentaViewModel(repositorio, TipoDeCuenta.PROFESIONAL) }
+            }
             ConfiguracionScreen(
                 viewModel = configuracion,
                 alVolver = navegacion::volver,
                 alCerrarSesion = alCerrarSesion,
+                bajaDeCuenta = baja,
+                // Tras la baja no queda cuenta a la que volver: se sale igual que
+                // al cerrar sesion, y el acceso queda limpio para otra persona.
+                alCuentaEliminada = alCerrarSesion,
             )
         }
 
@@ -795,3 +890,6 @@ private const val CLAVE_EXPEDIENTE = "expediente_medico_"
 
 /** Sin sufijo: las preferencias son del dispositivo, no de una sesion. */
 private const val CLAVE_CONFIGURACION = "configuracion"
+private const val CLAVE_BAJA = "baja_de_cuenta_"
+private const val CLAVE_CONTRASENA = "cambio_contrasena_"
+private const val CLAVE_CONTRASENA_OBLIGATORIA = "cambio_contrasena_obligatorio_"

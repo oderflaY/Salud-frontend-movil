@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Unica carpeta que FileProvider puede entregar a otra app: la de adjuntos del
+  chat (CopiadorDeAdjuntosAndroid / ArchivosAdjuntosLocales). Ni la base local
+  del expediente ni ningun otro archivo privado queda alcanzable por aqui.
+-->
+<paths>
+    <files-path name="adjuntos" path="adjuntos/" />
+</paths>

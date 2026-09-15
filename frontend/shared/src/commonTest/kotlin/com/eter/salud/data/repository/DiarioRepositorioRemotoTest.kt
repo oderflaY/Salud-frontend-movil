@@ -6,9 +6,10 @@ import com.eter.salud.domain.diario.SeveridadDiario
 import com.eter.salud.domain.model.EntradaDiario
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,43 +27,67 @@ class DiarioRepositorioRemotoTest {
         severidad = SeveridadDiario.AMBAR,
     )
 
+    private val json = headersOf("Content-Type", "application/json")
+
     @Test
-    fun guardar_una_entrada_la_deja_disponible_en_entradasDe() = runTest {
-        val cliente = clienteDePrueba { respond("", HttpStatusCode.Created) }
-        val repositorio = DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
+    fun guarda_en_la_vista_con_el_id_que_genero_el_telefono() = runTest {
+        val cliente = clienteDePrueba { peticion ->
+            assertEquals("$URL_BASE_DE_PRUEBA/entradas_diario", peticion.url.toString())
+            assertTrue((peticion.body as TextContent).text.contains(""""idEntrada":"entrada_1""""))
+            respond("", HttpStatusCode.Created)
+        }
 
-        repositorio.guardar(entrada)
-
-        assertEquals(listOf(entrada), repositorio.entradasDe("pac_1").first())
+        assertTrue(DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).guardar(entrada).isSuccess)
     }
 
     @Test
-    fun eliminar_una_entrada_la_retira_del_flujo_local() = runTest {
-        val cliente = clienteDePrueba { respond("", HttpStatusCode.NoContent) }
-        val repositorio = DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
-        repositorio.guardar(entrada)
+    fun subir_dos_veces_la_misma_entrada_no_es_un_fallo() = runTest {
+        // La llave primaria choca (409): la entrada ya estaba en el servidor.
+        val cliente = clienteDePrueba { respond("""{"code":"23505"}""", HttpStatusCode.Conflict, json) }
 
-        repositorio.eliminar("entrada_1")
-
-        assertTrue(repositorio.entradasDe("pac_1").first().isEmpty())
+        assertTrue(DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).guardar(entrada).isSuccess)
     }
 
     @Test
-    fun ultima_entrada_ausente_es_null_y_no_un_fallo() = runTest {
-        val cliente = clienteDePrueba { respondError(HttpStatusCode.NotFound) }
-        val repositorio = DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
+    fun la_ultima_entrada_se_pide_ordenada_y_de_a_una() = runTest {
+        val cliente = clienteDePrueba { peticion ->
+            assertEquals("eq.pac_1", peticion.url.parameters["idPaciente"])
+            assertEquals("instante.desc", peticion.url.parameters["order"])
+            assertEquals("1", peticion.url.parameters["limit"])
+            respond(
+                """[{"idEntrada":"entrada_1","idPaciente":"pac_1","instante":"2026-09-12T10:00:00+00:00","fecha":"2026-09-12","texto":"Me duele la cabeza","severidad":"ROJO","terminosDetectados":["cefalea"]}]""",
+                HttpStatusCode.OK,
+                json,
+            )
+        }
 
-        val resultado = repositorio.ultimaEntradaDe("pac_1")
+        val ultima = DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).ultimaEntradaDe("pac_1").getOrThrow()
 
-        assertTrue(resultado.isSuccess)
-        assertNull(resultado.getOrThrow())
+        assertEquals(SeveridadDiario.ROJO, ultima?.severidad)
+    }
+
+    @Test
+    fun sin_entradas_la_ultima_es_null_y_no_un_fallo() = runTest {
+        val cliente = clienteDePrueba { respond("[]", HttpStatusCode.OK, json) }
+
+        assertNull(DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).ultimaEntradaDe("pac_1").getOrThrow())
+    }
+
+    @Test
+    fun eliminar_filtra_por_el_id_de_la_entrada() = runTest {
+        val cliente = clienteDePrueba { peticion ->
+            assertEquals(HttpMethod.Delete, peticion.method)
+            assertEquals("eq.entrada_1", peticion.url.parameters["idEntrada"])
+            respond("", HttpStatusCode.NoContent)
+        }
+
+        assertTrue(DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).eliminar("entrada_1").isSuccess)
     }
 
     @Test
     fun un_error_del_backend_al_guardar_se_reporta_como_fallo() = runTest {
         val cliente = clienteDePrueba { respondError(HttpStatusCode.InternalServerError) }
-        val repositorio = DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
 
-        assertTrue(repositorio.guardar(entrada).isFailure)
+        assertTrue(DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).guardar(entrada).isFailure)
     }
 }

@@ -1,6 +1,8 @@
 package com.eter.salud.presentation.sesion
 
+import com.eter.salud.data.sesion.AvisoDeSesion
 import com.eter.salud.data.sesion.FuenteDeSesion
+import com.eter.salud.data.sesion.TipoAvisoDeSesion
 import com.eter.salud.domain.model.EstadoVerificacionCedula
 import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.domain.model.SesionProfesional
@@ -177,5 +179,86 @@ class SesionViewModelTest {
 
         // El almacen cambia por su cuenta; la memoria sigue mandando.
         assertEquals(profesional, vm.estado.value.profesional)
+    }
+
+    // ------------------------------------------- Sesion cerrada por el servidor
+
+    @Test
+    fun si_el_servidor_cierra_la_sesion_vigente_se_sale_y_se_explica() {
+        // Es el reset de cuenta desde el panel web del medico.
+        val almacen = AlmacenFalso()
+        val vm = SesionViewModel(almacen)
+        vm.abrirComoPaciente(paciente)
+
+        val aplicado = vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CERRADA, paciente.token))
+
+        assertTrue(aplicado)
+        assertFalse(vm.estado.value.hayAlguienDentro)
+        assertTrue(vm.estado.value.cerradaPorElServidor)
+        assertEquals(1, almacen.vecesBorrado)
+    }
+
+    @Test
+    fun un_rechazo_con_un_token_anterior_no_tumba_la_sesion_nueva() {
+        // Una peticion que salio antes de cambiar la contrasena vuelve rechazada
+        // despues: la sesion nueva no tiene la culpa.
+        val vm = SesionViewModel(AlmacenFalso())
+        vm.abrirComoPaciente(paciente.copy(token = "jwt_nuevo"))
+
+        val aplicado = vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CERRADA, "jwt_viejo"))
+
+        assertFalse(aplicado)
+        assertEquals("jwt_nuevo", vm.estado.value.paciente?.token)
+    }
+
+    @Test
+    fun sin_sesion_abierta_un_rechazo_no_hace_nada() {
+        val vm = SesionViewModel(AlmacenFalso())
+
+        assertFalse(vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CERRADA, "jwt")))
+        assertFalse(vm.estado.value.cerradaPorElServidor)
+    }
+
+    @Test
+    fun tambien_se_sale_un_medico_con_la_cuenta_bloqueada() {
+        val vm = SesionViewModel(AlmacenFalso())
+        vm.abrirComoProfesional(profesional)
+
+        assertTrue(vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CERRADA, profesional.token)))
+        assertNull(vm.estado.value.profesional)
+    }
+
+    @Test
+    fun si_falta_elegir_contrasena_la_sesion_lo_recuerda_tambien_en_disco() {
+        val almacen = AlmacenFalso()
+        val vm = SesionViewModel(almacen)
+        vm.abrirComoPaciente(paciente)
+
+        val aplicado = vm.sesionRechazada(
+            AvisoDeSesion(TipoAvisoDeSesion.CAMBIO_DE_CONTRASENA_REQUERIDO, paciente.token),
+        )
+
+        assertTrue(aplicado)
+        assertEquals(true, vm.estado.value.paciente?.requiereCambioContrasena)
+        assertEquals(true, almacen.ultimoPacienteGuardado?.requiereCambioContrasena)
+        // Una segunda peticion rechazada por lo mismo no reescribe nada.
+        assertFalse(
+            vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CAMBIO_DE_CONTRASENA_REQUERIDO, paciente.token)),
+        )
+    }
+
+    @Test
+    fun el_aviso_de_cierre_se_va_al_verlo_o_al_volver_a_entrar() {
+        val vm = SesionViewModel(AlmacenFalso())
+        vm.abrirComoPaciente(paciente)
+        vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CERRADA, paciente.token))
+
+        vm.avisoDeCierreVisto()
+        assertFalse(vm.estado.value.cerradaPorElServidor)
+
+        vm.abrirComoPaciente(paciente)
+        vm.sesionRechazada(AvisoDeSesion(TipoAvisoDeSesion.CERRADA, paciente.token))
+        vm.abrirComoPaciente(paciente)
+        assertFalse(vm.estado.value.cerradaPorElServidor)
     }
 }

@@ -88,7 +88,14 @@ class LoginViewModel(
     private fun LoginUiState.conFallo(error: ErrorAutenticacion): LoginUiState = copy(
         autenticando = false,
         errorAutenticacion = error,
-        contrasena = if (error == ErrorAutenticacion.CREDENCIALES_INVALIDAS) "" else contrasena,
+        // Una temporal vencida tampoco sirve para reintentar: hay que pedir otra.
+        contrasena = if (error == ErrorAutenticacion.CREDENCIALES_INVALIDAS ||
+            error == ErrorAutenticacion.CONTRASENA_TEMPORAL_VENCIDA
+        ) {
+            ""
+        } else {
+            contrasena
+        },
     )
 
     /** Cualquier excepcion no tipada se trata como corte de red: nunca se propaga. */
@@ -98,6 +105,9 @@ class LoginViewModel(
                 ErrorAutenticacion.CREDENCIALES_INVALIDAS
 
             MotivoFalloAutenticacion.CUENTA_BLOQUEADA -> ErrorAutenticacion.CUENTA_BLOQUEADA
+            MotivoFalloAutenticacion.CONTRASENA_TEMPORAL_VENCIDA ->
+                ErrorAutenticacion.CONTRASENA_TEMPORAL_VENCIDA
+
             MotivoFalloAutenticacion.SIN_CONEXION, null -> ErrorAutenticacion.SIN_CONEXION
         }
 

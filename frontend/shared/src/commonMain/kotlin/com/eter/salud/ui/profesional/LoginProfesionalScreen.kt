@@ -35,6 +35,7 @@ import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
 import com.eter.salud.ui.componentes.DivisorConTexto
 import com.eter.salud.ui.componentes.IsotipoSalud
 import com.eter.salud.ui.componentes.margenInferiorSeguro
+import com.eter.salud.ui.login.AvisoSesionCerrada
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
@@ -82,6 +83,9 @@ fun LoginProfesionalScreen(
     alIniciarSesion: (SesionProfesional) -> Unit = {},
     alRegistrarse: () -> Unit = {},
     alVolverAPaciente: () -> Unit = {},
+    /** El servidor cerro la sesion (cuenta bloqueada o dada de baja). */
+    avisoSesionCerrada: Boolean = false,
+    alDescartarAviso: () -> Unit = {},
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
@@ -106,6 +110,11 @@ fun LoginProfesionalScreen(
         IsotipoSalud()
         Spacer(Modifier.height(espaciado.generoso))
         Cabecera()
+
+        if (avisoSesionCerrada) {
+            Spacer(Modifier.height(espaciado.generoso))
+            AvisoSesionCerrada(alDescartar = alDescartarAviso)
+        }
 
         Spacer(Modifier.height(espaciado.generoso))
         Formulario(estado, viewModel)

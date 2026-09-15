@@ -36,7 +36,7 @@ class PerfilEmergenciaRepositorioRemotoTest {
     fun tarjeta_revocada_se_traduce_al_motivo_tipado() = runTest {
         val cliente = clienteDePrueba {
             respond(
-                content = """{"motivo":"TARJETA_REVOCADA"}""",
+                content = """{"message":"TARJETA_REVOCADA"}""",
                 status = HttpStatusCode.Forbidden,
                 headers = headersOf("Content-Type", "application/json"),
             )

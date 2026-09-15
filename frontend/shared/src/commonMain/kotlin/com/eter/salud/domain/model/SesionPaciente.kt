@@ -15,12 +15,20 @@ data class SesionPaciente(
     val token: String,
     /** Cuenta creada pero sin perfil de emergencia: hay que pasar por la Fase 1. */
     val requiereOnboarding: Boolean,
+    /**
+     * Entro con la contrasena temporal que le dio su medico al resetear la
+     * cuenta desde su panel web. Antes que nada, tiene que elegir una nueva:
+     * el backend no le deja hacer otra cosa hasta entonces.
+     */
+    val requiereCambioContrasena: Boolean = false,
 )
 
 /** Razones por las que el backend puede rechazar un acceso. */
 enum class MotivoFalloAutenticacion {
     CREDENCIALES_INVALIDAS,
     CUENTA_BLOQUEADA,
+    /** La contrasena temporal del medico paso de su plazo: hay que pedirle otra. */
+    CONTRASENA_TEMPORAL_VENCIDA,
     SIN_CONEXION,
 }
 

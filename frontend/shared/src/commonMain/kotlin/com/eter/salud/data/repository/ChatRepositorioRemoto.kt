@@ -3,7 +3,6 @@ package com.eter.salud.data.repository
 import com.eter.salud.data.adjuntos.ArchivosAdjuntosLocales
 import com.eter.salud.data.red.CanalTiempoReal
 import com.eter.salud.data.red.FalloDeRedGenerico
-import com.eter.salud.data.red.JsonRed
 import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
@@ -24,13 +23,28 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * `ChatRepositorio` contra el backend en Go (`docs/CONTRATOS_BACKEND.md`,
- * seccion 8, mas el addendum de adjuntos al final del documento -- esta
- * seccion se escribio antes de que el chat pudiera adjuntar fotos/archivos).
+ * `ChatRepositorio` contra el backend real (`docs/mapeo-endpoints.md`,
+ * seccion 8): los mensajes son funciones RPC de PostgREST, con parametros en
+ * snake_case (`texto_mensaje`, `autor_remitente`...: Postgres no deja que un
+ * parametro se llame igual que una columna de la respuesta). Los adjuntos van
+ * aparte, a Axum (`/chat/{id}/adjuntos`), porque hay que subir un binario.
+ *
+ * Este archivo seguia apuntando a las rutas REST del contrato original
+ * (`/conversaciones/{id}/mensajes`), que el backend nunca expuso: el chat
+ * entero respondia 404 contra el servidor de verdad.
  *
  * ## Por que [MensajeChatRed]/[AdjuntoRed] y no reusar los modelos de dominio
  *
@@ -48,10 +62,13 @@ class ChatRepositorioRemoto(
 ) : ChatRepositorio {
 
     override suspend fun obtenerHistorial(idConversacion: String): Result<List<MensajeChat>> {
-        val respuesta = cliente.get("$baseUrl/conversaciones/$idConversacion/mensajes")
+        val respuesta = cliente.post("$baseUrl/rpc/obtener_historial") {
+            contentType(ContentType.Application.Json)
+            setBody(CuerpoConversacion(idConversacion))
+        }
         return if (respuesta.status.isSuccess()) {
             val mensajes: List<MensajeChatRed> = respuesta.body()
-            Result.success(mensajes.map { it.aDominio(idConversacion, archivos, cliente) })
+            Result.success(mensajes.map { it.aDominio(idConversacion, archivos, cliente, baseUrl) })
         } else {
             Result.failure(FalloDeRedGenerico(respuesta.status.value))
         }
@@ -69,13 +86,15 @@ class ChatRepositorioRemoto(
         } else {
             null
         }
-        val respuesta = cliente.post("$baseUrl/conversaciones/$idConversacion/mensajes") {
+        val respuesta = cliente.post("$baseUrl/rpc/enviar_mensaje") {
             contentType(ContentType.Application.Json)
-            setBody(CuerpoEnviarMensaje(texto, instante, autor, adjuntoRed))
+            setBody(CuerpoEnviarMensaje(idConversacion, texto, instante, autor, adjuntoRed?.idAdjunto))
         }
         if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
 
-        val red: MensajeChatRed = respuesta.body()
+        // La RPC devuelve un array con el unico mensaje creado.
+        val red = respuesta.body<List<MensajeChatRed>>().firstOrNull()
+            ?: return Result.failure(FalloDeRedGenerico(respuesta.status.value))
         // Los bytes del adjunto ya estan en disco (los acabamos de subir desde
         // ahi): usar la copia local que ya tenemos evita descargar de vuelta lo
         // que este mismo dispositivo acaba de mandar.
@@ -83,32 +102,62 @@ class ChatRepositorioRemoto(
         return Result.success(mensaje)
     }
 
+    /**
+     * Conteo al abrir, y otra vez con cada aviso del canal (mensaje nuevo) o al
+     * marcar la conversacion como leida desde este telefono. El conteo lo da
+     * `rpc/mensajes_sin_leer` (0015): depende de quien mira, asi que no puede
+     * viajar dentro de un evento que reciben las dos partes.
+     */
     override fun mensajesSinLeer(idConversacion: String): Flow<Int> =
-        conexion.canal("chat:$idConversacion") { payload ->
-            JsonRed.decodeFromJsonElement<SobrePendientes>(payload).noLeidos
-        }
+        // El conteo inicial va DENTRO del merge y no en un onStart: asi la
+        // suscripcion al canal arranca a la vez que la primera consulta, y un
+        // mensaje que llegue mientras esa consulta viaja no se pierde.
+        merge(
+            flowOf(Unit),
+            conexion.canal("chat:$idConversacion") { },
+            lecturasPropias.filter { it == idConversacion }.map { },
+        ).mapNotNull { contarSinLeer(idConversacion) }
+
+    /** Conversaciones que este telefono acaba de marcar como leidas. */
+    private val lecturasPropias = MutableSharedFlow<String>(extraBufferCapacity = 16)
+
+    private suspend fun contarSinLeer(idConversacion: String): Int? {
+        val respuesta = runCatching {
+            cliente.post("$baseUrl/rpc/mensajes_sin_leer") {
+                contentType(ContentType.Application.Json)
+                setBody(CuerpoConversacion(idConversacion))
+            }
+        }.getOrNull() ?: return null
+        if (!respuesta.status.isSuccess()) return null
+        return runCatching { respuesta.body<JsonElement>().jsonPrimitive.intOrNull }.getOrNull()
+    }
 
     override suspend fun marcarConversacionLeida(idConversacion: String) {
         // Mejor esfuerzo: no marcar como leida no debe tumbar la pantalla de
         // chat, y no hay nada mas que el paciente pueda hacer ante ese fallo.
-        runCatching { cliente.post("$baseUrl/conversaciones/$idConversacion/leida") }
+        val marcada = runCatching {
+            cliente.post("$baseUrl/rpc/marcar_conversacion_leida") {
+                contentType(ContentType.Application.Json)
+                setBody(CuerpoConversacion(idConversacion))
+            }
+        }.getOrNull()?.status?.isSuccess() == true
+        // El globo baja a cero ya, sin esperar al siguiente mensaje.
+        if (marcada) lecturasPropias.tryEmit(idConversacion)
     }
 
     override suspend fun obtenerRespuestaAutomatica(idConversacion: String, instante: String): Result<MensajeChat> {
-        val respuesta = cliente.post("$baseUrl/conversaciones/$idConversacion/acuse-recibo") {
+        val respuesta = cliente.post("$baseUrl/rpc/obtener_respuesta_automatica") {
             contentType(ContentType.Application.Json)
-            setBody(CuerpoInstante(instante))
+            setBody(CuerpoAcuse(idConversacion, instante))
         }
-        return if (respuesta.status.isSuccess()) {
-            val red: MensajeChatRed = respuesta.body()
-            Result.success(red.aDominio(idConversacion, archivos, cliente))
-        } else {
-            Result.failure(FalloDeRedGenerico(respuesta.status.value))
-        }
+        if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
+        val red = respuesta.body<List<MensajeChatRed>>().firstOrNull()
+            ?: return Result.failure(FalloDeRedGenerico(respuesta.status.value))
+        return Result.success(red.aDominio(idConversacion, archivos, cliente, baseUrl))
     }
 
     override suspend fun obtenerResumenClinico(idMensaje: String): Result<ResumenClinicoIa> {
-        val respuesta = cliente.post("$baseUrl/mensajes/$idMensaje/resumen-ia")
+        val respuesta = cliente.post("$baseUrl/chat/mensajes/$idMensaje/resumen-ia")
         return if (respuesta.status.isSuccess()) {
             Result.success(respuesta.body())
         } else {
@@ -120,7 +169,7 @@ class ChatRepositorioRemoto(
     private suspend fun subir(idConversacion: String, adjunto: Adjunto): AdjuntoRed? {
         val bytes = archivos.leerBytes(adjunto.rutaLocal) ?: return null
         val respuesta = cliente.submitFormWithBinaryData(
-            url = "$baseUrl/conversaciones/$idConversacion/adjuntos",
+            url = "$baseUrl/chat/$idConversacion/adjuntos",
             formData = formData {
                 append("tipo", adjunto.tipo.name)
                 append(
@@ -136,9 +185,6 @@ class ChatRepositorioRemoto(
         return if (respuesta.status.isSuccess()) respuesta.body() else null
     }
 }
-
-@Serializable
-private data class SobrePendientes(val noLeidos: Int)
 
 @Serializable
 private data class AdjuntoRed(
@@ -161,15 +207,23 @@ private data class MensajeChatRed(
 )
 
 @Serializable
+private data class CuerpoConversacion(@SerialName("id_conversacion") val idConversacion: String)
+
+@Serializable
 private data class CuerpoEnviarMensaje(
-    val texto: String,
-    val instante: String,
-    val autor: AutorMensaje,
-    val adjunto: AdjuntoRed?,
+    @SerialName("id_conversacion") val idConversacion: String,
+    @SerialName("texto_mensaje") val texto: String,
+    @SerialName("instante_enviado") val instante: String,
+    @SerialName("autor_remitente") val autor: AutorMensaje,
+    /** Ausente (no `null`: `explicitNulls = false`) cuando el mensaje no lleva adjunto. */
+    @SerialName("id_adjunto") val idAdjunto: String? = null,
 )
 
 @Serializable
-private data class CuerpoInstante(val instante: String)
+private data class CuerpoAcuse(
+    @SerialName("id_conversacion") val idConversacion: String,
+    @SerialName("instante_recibido") val instante: String,
+)
 
 private fun MensajeChatRed.aDominioSinAdjunto() = MensajeChat(idMensaje, autor, texto, instante, tipo, adjunto = null)
 
@@ -191,11 +245,15 @@ private suspend fun MensajeChatRed.aDominio(
     idConversacion: String,
     archivos: ArchivosAdjuntosLocales,
     cliente: HttpClient,
+    baseUrl: String,
 ): MensajeChat {
     val adjuntoDominio = adjunto?.let { remoto ->
         val ruta = archivos.rutaLocalDe(idConversacion, remoto.idAdjunto, remoto.nombre)
         if (!archivos.existe(ruta)) {
-            val respuesta = cliente.get(remoto.url)
+            // El backend devuelve la ruta relativa: no sabe bajo que dominio
+            // lo publica Caddy. Se resuelve contra la misma BASE_URL de todo.
+            val url = if (remoto.url.startsWith("http")) remoto.url else baseUrl + remoto.url
+            val respuesta = cliente.get(url)
             if (respuesta.status.isSuccess()) {
                 val bytes: ByteArray = respuesta.body()
                 archivos.guardarBytes(ruta, bytes)

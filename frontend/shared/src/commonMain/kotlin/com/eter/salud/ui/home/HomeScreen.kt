@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eter.salud.domain.avisos.AvisosClinicos
 import com.eter.salud.domain.avisos.TextosAviso
 import com.eter.salud.domain.avisos.recordarAvisosClinicos
 import com.eter.salud.domain.model.EstadoToma
@@ -80,6 +81,7 @@ import salud.shared.generated.resources.Res
 import salud.shared.generated.resources.a11y_accion_ajustes
 import salud.shared.generated.resources.a11y_home_abrir_agenda
 import salud.shared.generated.resources.a11y_home_acceso_completar_perfil
+import salud.shared.generated.resources.a11y_home_activar_recordatorios
 import salud.shared.generated.resources.a11y_home_acceso_historial
 import salud.shared.generated.resources.a11y_home_acceso_medicos
 import salud.shared.generated.resources.a11y_home_acceso_rfid
@@ -110,6 +112,12 @@ import salud.shared.generated.resources.home_estado_error
 import salud.shared.generated.resources.home_perfil_accion_corta
 import salud.shared.generated.resources.home_perfil_pendiente_descripcion
 import salud.shared.generated.resources.home_perfil_pendiente_titulo
+import salud.shared.generated.resources.home_recordatorios_accion_activar
+import salud.shared.generated.resources.home_recordatorios_accion_exactas
+import salud.shared.generated.resources.home_recordatorios_apagados_descripcion
+import salud.shared.generated.resources.home_recordatorios_apagados_titulo
+import salud.shared.generated.resources.home_recordatorios_tardios_descripcion
+import salud.shared.generated.resources.home_recordatorios_tardios_titulo
 import salud.shared.generated.resources.home_proxima_a_las
 import salud.shared.generated.resources.home_proxima_titulo
 import salud.shared.generated.resources.home_resumen_faltan
@@ -173,7 +181,12 @@ fun HomeScreen(
     // sus pruebas controlen cuando ocurre la lectura.
     LaunchedEffect(estado.idPaciente) { viewModel.cargar() }
 
-    ProgramarRecordatorios(estado)
+    val avisos = recordarAvisosClinicos()
+    // Se leen aqui, en la composicion, para que conceder el permiso recomponga
+    // la pantalla: quita el aviso y dispara la programacion de recordatorios.
+    val faltanAvisos = !avisos.permitidos
+    val faltanAlarmasExactas = !avisos.alarmasExactas
+    ProgramarRecordatorios(estado, avisos)
 
     LazyColumn(
         modifier = modifier
@@ -205,6 +218,17 @@ fun HomeScreen(
 
         if (estado.perfilEmergenciaPendiente) {
             item(key = "perfil_pendiente") { AvisoPerfilPendiente(alCompletarPerfil, margen) }
+        }
+
+        // Solo a quien tiene tomas hoy: pedir avisos sin tratamiento no se entiende.
+        if (estado.tomasDelDia.isNotEmpty() && (faltanAvisos || faltanAlarmasExactas)) {
+            item(key = "recordatorios_inactivos") {
+                AvisoRecordatoriosInactivos(
+                    faltanAvisos = faltanAvisos,
+                    alActivar = avisos::solicitarPermisos,
+                    modifier = margen,
+                )
+            }
         }
 
         item(key = "resumen") { ResumenDelDia(estado, margen) }
@@ -279,8 +303,7 @@ fun HomeScreen(
  * registradas se cancelan.
  */
 @Composable
-private fun ProgramarRecordatorios(estado: HomeUiState) {
-    val avisos = recordarAvisosClinicos()
+private fun ProgramarRecordatorios(estado: HomeUiState, avisos: AvisosClinicos) {
     val titulo = stringResource(Res.string.aviso_medicacion_titulo)
 
     val pendientes = estado.tomasPorRecordar.map { toma ->
@@ -852,6 +875,59 @@ private fun AvisoPerfilPendiente(alCompletarPerfil: () -> Unit, modifier: Modifi
             etiqueta = stringResource(Res.string.home_perfil_accion_corta),
             alPulsar = alCompletarPerfil,
             descripcionAccesible = stringResource(Res.string.a11y_home_acceso_completar_perfil),
+        )
+    }
+}
+
+/**
+ * Los recordatorios no llegan, o llegan tarde, porque falta un permiso. Sin
+ * esto el paciente cree estar avisado y la pastilla se le pasa: la alarma se
+ * programaba igual, pero Android 13+ descartaba el aviso sin decir nada.
+ */
+@Composable
+private fun AvisoRecordatoriosInactivos(
+    faltanAvisos: Boolean,
+    alActivar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(colores.fondoAdvertencia, FormaSalud.destacada)
+            .padding(espaciado.amplio),
+        verticalArrangement = Arrangement.spacedBy(espaciado.compacto),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconoSalud(glifo = GlifoSalud.PASTILLA, lado = LADO_ICONO_LINEA, color = colores.textoAdvertencia)
+            Spacer(Modifier.width(espaciado.compacto))
+            Text(
+                text = stringResource(
+                    if (faltanAvisos) Res.string.home_recordatorios_apagados_titulo
+                    else Res.string.home_recordatorios_tardios_titulo,
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                color = colores.textoAdvertencia,
+            )
+        }
+        Text(
+            text = stringResource(
+                if (faltanAvisos) Res.string.home_recordatorios_apagados_descripcion
+                else Res.string.home_recordatorios_tardios_descripcion,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(espaciado.compacto))
+        BotonAccionPrincipal(
+            etiqueta = stringResource(
+                if (faltanAvisos) Res.string.home_recordatorios_accion_activar
+                else Res.string.home_recordatorios_accion_exactas,
+            ),
+            alPulsar = alActivar,
+            descripcionAccesible = stringResource(Res.string.a11y_home_activar_recordatorios),
         )
     }
 }

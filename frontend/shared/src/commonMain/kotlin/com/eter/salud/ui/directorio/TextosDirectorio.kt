@@ -10,14 +10,21 @@ import salud.shared.generated.resources.directorio_especialidad_ginecologia
 import salud.shared.generated.resources.directorio_especialidad_medicina_general
 import salud.shared.generated.resources.directorio_especialidad_pediatria
 import salud.shared.generated.resources.directorio_especialidad_psiquiatria
+import salud.shared.generated.resources.directorio_especialidad_sin_registrar
 import salud.shared.generated.resources.directorio_especialidad_geriatria
 import salud.shared.generated.resources.directorio_especialidad_endocrinologia
 import salud.shared.generated.resources.directorio_especialidad_neumologia
 import salud.shared.generated.resources.directorio_especialidad_neurologia
 import salud.shared.generated.resources.directorio_estado_error
 
-/** Puente entre las especialidades del Directorio Medico y `strings.xml`. */
-internal fun Especialidad.recurso(): StringResource = when (this) {
+/**
+ * Puente entre las especialidades del Directorio Medico y `strings.xml`.
+ *
+ * Acepta `null`: un medico recien registrado aun no declara especialidad, y la
+ * pantalla lo dice tal cual en vez de inventarle una o dejar de mostrarlo.
+ */
+internal fun Especialidad?.recurso(): StringResource = when (this) {
+    null -> Res.string.directorio_especialidad_sin_registrar
     Especialidad.MEDICINA_GENERAL -> Res.string.directorio_especialidad_medicina_general
     Especialidad.CARDIOLOGIA -> Res.string.directorio_especialidad_cardiologia
     Especialidad.PEDIATRIA -> Res.string.directorio_especialidad_pediatria

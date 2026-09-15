@@ -34,10 +34,53 @@ class AutenticacionRepositorioRemotoTest {
     }
 
     @Test
+    fun entrar_con_la_contrasena_temporal_del_medico_pide_cambiarla() = kotlinx.coroutines.test.runTest {
+        val cliente = clienteDePrueba {
+            respond(
+                content = """{"idPaciente":"pac_1","token":"jwt_x","requiereOnboarding":false,"requiereCambioContrasena":true}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf("Content-Type", "application/json"),
+            )
+        }
+        val repositorio = AutenticacionRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
+
+        assertTrue(repositorio.iniciarSesion("a@b.com", "k7m4p-9qx2h").getOrThrow().requiereCambioContrasena)
+    }
+
+    @Test
+    fun un_backend_anterior_sin_la_marca_no_pide_cambiarla() = kotlinx.coroutines.test.runTest {
+        val cliente = clienteDePrueba {
+            respond(
+                content = """{"idPaciente":"pac_1","token":"jwt_x","requiereOnboarding":false}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf("Content-Type", "application/json"),
+            )
+        }
+        val repositorio = AutenticacionRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
+
+        assertEquals(false, repositorio.iniciarSesion("a@b.com", "Demo1234").getOrThrow().requiereCambioContrasena)
+    }
+
+    @Test
+    fun una_contrasena_temporal_vencida_llega_tipada() = kotlinx.coroutines.test.runTest {
+        val cliente = clienteDePrueba {
+            respond(
+                content = """{"message":"CONTRASENA_TEMPORAL_VENCIDA"}""",
+                status = HttpStatusCode.Unauthorized,
+                headers = headersOf("Content-Type", "application/json"),
+            )
+        }
+        val repositorio = AutenticacionRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)
+
+        val fallo = repositorio.iniciarSesion("a@b.com", "k7m4p-9qx2h").exceptionOrNull() as FalloAutenticacion
+        assertEquals(MotivoFalloAutenticacion.CONTRASENA_TEMPORAL_VENCIDA, fallo.motivo)
+    }
+
+    @Test
     fun credenciales_invalidas_se_traduce_al_motivo_tipado() = kotlinx.coroutines.test.runTest {
         val cliente = clienteDePrueba {
             respond(
-                content = """{"motivo":"CREDENCIALES_INVALIDAS"}""",
+                content = """{"message":"CREDENCIALES_INVALIDAS"}""",
                 status = HttpStatusCode.Unauthorized,
                 headers = headersOf("Content-Type", "application/json"),
             )
@@ -65,7 +108,7 @@ class AutenticacionRepositorioRemotoTest {
     fun correo_ya_registrado_al_crear_cuenta() = kotlinx.coroutines.test.runTest {
         val cliente = clienteDePrueba {
             respond(
-                content = """{"motivo":"CORREO_YA_REGISTRADO"}""",
+                content = """{"message":"CORREO_YA_REGISTRADO"}""",
                 status = HttpStatusCode.Conflict,
                 headers = headersOf("Content-Type", "application/json"),
             )

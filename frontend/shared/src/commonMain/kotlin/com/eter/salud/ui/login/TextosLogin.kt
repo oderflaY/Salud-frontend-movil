@@ -5,6 +5,7 @@ import com.eter.salud.presentation.login.ErrorCampoLogin
 import org.jetbrains.compose.resources.StringResource
 import salud.shared.generated.resources.Res
 import salud.shared.generated.resources.error_contrasena_corta
+import salud.shared.generated.resources.error_contrasena_temporal_vencida
 import salud.shared.generated.resources.error_contrasena_vacia
 import salud.shared.generated.resources.error_correo_formato
 import salud.shared.generated.resources.error_correo_vacio
@@ -26,5 +27,6 @@ internal fun ErrorCampoLogin.recurso(): StringResource = when (this) {
 internal fun ErrorAutenticacion.recurso(): StringResource = when (this) {
     ErrorAutenticacion.CREDENCIALES_INVALIDAS -> Res.string.error_credenciales_invalidas
     ErrorAutenticacion.CUENTA_BLOQUEADA -> Res.string.error_cuenta_bloqueada
+    ErrorAutenticacion.CONTRASENA_TEMPORAL_VENCIDA -> Res.string.error_contrasena_temporal_vencida
     ErrorAutenticacion.SIN_CONEXION -> Res.string.error_login_sin_conexion
 }

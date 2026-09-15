@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.eter.salud.domain.model.Cita
 import com.eter.salud.domain.model.EstadoToma
+import com.eter.salud.domain.model.MotivoFalloCita
 import com.eter.salud.domain.model.TomaDelDia
 import com.eter.salud.domain.repository.AdherenciaRepositorio
 import com.eter.salud.domain.repository.CitasRepositorio
 import com.eter.salud.domain.repository.DirectorioMedicoRepositorio
+import com.eter.salud.domain.repository.FalloCita
 import com.eter.salud.domain.time.CalendarioSalud
 import com.eter.salud.domain.time.RelojSalud
 import com.eter.salud.domain.time.relojDelSistema
@@ -95,9 +97,18 @@ class AgendaPacienteViewModel(
     fun rechazarPropuesta(cita: Cita) = responderPropuesta(cita) { citas.rechazarPropuesta(it) }
 
     private fun responderPropuesta(cita: Cita, accion: suspend (String) -> Result<Cita>) {
-        _estado.update { it.copy(errorRespuestaPropuesta = false) }
+        _estado.update { it.copy(errorRespuestaPropuesta = false, propuestaYaNoDisponible = false) }
         viewModelScope.launch {
             val resultado = ejecutarSeguro { accion(cita.idCita) }
+            val motivo = (resultado.exceptionOrNull() as? FalloCita)?.motivo
+            if (motivo == MotivoFalloCita.PROPUESTA_NO_DISPONIBLE) {
+                // No es un fallo de red: la propuesta ya no existe como tal. Se
+                // relee para que desaparezca de la agenda en vez de seguir ahi.
+                _estado.update { it.copy(propuestaYaNoDisponible = true) }
+                releerCitas()
+                cargarDia(_estado.value.fechaSeleccionada)
+                return@launch
+            }
             if (resultado.isFailure) {
                 _estado.update { it.copy(errorRespuestaPropuesta = true) }
                 return@launch
@@ -108,7 +119,7 @@ class AgendaPacienteViewModel(
     }
 
     fun descartarErrorRespuestaPropuesta() {
-        _estado.update { it.copy(errorRespuestaPropuesta = false) }
+        _estado.update { it.copy(errorRespuestaPropuesta = false, propuestaYaNoDisponible = false) }
     }
 
     fun periodoAnterior() = moverVentana(-DIAS_VENTANA)

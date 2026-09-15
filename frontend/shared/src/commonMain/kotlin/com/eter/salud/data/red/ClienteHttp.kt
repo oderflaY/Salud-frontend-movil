@@ -1,8 +1,11 @@
 package com.eter.salud.data.red
 
+import com.eter.salud.data.sesion.AvisoDeSesion
 import com.eter.salud.data.sesion.FuenteDeSesion
+import com.eter.salud.data.sesion.TipoAvisoDeSesion
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.api.createClientPlugin
@@ -11,7 +14,9 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.header
+import io.ktor.client.statement.request
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -33,11 +38,19 @@ expect fun crearMotorHttp(): HttpClientEngineFactory<*>
  * viajan igual (`encodeDefaults = true`) para distinguir "sin datos" de "no
  * preguntado", y un nodo nuevo del backend no rompe una app ya instalada
  * (`ignoreUnknownKeys = true`).
+ *
+ * `coerceInputValues` extiende esa misma regla a los valores: un `null` en un
+ * campo con valor por defecto toma el defecto, y un valor de enum que esta
+ * version no conoce (una especialidad agregada despues) cae al defecto en vez
+ * de tumbar la respuesta completa. Sin esto, un solo medico recien registrado
+ * -- universidad y especialidad en null -- vaciaba el directorio y la bandeja
+ * de todos sus pacientes.
  */
 val JsonRed: Json = Json {
     explicitNulls = false
     encodeDefaults = true
     ignoreUnknownKeys = true
+    coerceInputValues = true
     prettyPrint = false
 }
 
@@ -57,8 +70,9 @@ val JsonRed: Json = Json {
 fun crearClienteHttp(
     fuenteDeSesion: FuenteDeSesion,
     engine: HttpClientEngineFactory<*> = crearMotorHttp(),
+    alRechazarSesion: (AvisoDeSesion) -> Unit = {},
 ): HttpClient = HttpClient(engine) {
-    configurarPluginsRed(fuenteDeSesion)
+    configurarPluginsRed(fuenteDeSesion, alRechazarSesion)
 }
 
 /**
@@ -66,7 +80,10 @@ fun crearClienteHttp(
  * pruebas puedan montar el mismo cliente sobre un motor falso
  * (`MockEngine`) sin duplicar la configuracion real.
  */
-fun HttpClientConfig<*>.configurarPluginsRed(fuenteDeSesion: FuenteDeSesion) {
+fun HttpClientConfig<*>.configurarPluginsRed(
+    fuenteDeSesion: FuenteDeSesion,
+    alRechazarSesion: (AvisoDeSesion) -> Unit = {},
+) {
     expectSuccess = false
 
     install(ContentNegotiation) {
@@ -82,6 +99,9 @@ fun HttpClientConfig<*>.configurarPluginsRed(fuenteDeSesion: FuenteDeSesion) {
     }
     install(AutorizacionDeSesion) {
         this.fuenteDeSesion = fuenteDeSesion
+    }
+    install(VigilanciaDeSesion) {
+        this.alRechazarSesion = alRechazarSesion
     }
 }
 
@@ -105,6 +125,38 @@ private val AutorizacionDeSesion = createClientPlugin("AutorizacionDeSesion", ::
         if (!token.isNullOrBlank()) {
             request.header(HttpHeaders.Authorization, "Bearer $token")
         }
+    }
+}
+
+private class ConfiguracionVigilancia {
+    var alRechazarSesion: (AvisoDeSesion) -> Unit = {}
+}
+
+/**
+ * Detecta, en cualquier respuesta, que el backend rechazo la SESION (y no
+ * solo esa peticion) y lo avisa una vez, en un solo sitio, en lugar de que
+ * cada repositorio lo traduzca a "sin conexion".
+ *
+ * Mira el motivo y no solo el codigo: `NO_AUTORIZADO` (401) tambien sale de
+ * reglas normales -- abrir una conversacion ajena, por ejemplo -- y eso no debe
+ * sacar a nadie de la app. Leer el cuerpo aqui no se lo quita al repositorio:
+ * Ktor 3 guarda la respuesta y deja leerla otra vez.
+ */
+private val VigilanciaDeSesion = createClientPlugin("VigilanciaDeSesion", ::ConfiguracionVigilancia) {
+    val avisar = pluginConfig.alRechazarSesion
+    onResponse { respuesta ->
+        val codigo = respuesta.status
+        if (codigo != HttpStatusCode.Unauthorized && codigo != HttpStatusCode.Forbidden) return@onResponse
+        val token = respuesta.request.headers[HttpHeaders.Authorization]
+            ?.removePrefix("Bearer ")
+            ?.takeIf { it.isNotBlank() }
+            ?: return@onResponse
+        val tipo = when (runCatching { respuesta.body<CuerpoError>().motivo }.getOrNull()) {
+            "SESION_REVOCADA", "CUENTA_INACTIVA" -> TipoAvisoDeSesion.CERRADA
+            "CAMBIO_CONTRASENA_REQUERIDO" -> TipoAvisoDeSesion.CAMBIO_DE_CONTRASENA_REQUERIDO
+            else -> return@onResponse
+        }
+        avisar(AvisoDeSesion(tipo, token))
     }
 }
 

@@ -1,7 +1,8 @@
 :8000 {
 	# Lo que necesita secretos de firma, hashing, estado en memoria (WS) o
-	# rate limiting vive en el servicio Rust/Axum.
-	@axum path /healthz /auth/* /realtime /tarjetas/* /chat/*
+	# rate limiting vive en el servicio Rust/Axum. /api/v1/* es el dashboard
+	# web del médico (Axum responde también el CORS).
+	@axum path /healthz /auth/* /realtime /tarjetas/* /chat/* /api/v1/*
 	handle @axum {
 		reverse_proxy backend:8080
 	}

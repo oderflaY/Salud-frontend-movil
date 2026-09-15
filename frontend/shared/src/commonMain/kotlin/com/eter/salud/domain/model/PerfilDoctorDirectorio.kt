@@ -13,7 +13,8 @@ data class PerfilDoctorDirectorio(
     val idMedico: String,
     /** Ya con tratamiento incluido, por ejemplo "Dra. Elena Ruiz Santos". */
     val nombreCompleto: String,
-    val especialidad: Especialidad,
+    /** `null` mientras el medico no llene su perfil de directorio: nunca se inventa. */
+    val especialidad: Especialidad? = null,
     /** Espejo de `credenciales.estadoVerificacion == "aprobado"` (DM_PerfilMedico.md). */
     val cedulaVerificada: Boolean,
     /** DM_PerfilMedico.md, nodo `credenciales.universidad`. Dato de confianza, no traducible. */
@@ -30,6 +31,7 @@ data class PerfilDoctorDirectorio(
 data class MedicoVinculado(
     val idMedico: String,
     val nombreCompleto: String,
-    val especialidad: Especialidad,
+    /** `null` mientras el medico no llene su perfil de directorio: nunca se inventa. */
+    val especialidad: Especialidad? = null,
     val idConversacion: String,
 )

@@ -5,6 +5,12 @@
 xcuserdata
 !src/**/build/
 local.properties
+# Credenciales de firma del .aab: contrasenas en claro y el almacen de claves.
+# Si el keystore se filtra o se pierde, no hay forma de volver a publicar una
+# actualizacion de la app bajo el mismo applicationId.
+keystore.properties
+*.jks
+*.keystore
 .idea
 .DS_Store
 captures

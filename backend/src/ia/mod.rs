@@ -15,4 +15,8 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/chat/:id_conversacion/resumen", post(handlers::resumir_conversacion))
         .route("/chat/traducir", post(handlers::traducir_texto))
+        .route(
+            "/chat/mensajes/:id_mensaje/resumen-ia",
+            post(handlers::resumir_mensaje),
+        )
 }

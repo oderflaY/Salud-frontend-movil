@@ -75,6 +75,8 @@ data class AgendaPacienteUiState(
     val citasNoDisponibles: Boolean = false,
     /** Aceptar o rechazar una propuesta del medico no se pudo aplicar. */
     val errorRespuestaPropuesta: Boolean = false,
+    /** La propuesta ya no estaba en espera: el medico la retiro o ya se habia respondido. */
+    val propuestaYaNoDisponible: Boolean = false,
 ) {
     /** Si la ventana visible contiene hoy; si no, se ofrece "Volver a hoy". */
     val incluyeHoy: Boolean get() = dias.any { it.esHoy }

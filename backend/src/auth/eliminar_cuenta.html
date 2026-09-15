@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Eliminar tu cuenta de Salud</title>
+<style>
+  :root { --zafiro:#0A4C86; --fondo:#F0F1F4; --texto:#1D1D1F; --secundario:#606067;
+          --tarjeta:#fff; --filete:#D9DBE1; --rojo:#BE1E2D; --rojo-suave:#FCE7E9; --verde:#036B4D; --verde-suave:#E1F4EB; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 16px 48px; background:var(--fondo); color:var(--texto);
+         font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:560px; margin:0 auto; }
+  h1 { font-size:28px; line-height:1.2; margin:0 0 8px; }
+  h2 { font-size:18px; margin:24px 0 8px; }
+  p, li { color:var(--secundario); }
+  ul { padding-left:20px; margin:0; }
+  .tarjeta { background:var(--tarjeta); border:1px solid var(--filete); border-radius:16px; padding:20px; margin-top:20px; }
+  fieldset { border:0; padding:0; margin:0 0 16px; display:flex; gap:12px; flex-wrap:wrap; }
+  legend { font-weight:600; margin-bottom:8px; color:var(--texto); }
+  .opcion { display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--filete); border-radius:12px; cursor:pointer; }
+  label.campo { display:block; font-weight:600; margin:14px 0 6px; }
+  input[type=email], input[type=password] { width:100%; min-height:52px; padding:12px 14px; font:inherit;
+         border:1px solid #84858D; border-radius:12px; background:#fff; color:var(--texto); }
+  .confirmar { display:flex; gap:10px; align-items:flex-start; margin:18px 0; color:var(--texto); }
+  .confirmar input { width:22px; height:22px; margin-top:2px; flex:none; }
+  button { width:100%; min-height:56px; border:0; border-radius:14px; background:var(--rojo); color:#fff;
+           font:600 17px system-ui,sans-serif; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .aviso { margin-top:16px; padding:14px 16px; border-radius:12px; display:none; }
+  .aviso.error { display:block; background:var(--rojo-suave); color:var(--rojo); }
+  .aviso.listo { display:block; background:var(--verde-suave); color:var(--verde); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Eliminar tu cuenta de Salud</h1>
+  <p>Puedes eliminar tu cuenta aquí o desde la app, en <strong>Ajustes → Eliminar cuenta</strong>. La baja es inmediata y no se puede deshacer.</p>
+
+  <div class="tarjeta">
+    <h2>Qué se borra al momento</h2>
+    <ul>
+      <li>Tu acceso: correo y contraseña. El correo queda libre para registrarte de nuevo.</li>
+      <li>Tu teléfono, tus contactos de emergencia, CURP, NSS y aseguradora.</li>
+      <li>Tu tarjeta de emergencia deja de funcionar.</li>
+      <li>Ningún médico vuelve a tener acceso a tu información, y se cancelan tus citas futuras.</li>
+      <li>Si eres médico: sales del directorio y se retiran tus horarios.</li>
+    </ul>
+    <h2>Qué se conserva, y por cuánto tiempo</h2>
+    <ul>
+      <li>Tu expediente clínico (alergias, diagnósticos, tratamientos, historial y conversaciones con tu médico) se conserva <strong>5 años</strong>, como exige la NOM-004-SSA3-2012, y después se borra de forma automática. Nadie puede consultarlo desde la app durante ese tiempo.</li>
+      <li>Si eres médico, tu nombre y cédula se conservan en las recetas y citas que emitiste, porque forman parte del expediente de tus pacientes.</li>
+    </ul>
+  </div>
+
+  <form class="tarjeta" id="formulario" novalidate>
+    <fieldset>
+      <legend>Tipo de cuenta</legend>
+      <label class="opcion"><input type="radio" name="tipo" value="pacientes" checked> Paciente</label>
+      <label class="opcion"><input type="radio" name="tipo" value="profesionales"> Médico</label>
+    </fieldset>
+
+    <label class="campo" for="correo">Correo</label>
+    <input id="correo" type="email" autocomplete="email" required>
+
+    <label class="campo" for="contrasena">Contraseña</label>
+    <input id="contrasena" type="password" autocomplete="current-password" required>
+
+    <label class="confirmar"><input id="entiendo" type="checkbox"> Entiendo que la baja es definitiva y que mi expediente clínico se conserva 5 años.</label>
+
+    <button id="boton" type="submit" disabled>Eliminar mi cuenta</button>
+    <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+  </form>
+</main>
+<script>
+  const f = document.getElementById('formulario');
+  const boton = document.getElementById('boton');
+  const entiendo = document.getElementById('entiendo');
+  const aviso = document.getElementById('aviso');
+
+  function mostrar(clase, texto) { aviso.className = 'aviso ' + clase; aviso.textContent = texto; }
+  entiendo.addEventListener('change', () => { boton.disabled = !entiendo.checked; });
+
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const correo = document.getElementById('correo').value.trim();
+    const contrasena = document.getElementById('contrasena').value;
+    if (!correo || !contrasena) { mostrar('error', 'Escribe tu correo y tu contraseña.'); return; }
+    const tipo = f.querySelector('input[name=tipo]:checked').value;
+    boton.disabled = true;
+    try {
+      const r = await fetch('/auth/' + tipo + '/baja', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo, contrasena }),
+      });
+      if (r.status === 204) {
+        f.querySelectorAll('input').forEach(i => i.disabled = true);
+        mostrar('listo', 'Tu cuenta fue eliminada. Ya puedes cerrar esta página.');
+        return;
+      }
+      mostrar('error', r.status === 401
+        ? 'El correo o la contraseña no coinciden. Revisa también el tipo de cuenta.'
+        : 'No se pudo completar la baja. Intenta de nuevo en unos minutos.');
+    } catch (_) {
+      mostrar('error', 'Sin conexión. Revisa tu internet e intenta de nuevo.');
+    }
+    boton.disabled = !entiendo.checked;
+  });
+</script>
+</body>
+</html>

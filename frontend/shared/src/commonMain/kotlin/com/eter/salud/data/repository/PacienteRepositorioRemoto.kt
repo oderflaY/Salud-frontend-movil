@@ -11,6 +11,8 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * `PacienteRepositorio` contra el backend real (`mapeo-endpoints.md`, seccion
@@ -33,7 +35,14 @@ class PacienteRepositorioRemoto(
         return if (respuesta.status.isSuccess()) {
             // La funcion devuelve el idPaciente como escalar JSON, no envuelto
             // en un objeto: `"pac_xxx"`, no `{"idPaciente": "pac_xxx"}`.
-            Result.success(respuesta.body<String>())
+            //
+            // Se deserializa como JsonElement y NO con `body<String>()`: Ktor
+            // trata String como un caso especial y entrega el cuerpo crudo sin
+            // pasar por content negotiation, con lo que el id se quedaba con
+            // las comillas del JSON pegadas (`"pac_xxx"`). Ese id viajaba
+            // despues en cada filtro (`idPaciente=eq."pac_xxx"`) y no casaba
+            // con ninguna fila.
+            Result.success(respuesta.body<JsonElement>().jsonPrimitive.content)
         } else {
             Result.failure(FalloDeRedGenerico(respuesta.status.value))
         }

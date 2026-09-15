@@ -49,6 +49,27 @@ struct MensajeRespuesta {
     content: String,
 }
 
+/// Un dato clinico extraido de un mensaje del paciente ("Sintomas" ->
+/// "dolor de cabeza y mareo"). Misma forma que `PuntoResumenIa` del cliente.
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct PuntoResumen {
+    pub etiqueta: String,
+    pub valor: String,
+}
+
+#[derive(Deserialize)]
+struct PuntosResumen {
+    puntos: Vec<PuntoResumen>,
+}
+
+/// Los modelos a veces envuelven el JSON en un bloque ```json ... ``` aunque
+/// se les pida no hacerlo. Se quita antes de parsear en vez de fallar.
+fn sin_cercas_de_codigo(texto: &str) -> &str {
+    let t = texto.trim();
+    let t = t.strip_prefix("```json").or_else(|| t.strip_prefix("```")).unwrap_or(t);
+    t.strip_suffix("```").unwrap_or(t).trim()
+}
+
 impl ClienteDeepSeek {
     pub fn nuevo(http: reqwest::Client, base_url: String, api_key: String, modelo: String) -> Self {
         Self { http, base_url, api_key, modelo }
@@ -105,6 +126,31 @@ impl ClienteDeepSeek {
             texto_conversacion.to_string(),
         )
         .await
+    }
+
+    /// Puntos clinicos de UN mensaje largo del paciente, para que el medico lo
+    /// lea de un vistazo (el original sigue a un toque de distancia en la app).
+    /// Extrae, no interpreta: nada que el paciente no haya dicho.
+    pub async fn resumir_mensaje_clinico(&self, texto: &str) -> Result<Vec<PuntoResumen>, AppError> {
+        let contenido = self
+            .completar(
+                "Extraes datos clinicos del mensaje que un paciente le escribe a su medico. \
+                 Responde UNICAMENTE con JSON, sin texto adicional, con esta forma exacta: \
+                 {\"puntos\": [{\"etiqueta\": \"...\", \"valor\": \"...\"}]}. \
+                 Usa solo estas etiquetas, y solo las que apliquen: \"Motivo\", \"Sintomas\", \
+                 \"Desde cuando\", \"Intensidad\", \"Medicacion mencionada\", \"Senales de alarma\". \
+                 Maximo 5 puntos, en espanol, cada valor en una frase corta. Incluye solo lo que \
+                 el paciente dijo: no agregues diagnosticos, consejos ni suposiciones.",
+                texto.to_string(),
+            )
+            .await?;
+
+        let resumen: PuntosResumen = serde_json::from_str(sin_cercas_de_codigo(&contenido))
+            .map_err(|e| AppError::IaNoDisponible(format!("DeepSeek no devolvio el JSON pedido: {e}")))?;
+        if resumen.puntos.is_empty() {
+            return Err(AppError::IaNoDisponible("DeepSeek no extrajo ningun punto".to_string()));
+        }
+        Ok(resumen.puntos)
     }
 
     pub async fn traducir(&self, texto: &str, idioma_destino: &str) -> Result<String, AppError> {
@@ -203,6 +249,55 @@ mod tests {
 
         let cliente = cliente_de_prueba(servidor.uri());
         let resultado = cliente.traducir("hola", "en").await;
+
+        assert!(matches!(resultado, Err(AppError::IaNoDisponible(_))));
+    }
+
+    async fn servidor_que_responde(contenido: &str) -> MockServer {
+        let servidor = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{ "message": { "content": contenido } }]
+            })))
+            .mount(&servidor)
+            .await;
+        servidor
+    }
+
+    #[tokio::test]
+    async fn resumir_mensaje_devuelve_los_puntos_extraidos() {
+        let servidor = servidor_que_responde(
+            r#"{"puntos":[{"etiqueta":"Sintomas","valor":"Tobillos hinchados"},{"etiqueta":"Desde cuando","valor":"Cuatro dias"}]}"#,
+        )
+        .await;
+
+        let puntos = cliente_de_prueba(servidor.uri())
+            .resumir_mensaje_clinico("se me hincharon los tobillos hace cuatro dias")
+            .await
+            .unwrap();
+
+        assert_eq!(puntos.len(), 2);
+        assert_eq!(puntos[0], PuntoResumen { etiqueta: "Sintomas".into(), valor: "Tobillos hinchados".into() });
+    }
+
+    #[tokio::test]
+    async fn resumir_mensaje_tolera_el_json_envuelto_en_bloque_de_codigo() {
+        let servidor = servidor_que_responde(
+            "```json\n{\"puntos\":[{\"etiqueta\":\"Motivo\",\"valor\":\"Control de glucosa\"}]}\n```",
+        )
+        .await;
+
+        let puntos = cliente_de_prueba(servidor.uri()).resumir_mensaje_clinico("x").await.unwrap();
+
+        assert_eq!(puntos[0].valor, "Control de glucosa");
+    }
+
+    #[tokio::test]
+    async fn resumir_mensaje_sin_json_valido_es_ia_no_disponible() {
+        let servidor = servidor_que_responde("El paciente tiene dolor.").await;
+
+        let resultado = cliente_de_prueba(servidor.uri()).resumir_mensaje_clinico("x").await;
 
         assert!(matches!(resultado, Err(AppError::IaNoDisponible(_))));
     }

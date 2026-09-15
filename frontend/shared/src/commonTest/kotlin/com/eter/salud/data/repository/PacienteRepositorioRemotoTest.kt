@@ -22,10 +22,11 @@ class PacienteRepositorioRemotoTest {
     @Test
     fun registra_al_paciente_y_devuelve_el_id_asignado() = runTest {
         val cliente = clienteDePrueba { peticion ->
-            assertEquals("$URL_BASE_DE_PRUEBA/pacientes", peticion.url.toString())
+            assertEquals("$URL_BASE_DE_PRUEBA/rpc/registrar_paciente", peticion.url.toString())
+            // El id llega como escalar JSON, no envuelto en un objeto.
             respond(
-                content = """{"idPaciente":"pac_nuevo"}""",
-                status = HttpStatusCode.Created,
+                content = """"pac_nuevo"""",
+                status = HttpStatusCode.OK,
                 headers = headersOf("Content-Type", "application/json"),
             )
         }

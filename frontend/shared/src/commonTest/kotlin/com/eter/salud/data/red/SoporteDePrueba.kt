@@ -1,5 +1,6 @@
 package com.eter.salud.data.red
 
+import com.eter.salud.data.sesion.AvisoDeSesion
 import com.eter.salud.data.sesion.FuenteDeSesion
 import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.domain.model.SesionProfesional
@@ -38,9 +39,10 @@ class FuenteDeSesionFalsa(inicial: SesionUiState = SesionUiState(restaurando = f
  */
 fun clienteDePrueba(
     fuenteDeSesion: FuenteDeSesion = FuenteDeSesionFalsa(),
+    alRechazarSesion: (AvisoDeSesion) -> Unit = {},
     manejador: MockRequestHandleScope.(request: HttpRequestData) -> HttpResponseData,
 ): HttpClient = HttpClient(MockEngine) {
-    configurarPluginsRed(fuenteDeSesion)
+    configurarPluginsRed(fuenteDeSesion, alRechazarSesion)
     engine {
         addHandler(manejador)
     }

@@ -36,7 +36,7 @@ enum class PasoAgenda {
 data class MedicoElegido(
     val idMedico: String,
     val nombreCompleto: String,
-    val especialidad: Especialidad,
+    val especialidad: Especialidad?,
 )
 
 /** Un dia con sus horarios libres, tal como se ofrece en el carrusel del chat. */

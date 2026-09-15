@@ -2,6 +2,7 @@ package com.eter.salud.presentation.chatmedico
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
 import com.eter.salud.domain.model.ResumenClinicoIa
@@ -150,10 +151,23 @@ class ChatMedicoViewModel(
         _estado.update { it.copy(textoEnCurso = texto, errorEnvio = false) }
     }
 
+    /**
+     * El adjunto llega ya resuelto desde el selector (galeria, archivo o
+     * escaner). Uno a la vez, igual que en el chat del paciente.
+     */
+    fun adjuntar(adjunto: Adjunto) {
+        _estado.update { it.copy(adjuntoEnCurso = adjunto, errorEnvio = false) }
+    }
+
+    fun quitarAdjunto() {
+        _estado.update { it.copy(adjuntoEnCurso = null) }
+    }
+
     fun enviarMensaje() {
         val actual = _estado.value
         val texto = actual.textoEnCurso.trim()
-        if (texto.isBlank()) return
+        val adjunto = actual.adjuntoEnCurso
+        if (texto.isBlank() && adjunto == null) return
         // Sin historial descargado no hay a que anexar: se evita perder el texto.
         val mensajesActuales = (actual.historial as? HistorialChatUiState.ConMensajes)?.mensajes
             ?: return
@@ -164,12 +178,14 @@ class ChatMedicoViewModel(
             autor = AutorMensaje.MEDICO,
             texto = texto,
             instante = instante,
+            adjunto = adjunto,
         ).aVisible()
 
         _estado.update {
             it.copy(
                 historial = HistorialChatUiState.ConMensajes(mensajesActuales + provisional),
                 textoEnCurso = "",
+                adjuntoEnCurso = null,
                 errorEnvio = false,
             )
         }
@@ -181,6 +197,7 @@ class ChatMedicoViewModel(
                     texto = texto,
                     instante = instante,
                     autor = AutorMensaje.MEDICO,
+                    adjunto = adjunto,
                 )
             }
             resultado.fold(
@@ -199,7 +216,9 @@ class ChatMedicoViewModel(
                             .conMensajes { mensajes ->
                                 mensajes.filterNot { it.idMensaje == provisional.idMensaje }
                             }
-                            .copy(errorEnvio = true, textoEnCurso = texto)
+                            // Texto y adjunto vuelven al campo: perder un archivo
+                            // ya elegido por un fallo de red obligaria a buscarlo.
+                            .copy(errorEnvio = true, textoEnCurso = texto, adjuntoEnCurso = adjunto)
                     }
                 },
             )
@@ -220,6 +239,7 @@ class ChatMedicoViewModel(
         autor = autor,
         esPropio = autor == AutorMensaje.MEDICO,
         horaLocal = reloj.horaLocal(instante),
+        adjunto = adjunto,
     )
 
     /** Reescribe la lista solo si el historial sigue descargado. */

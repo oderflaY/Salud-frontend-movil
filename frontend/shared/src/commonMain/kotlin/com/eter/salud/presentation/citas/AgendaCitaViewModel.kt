@@ -343,6 +343,8 @@ class AgendaCitaViewModel(
     private fun Throwable.aErrorDeAgenda(): ErrorAgendaCita = when (motivoDeCita()) {
         MotivoFalloCita.RESERVA_EXPIRADA -> ErrorAgendaCita.RESERVA_EXPIRADA
         MotivoFalloCita.FRANJA_OCUPADA -> ErrorAgendaCita.FRANJA_OCUPADA
-        MotivoFalloCita.SIN_CONEXION, null -> ErrorAgendaCita.SIN_CONEXION
+        // PROPUESTA_NO_DISPONIBLE no ocurre al reservar: solo al responder una
+        // propuesta, que no pasa por este flujo.
+        MotivoFalloCita.PROPUESTA_NO_DISPONIBLE, MotivoFalloCita.SIN_CONEXION, null -> ErrorAgendaCita.SIN_CONEXION
     }
 }

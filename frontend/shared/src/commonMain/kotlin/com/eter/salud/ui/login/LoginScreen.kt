@@ -1,6 +1,7 @@
 package com.eter.salud.ui.login
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,12 +15,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -52,6 +57,7 @@ import salud.shared.generated.resources.a11y_login_accion_entrar
 import salud.shared.generated.resources.a11y_login_accion_recuperar
 import salud.shared.generated.resources.a11y_login_accion_registrarse
 import salud.shared.generated.resources.a11y_login_autenticando
+import salud.shared.generated.resources.a11y_login_aviso_sesion_cerrada
 import salud.shared.generated.resources.a11y_login_contrasena_campo
 import salud.shared.generated.resources.a11y_login_correo_campo
 import salud.shared.generated.resources.a11y_login_mostrar_contrasena
@@ -65,8 +71,12 @@ import salud.shared.generated.resources.login_contrasena_campo
 import salud.shared.generated.resources.login_contrasena_placeholder
 import salud.shared.generated.resources.login_correo_campo
 import salud.shared.generated.resources.login_correo_placeholder
+import salud.shared.generated.resources.login_aviso_sesion_cerrada
 import salud.shared.generated.resources.login_divisor
 import salud.shared.generated.resources.login_estado_autenticando
+import salud.shared.generated.resources.login_recuperar_cuerpo
+import salud.shared.generated.resources.login_recuperar_entendido
+import salud.shared.generated.resources.login_recuperar_titulo
 import salud.shared.generated.resources.login_subtitulo
 import salud.shared.generated.resources.login_titulo
 import salud.shared.generated.resources.profesional_login_titulo
@@ -90,19 +100,37 @@ fun LoginScreen(
     viewModel: LoginViewModel,
     modifier: Modifier = Modifier,
     alIniciarSesion: (SesionPaciente) -> Unit = {},
-    alRecuperarContrasena: () -> Unit = {},
     alRegistrarse: () -> Unit = {},
     alAccesoProfesional: () -> Unit = {},
+    /** El servidor cerro la sesion (reset desde el panel del medico, baja, bloqueo). */
+    avisoSesionCerrada: Boolean = false,
+    alDescartarAviso: () -> Unit = {},
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
+    // Antes el enlace no hacia nada. No hay recuperacion por correo: la cuenta
+    // la restablece su medico desde el panel web, y eso es lo que se explica.
+    var ayudaRecuperacion by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(estado.sesion) {
         estado.sesion?.let { sesion ->
             alIniciarSesion(sesion)
             viewModel.sesionEntregada()
         }
+    }
+
+    if (ayudaRecuperacion) {
+        AlertDialog(
+            onDismissRequest = { ayudaRecuperacion = false },
+            title = { Text(stringResource(Res.string.login_recuperar_titulo)) },
+            text = { Text(stringResource(Res.string.login_recuperar_cuerpo)) },
+            confirmButton = {
+                TextButton(onClick = { ayudaRecuperacion = false }) {
+                    Text(stringResource(Res.string.login_recuperar_entendido))
+                }
+            },
+        )
     }
 
     Column(
@@ -128,6 +156,11 @@ fun LoginScreen(
         Spacer(Modifier.height(espaciado.generoso))
         Cabecera()
 
+        if (avisoSesionCerrada) {
+            Spacer(Modifier.height(espaciado.generoso))
+            AvisoSesionCerrada(alDescartar = alDescartarAviso)
+        }
+
         // El formulario vive sobre una tarjeta y no suelto sobre el fondo.
         // Con el fondo perla, una tarjeta blanca agrupa los dos campos en una
         // sola pieza y separa "identificarse" de todo lo que hay debajo, que son
@@ -138,7 +171,7 @@ fun LoginScreen(
             Formulario(
                 estado = estado,
                 viewModel = viewModel,
-                alRecuperarContrasena = alRecuperarContrasena,
+                alRecuperarContrasena = { ayudaRecuperacion = true },
             )
         }
 
@@ -218,6 +251,30 @@ private fun Cabecera() {
             color = colores.textoSecundario,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = espaciado.medio),
+        )
+    }
+}
+
+/**
+ * Por que la persona esta de vuelta en el acceso sin haber cerrado sesion.
+ * Toda la tarjeta descarta el aviso; tambien se va solo al entrar otra vez.
+ */
+@Composable
+internal fun AvisoSesionCerrada(alDescartar: () -> Unit) {
+    val colores = LocalColoresSalud.current
+    val descripcion = stringResource(Res.string.a11y_login_aviso_sesion_cerrada)
+    TarjetaSalud(
+        modifier = Modifier
+            .clickable(onClick = alDescartar)
+            .semantics(mergeDescendants = true) {
+                contentDescription = descripcion
+                liveRegion = LiveRegionMode.Polite
+            },
+    ) {
+        Text(
+            text = stringResource(Res.string.login_aviso_sesion_cerrada),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colores.textoAdvertencia,
         )
     }
 }

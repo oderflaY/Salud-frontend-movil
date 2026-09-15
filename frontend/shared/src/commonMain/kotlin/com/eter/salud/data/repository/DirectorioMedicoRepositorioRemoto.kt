@@ -105,9 +105,10 @@ private data class MedicoVinculadoNulable(
         return MedicoVinculado(
             idMedico = idMedico,
             nombreCompleto = nombreCompleto.orEmpty(),
-            // Defensivo: si el backend alguna vez manda solo idMedico sin
-            // especialidad, no tiene sentido fallar la pantalla entera por eso.
-            especialidad = especialidad ?: Especialidad.MEDICINA_GENERAL,
+            // Sin especialidad registrada se queda en null: la Vista dice "sin
+            // registrar". Rellenarla con MEDICINA_GENERAL mostraba al paciente
+            // una especialidad que el medico nunca declaro.
+            especialidad = especialidad,
             idConversacion = idConversacion.orEmpty(),
         )
     }

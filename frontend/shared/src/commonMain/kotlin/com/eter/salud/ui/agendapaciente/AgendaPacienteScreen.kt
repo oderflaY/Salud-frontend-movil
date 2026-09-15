@@ -89,6 +89,7 @@ import salud.shared.generated.resources.agenda_pac_cita_propuesta_medico
 import salud.shared.generated.resources.agenda_pac_propuesta_accion_aceptar
 import salud.shared.generated.resources.agenda_pac_propuesta_accion_rechazar
 import salud.shared.generated.resources.agenda_pac_propuesta_error
+import salud.shared.generated.resources.agenda_pac_propuesta_retirada
 import salud.shared.generated.resources.a11y_agenda_pac_propuesta_aceptar
 import salud.shared.generated.resources.a11y_agenda_pac_propuesta_rechazar
 import salud.shared.generated.resources.agenda_pac_cita_pendiente
@@ -207,10 +208,13 @@ fun AgendaPacienteScreen(
             }
         }
 
-        if (estado.errorRespuestaPropuesta) {
+        if (estado.errorRespuestaPropuesta || estado.propuestaYaNoDisponible) {
             item(key = "aviso_propuesta") {
                 Text(
-                    text = stringResource(Res.string.agenda_pac_propuesta_error),
+                    text = stringResource(
+                        if (estado.propuestaYaNoDisponible) Res.string.agenda_pac_propuesta_retirada
+                        else Res.string.agenda_pac_propuesta_error,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                     modifier = margen,

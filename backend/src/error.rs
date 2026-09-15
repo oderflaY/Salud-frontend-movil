@@ -24,6 +24,32 @@ pub enum AppError {
     ReservaExpirada,
     FranjaOcupada,
     NoAutorizado,
+    /// El token es anterior al último reset de la cuenta (`app.estado_sesion`).
+    SesionRevocada,
+    /// La cuenta del token se bloqueó o se dio de baja después de emitirlo.
+    CuentaInactiva,
+    /// La sesión es buena pero el paciente entró con una contraseña temporal:
+    /// hasta elegir una nueva solo puede llamar a
+    /// `POST /auth/pacientes/contrasena`. 403 y no 401 para que la app mande a
+    /// esa pantalla en vez de cerrar la sesión.
+    CambioDeContrasenaRequerido,
+    /// La contraseña temporal que dio el médico pasó de su plazo.
+    ContrasenaTemporalVencida,
+    /// La contraseña nueva no cumple las reglas (8 caracteres, distinta de la actual).
+    ContrasenaNoValida,
+    /// Un token válido de un rol que no tiene nada que hacer aquí (un
+    /// paciente en el dashboard del médico).
+    AccesoDenegado,
+    /// Solo un médico con la cédula aprobada puede resetear cuentas.
+    MedicoNoVerificado,
+    /// El paciente no existe o no tiene vínculo vigente con este médico. Las
+    /// dos cosas responden igual para no revelar qué pacientes existen.
+    PacienteNoEncontrado,
+    AlertaNoEncontrada,
+    /// El archivo del chat supera el limite (`crate::adjuntos::LIMITE_ARCHIVO`).
+    AdjuntoDemasiadoGrande,
+    /// El adjunto no existe en esa conversacion.
+    AdjuntoNoEncontrado,
     /// Validación en el borde del sistema (entrada de red), no una regla del
     /// documento de contratos — el cliente ya conocido nunca manda estos
     /// valores fuera de dominio, pero el backend no debe responder 500 ante
@@ -58,6 +84,17 @@ impl AppError {
             AppError::ReservaExpirada => "RESERVA_EXPIRADA",
             AppError::FranjaOcupada => "FRANJA_OCUPADA",
             AppError::NoAutorizado => "NO_AUTORIZADO",
+            AppError::SesionRevocada => "SESION_REVOCADA",
+            AppError::CuentaInactiva => "CUENTA_INACTIVA",
+            AppError::CambioDeContrasenaRequerido => "CAMBIO_CONTRASENA_REQUERIDO",
+            AppError::ContrasenaTemporalVencida => "CONTRASENA_TEMPORAL_VENCIDA",
+            AppError::ContrasenaNoValida => "CONTRASENA_NO_VALIDA",
+            AppError::AccesoDenegado => "ACCESO_DENEGADO",
+            AppError::MedicoNoVerificado => "MEDICO_NO_VERIFICADO",
+            AppError::PacienteNoEncontrado => "PACIENTE_NO_ENCONTRADO",
+            AppError::AlertaNoEncontrada => "ALERTA_NO_ENCONTRADA",
+            AppError::AdjuntoDemasiadoGrande => "ADJUNTO_DEMASIADO_GRANDE",
+            AppError::AdjuntoNoEncontrado => "ADJUNTO_NO_ENCONTRADO",
             AppError::SolicitudInvalida => "SOLICITUD_INVALIDA",
             AppError::IaNoConfigurada => "IA_NO_CONFIGURADA",
             AppError::IaNoDisponible(_) => "IA_NO_DISPONIBLE",
@@ -76,6 +113,17 @@ impl AppError {
             AppError::ReservaExpirada => StatusCode::GONE,
             AppError::FranjaOcupada => StatusCode::CONFLICT,
             AppError::NoAutorizado => StatusCode::UNAUTHORIZED,
+            AppError::SesionRevocada => StatusCode::UNAUTHORIZED,
+            AppError::CuentaInactiva => StatusCode::UNAUTHORIZED,
+            AppError::CambioDeContrasenaRequerido => StatusCode::FORBIDDEN,
+            AppError::ContrasenaTemporalVencida => StatusCode::UNAUTHORIZED,
+            AppError::ContrasenaNoValida => StatusCode::UNPROCESSABLE_ENTITY,
+            AppError::AccesoDenegado => StatusCode::FORBIDDEN,
+            AppError::MedicoNoVerificado => StatusCode::FORBIDDEN,
+            AppError::PacienteNoEncontrado => StatusCode::NOT_FOUND,
+            AppError::AlertaNoEncontrada => StatusCode::NOT_FOUND,
+            AppError::AdjuntoDemasiadoGrande => StatusCode::PAYLOAD_TOO_LARGE,
+            AppError::AdjuntoNoEncontrado => StatusCode::NOT_FOUND,
             AppError::SolicitudInvalida => StatusCode::BAD_REQUEST,
             AppError::IaNoConfigurada => StatusCode::SERVICE_UNAVAILABLE,
             AppError::IaNoDisponible(_) => StatusCode::BAD_GATEWAY,

@@ -17,7 +17,9 @@ class PacientesVinculadosRepositorioRemotoTest {
     @Test
     fun obtiene_la_cartera_de_pacientes() = runTest {
         val cliente = clienteDePrueba { peticion ->
-            assertEquals("$URL_BASE_DE_PRUEBA/profesionales/doc_1/pacientes", peticion.url.toString())
+            // La vista no lleva el id en la ruta: el RLS la filtra por el `sub`
+            // del JWT del medico que consulta.
+            assertEquals("$URL_BASE_DE_PRUEBA/pacientes_vinculados", peticion.url.toString())
             respond(
                 content = """[{"idPaciente":"pac_1","nombreCompleto":"Ana Lopez","riesgo":"ALTO","idConversacion":"conv_1"}]""",
                 status = HttpStatusCode.OK,

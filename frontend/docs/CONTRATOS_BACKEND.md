@@ -1,5 +1,11 @@
 # Contratos de datos para el backend (Go)
 
+> **Nota (2026-09-14): este documento es el contrato ORIGINAL que pidió el cliente, no la API real.**
+> El backend implementó casi todo como funciones RPC de PostgREST y endpoints de Axum con rutas distintas a las sugeridas aquí.
+> La referencia de lo que de verdad existe es [`docs/mapeo-endpoints.md`](../../docs/mapeo-endpoints.md), y todos los repositorios `*Remoto.kt` ya apuntan a esas rutas.
+> Varios módulos seguían llamando a las rutas de este documento y respondían 404 contra el servidor real (chat, citas y agenda, diario).
+
+
 Este documento traduce las interfaces `domain/repository/*` del cliente Kotlin
 Multiplatform a un mapeo REST/WebSocket concreto, para que el backend en Go
 pueda implementarse sin leer el código Kotlin. Es un **mapeo sugerido**, no

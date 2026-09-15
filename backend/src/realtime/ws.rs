@@ -10,7 +10,13 @@ use axum::{
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::jwt::Claims, state::AppState};
+use crate::{
+    auth::{
+        jwt::Claims,
+        sesion::{self, EstadoSesion},
+    },
+    state::AppState,
+};
 
 #[derive(Deserialize)]
 pub struct ParametrosConexion {
@@ -48,6 +54,12 @@ pub async fn manejar_conexion(
         Ok(datos) => datos.claims,
         Err(_) => return axum::http::StatusCode::UNAUTHORIZED.into_response(),
     };
+
+    // Una firma válida no basta: la cuenta pudo resetearse o darse de baja
+    // después de emitir el token (ver `crate::auth::sesion`).
+    if !matches!(sesion::estado(&state.db, &claims).await, Ok(EstadoSesion::Vigente)) {
+        return axum::http::StatusCode::UNAUTHORIZED.into_response();
+    }
 
     ws.on_upgrade(move |socket| atender_socket(socket, state, claims))
 }

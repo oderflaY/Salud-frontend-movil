@@ -6,6 +6,7 @@ import com.eter.salud.domain.model.EstadoToma
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -17,8 +18,12 @@ class AdherenciaRepositorioRemotoTest {
     @Test
     fun obtiene_las_tomas_del_dia() = runTest {
         val cliente = clienteDePrueba { peticion ->
-            assertTrue(peticion.url.toString().startsWith("$URL_BASE_DE_PRUEBA/pacientes/pac_1/tomas"))
-            assertEquals("2026-09-12", peticion.url.parameters["fecha"])
+            assertEquals("$URL_BASE_DE_PRUEBA/rpc/tomas_del_dia", peticion.url.toString())
+            // Los parametros van en snake_case: son nombres de parametro de la
+            // funcion SQL, no campos de un DTO del contrato.
+            val cuerpo = (peticion.body as TextContent).text
+            assertTrue(cuerpo.contains(""""id_paciente":"pac_1""""), cuerpo)
+            assertTrue(cuerpo.contains(""""fecha":"2026-09-12""""), cuerpo)
             respond(
                 content = """[{"idToma":"t1","idTratamiento":"trt_1","medicamento":"Losartan","dosis":"50mg","horaProgramada":"08:00","estado":"pendiente"}]""",
                 status = HttpStatusCode.OK,
@@ -35,7 +40,9 @@ class AdherenciaRepositorioRemotoTest {
     @Test
     fun registra_una_toma_en_la_ruta_correcta() = runTest {
         val cliente = clienteDePrueba { peticion ->
-            assertEquals("$URL_BASE_DE_PRUEBA/pacientes/pac_1/tomas/t1/registro", peticion.url.toString())
+            assertEquals("$URL_BASE_DE_PRUEBA/rpc/registrar_toma", peticion.url.toString())
+            val cuerpo = (peticion.body as TextContent).text
+            assertTrue(cuerpo.contains(""""id_toma":"t1""""), cuerpo)
             respond("", HttpStatusCode.NoContent)
         }
         val repositorio = AdherenciaRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)

@@ -19,9 +19,13 @@ class HistorialMedicoRepositorioRemotoTest {
     @Test
     fun descarga_el_expediente_del_paciente() = runTest {
         val cliente = clienteDePrueba { peticion ->
-            assertEquals("$URL_BASE_DE_PRUEBA/pacientes/pac_1", peticion.url.toString())
+            // Vista de PostgREST filtrada por id, no un recurso REST por ruta.
+            assertEquals(
+                "$URL_BASE_DE_PRUEBA/paciente_expediente?idPaciente=eq.pac_1",
+                peticion.url.toString(),
+            )
             respond(
-                content = """{"idPaciente":"pac_1","datosPersonales":{"nombre":"Ana","apellidos":"Lopez","fechaNacimiento":"1990-01-01","genero":"F","telefono":"555"}}""",
+                content = """[{"idPaciente":"pac_1","datosPersonales":{"nombre":"Ana","apellidos":"Lopez","fechaNacimiento":"1990-01-01","genero":"F","telefono":"555"}}]""",
                 status = HttpStatusCode.OK,
                 headers = headersOf("Content-Type", "application/json"),
             )
@@ -34,10 +38,11 @@ class HistorialMedicoRepositorioRemotoTest {
     }
 
     @Test
-    fun actualiza_el_expediente_con_put_al_id_del_paciente() = runTest {
+    fun actualiza_el_expediente_por_rpc() = runTest {
         val cliente = clienteDePrueba { peticion ->
-            assertEquals(HttpMethod.Put, peticion.method)
-            assertEquals("$URL_BASE_DE_PRUEBA/pacientes/pac_1", peticion.url.toString())
+            // Las RPC de PostgREST son siempre POST, nunca PUT.
+            assertEquals(HttpMethod.Post, peticion.method)
+            assertEquals("$URL_BASE_DE_PRUEBA/rpc/actualizar_historial", peticion.url.toString())
             respond("", HttpStatusCode.NoContent)
         }
         val repositorio = HistorialMedicoRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA)

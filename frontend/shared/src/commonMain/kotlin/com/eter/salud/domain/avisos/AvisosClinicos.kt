@@ -41,8 +41,29 @@ data class TextosAviso(
  */
 interface AvisosClinicos {
 
-    /** Si el sistema tiene permitido mostrar avisos de esta app. */
+    /**
+     * Si el sistema tiene permitido mostrar avisos de esta app.
+     *
+     * Es estado observable de Compose, no una consulta suelta: cuando el
+     * paciente concede el permiso (en el dialogo o desde Ajustes), la pantalla
+     * que lo lee se recompone y programa los recordatorios pendientes.
+     */
     val permitidos: Boolean
+
+    /**
+     * Si los recordatorios suenan a la hora exacta. Android 12+ puede negarlo
+     * (la alarma cae entonces a un aviso con holgura); iOS siempre es exacto.
+     * Observable igual que [permitidos].
+     */
+    val alarmasExactas: Boolean
+
+    /**
+     * Pide lo que falte para que los recordatorios lleguen a tiempo: primero el
+     * permiso de avisos y, ya concedido, el de alarmas exactas. Si el sistema
+     * ya no deja mostrar el dialogo (el paciente lo nego antes, o en Android el
+     * de alarmas exactas, que nunca tiene dialogo), abre los Ajustes de la app.
+     */
+    fun solicitarPermisos()
 
     /**
      * Programa el recordatorio de una toma, o REEMPLAZA el que ya existiera para

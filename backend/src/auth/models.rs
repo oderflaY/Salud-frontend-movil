@@ -29,6 +29,18 @@ pub struct SesionPaciente {
     pub id_paciente: String,
     pub token: String,
     pub requiere_onboarding: bool,
+    /// Entró con la contraseña temporal que le dio su médico: la app lo manda
+    /// a elegir una nueva antes de cualquier otra cosa.
+    pub requiere_cambio_contrasena: bool,
+}
+
+/// `contrasenaActual` solo se puede omitir en el cambio obligatorio tras un
+/// reset: esa sesión se abrió con la contraseña temporal hace un momento.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CambiarContrasenaRequest {
+    pub contrasena_actual: Option<String>,
+    pub contrasena_nueva: String,
 }
 
 #[derive(Debug, Serialize)]

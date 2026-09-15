@@ -1,6 +1,9 @@
+use axum::http::HeaderMap;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+
+use crate::error::AppError;
 
 /// Claims mínimos a propósito: `sub` (id) y `role` (el rol Postgres al que
 /// PostgREST hace `SET ROLE`). Nunca se mete aquí la lista de pacientes
@@ -12,6 +15,12 @@ pub struct Claims {
     pub sub: String,
     pub role: String,
     pub exp: usize,
+    /// Cuándo se emitió. Es lo que permite cerrar las sesiones de una cuenta
+    /// (`app.estado_sesion`, 0016): un token emitido antes de la marca de la
+    /// cuenta se rechaza. Los tokens de antes de este campo no lo traen y
+    /// cuentan como emitidos en 0 — solo importa si la cuenta tiene marca.
+    #[serde(default)]
+    pub iat: usize,
 }
 
 pub fn emitir(
@@ -20,11 +29,12 @@ pub fn emitir(
     secret: &str,
     horas_expiracion: i64,
 ) -> Result<String, jsonwebtoken::errors::Error> {
-    let exp = (Utc::now() + Duration::hours(horas_expiracion)).timestamp() as usize;
+    let ahora = Utc::now();
     let claims = Claims {
         sub: sub.to_string(),
         role: role.to_string(),
-        exp,
+        exp: (ahora + Duration::hours(horas_expiracion)).timestamp() as usize,
+        iat: ahora.timestamp() as usize,
     };
     encode(
         &Header::default(),
@@ -39,6 +49,19 @@ pub fn emitir(
 pub fn verificar(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
     decode::<Claims>(token, &DecodingKey::from_secret(secret.as_bytes()), &Validation::default())
         .map(|datos| datos.claims)
+}
+
+/// Quién llama, a partir de `Authorization: Bearer <token>`. La conexión de
+/// Axum a Postgres es la del rol dueño y no pasa por PostgREST, así que no
+/// existe el GUC `request.jwt.claims` que leen las funciones RPC: cada
+/// endpoint de Axum con sesión valida el token aquí, en un solo lugar.
+pub fn autenticar(headers: &HeaderMap, secret: &str) -> Result<Claims, AppError> {
+    let valor = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .ok_or(AppError::NoAutorizado)?;
+    let token = valor.strip_prefix("Bearer ").ok_or(AppError::NoAutorizado)?;
+    verificar(token, secret).map_err(|_| AppError::NoAutorizado)
 }
 
 #[cfg(test)]
@@ -82,5 +105,31 @@ mod tests {
 
         assert_eq!(claims.sub, "doc_xyz");
         assert_eq!(claims.role, "medico");
+    }
+
+    #[test]
+    fn el_token_lleva_cuando_se_emitio() {
+        let antes = Utc::now().timestamp() as usize;
+        let claims = verificar(&emitir("pac_abc", "paciente", "s", 1).unwrap(), "s").unwrap();
+        assert!(claims.iat >= antes && claims.iat <= antes + 1);
+    }
+
+    #[test]
+    fn un_token_anterior_sin_iat_se_sigue_leyendo() {
+        #[derive(Serialize)]
+        struct ClaimsViejos {
+            sub: String,
+            role: String,
+            exp: usize,
+        }
+        let exp = (Utc::now() + Duration::hours(1)).timestamp() as usize;
+        let viejo = encode(
+            &Header::default(),
+            &ClaimsViejos { sub: "pac_abc".into(), role: "paciente".into(), exp },
+            &EncodingKey::from_secret(b"s"),
+        )
+        .unwrap();
+
+        assert_eq!(verificar(&viejo, "s").unwrap().iat, 0);
     }
 }

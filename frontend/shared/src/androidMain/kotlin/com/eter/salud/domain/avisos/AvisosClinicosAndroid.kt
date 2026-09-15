@@ -1,17 +1,28 @@
 package com.eter.salud.domain.avisos
 
+import android.Manifest
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.eter.salud.domain.model.RecordatorioMedicacion
 import com.eter.salud.domain.time.CalendarioSalud
 import java.util.Calendar
@@ -46,8 +57,60 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
         crearCanales()
     }
 
-    override val permitidos: Boolean
-        get() = gestorDeAvisos.areNotificationsEnabled()
+    // Estado de Compose y no una consulta en el getter: si fuera consulta, la
+    // pantalla leeria `false` al abrir y nunca se enteraria de que el paciente
+    // acaba de conceder el permiso, y los recordatorios no se programarian.
+    override var permitidos by mutableStateOf(gestorDeAvisos.areNotificationsEnabled())
+        private set
+
+    override var alarmasExactas by mutableStateOf(puedeProgramarExactas())
+        private set
+
+    /** Lo conecta [recordarAvisosClinicos]: lanzar el dialogo exige la composicion. */
+    var pedirPermisoDeAvisos: () -> Unit = {}
+
+    /**
+     * Tras un primer rechazo, Android 13+ puede dejar de mostrar el dialogo sin
+     * avisar. Desde ahi el boton lleva a Ajustes en vez de no hacer nada.
+     */
+    var dialogoRechazado = false
+
+    /** Relee ambos permisos: al volver de Ajustes el sistema no avisa de nada. */
+    fun refrescar() {
+        permitidos = gestorDeAvisos.areNotificationsEnabled()
+        alarmasExactas = puedeProgramarExactas()
+    }
+
+    override fun solicitarPermisos() {
+        when {
+            !permitidos && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !dialogoRechazado ->
+                pedirPermisoDeAvisos()
+            !permitidos -> abrirAjustes(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, contexto.packageName),
+            )
+            !alarmasExactas && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> abrirAjustes(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${contexto.packageName}")),
+            )
+        }
+    }
+
+    private fun puedeProgramarExactas(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S || gestorDeAlarmas.canScheduleExactAlarms()
+
+    private fun abrirAjustes(intencion: Intent) {
+        val nueva = intencion.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            contexto.startActivity(nueva)
+        } catch (sinPantalla: ActivityNotFoundException) {
+            // Algunos fabricantes quitan esas pantallas de Ajustes: la ficha
+            // general de la app existe siempre y lleva a ambos permisos.
+            contexto.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${contexto.packageName}"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
 
     override fun programarRecordatorio(
         recordatorio: RecordatorioMedicacion,
@@ -224,7 +287,23 @@ private fun instanteDe(fecha: String, hora: String): Long? {
 @Composable
 actual fun recordarAvisosClinicos(): AvisosClinicos {
     val contexto = LocalContext.current
-    return remember(contexto) { AvisosClinicosAndroid(contexto.applicationContext) }
+    val avisos = remember(contexto) { AvisosClinicosAndroid(contexto.applicationContext) }
+
+    val lanzador = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
+        if (!concedido) avisos.dialogoRechazado = true
+        avisos.refrescar()
+    }
+    SideEffect {
+        avisos.pedirPermisoDeAvisos = { lanzador.launch(Manifest.permission.POST_NOTIFICATIONS) }
+    }
+
+    // El permiso de alarmas exactas solo se concede desde Ajustes, y el de
+    // avisos tambien puede activarse ahi a mano: se relee al volver a la app.
+    LifecycleResumeEffect(avisos) {
+        avisos.refrescar()
+        onPauseOrDispose {}
+    }
+    return avisos
 }
 
 private const val CANAL_MEDICACION = "salud_medicacion"

@@ -20,12 +20,15 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,17 +36,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eter.salud.domain.idioma.IdiomaApp
 import com.eter.salud.domain.idioma.recordarSelectorDeIdioma
+import com.eter.salud.domain.model.SesionPaciente
+import com.eter.salud.domain.repository.MotivoFalloBaja
+import com.eter.salud.domain.repository.TipoDeCuenta
+import com.eter.salud.presentation.configuracion.BajaDeCuentaUiState
+import com.eter.salud.presentation.configuracion.BajaDeCuentaViewModel
 import com.eter.salud.presentation.configuracion.ConfiguracionUiState
 import com.eter.salud.presentation.configuracion.ConfiguracionViewModel
+import com.eter.salud.presentation.contrasena.CambioContrasenaViewModel
 import com.eter.salud.ui.componentes.BotonAtras
+import com.eter.salud.ui.contrasena.SeccionCambioContrasena
 import com.eter.salud.ui.componentes.CabeceraGrande
+import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
+import com.eter.salud.ui.componentes.CasillaDeclaracion
 import com.eter.salud.ui.componentes.TarjetaSalud
 import com.eter.salud.ui.componentes.TituloDeBloque
 import com.eter.salud.ui.componentes.margenInferiorSeguro
@@ -57,6 +73,26 @@ import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
 import salud.shared.generated.resources.a11y_accion_cerrar_sesion
 import salud.shared.generated.resources.accion_cerrar_sesion
+import salud.shared.generated.resources.a11y_config_baja_accion
+import salud.shared.generated.resources.a11y_config_baja_boton
+import salud.shared.generated.resources.a11y_config_baja_cancelar
+import salud.shared.generated.resources.a11y_config_baja_contrasena
+import salud.shared.generated.resources.a11y_config_baja_correo
+import salud.shared.generated.resources.config_baja_accion
+import salud.shared.generated.resources.config_baja_apoyo
+import salud.shared.generated.resources.config_baja_boton
+import salud.shared.generated.resources.config_baja_boton_enviando
+import salud.shared.generated.resources.config_baja_cancelar
+import salud.shared.generated.resources.config_baja_confirmacion
+import salud.shared.generated.resources.config_baja_contrasena
+import salud.shared.generated.resources.config_baja_correo
+import salud.shared.generated.resources.config_baja_error_conexion
+import salud.shared.generated.resources.config_baja_error_credenciales
+import salud.shared.generated.resources.config_baja_se_borra_paciente
+import salud.shared.generated.resources.config_baja_se_borra_profesional
+import salud.shared.generated.resources.config_baja_se_conserva_paciente
+import salud.shared.generated.resources.config_baja_se_conserva_profesional
+import salud.shared.generated.resources.config_baja_titulo
 import salud.shared.generated.resources.config_avisos_medicacion
 import salud.shared.generated.resources.config_avisos_medicacion_apoyo
 import salud.shared.generated.resources.config_avisos_mensajes
@@ -96,6 +132,13 @@ fun ConfiguracionScreen(
     modifier: Modifier = Modifier,
     alVolver: () -> Unit = {},
     alCerrarSesion: () -> Unit = {},
+    /** `null` con la app en modo local: no hay cuenta en ningun servidor que borrar. */
+    bajaDeCuenta: BajaDeCuentaViewModel? = null,
+    alCuentaEliminada: () -> Unit = {},
+    /** Solo pacientes, y solo contra el backend. */
+    cambioDeContrasena: CambioContrasenaViewModel? = null,
+    /** El backend cierra las demas sesiones y devuelve un token nuevo que hay que guardar. */
+    alContrasenaCambiada: (SesionPaciente) -> Unit = {},
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
@@ -211,7 +254,9 @@ fun ConfiguracionScreen(
 
         // ------------------------------------------------------------ Cuenta
         TituloDeBloque(stringResource(Res.string.config_bloque_cuenta))
+        cambioDeContrasena?.let { SeccionCambioContrasena(it, alContrasenaCambiada) }
         AccionCerrarSesion(alPulsar = alCerrarSesion)
+        bajaDeCuenta?.let { SeccionBajaDeCuenta(it, alCuentaEliminada) }
         Spacer(Modifier.height(espaciado.medio))
     }
 }
@@ -365,6 +410,162 @@ private fun AccionCerrarSesion(alPulsar: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 color = colores.acentoAccion,
                 modifier = Modifier.padding(vertical = espaciado.compacto),
+            )
+        }
+    }
+}
+
+/**
+ * Baja definitiva de la cuenta (requisito de Google Play).
+ *
+ * Plegada por defecto: una accion irreversible no vive abierta al lado de los
+ * interruptores. Al desplegarla explica QUE se borra y QUE se conserva antes de
+ * pedir nada, vuelve a pedir correo y contrasena, y exige marcar que se
+ * entiende que es definitiva. Es la unica accion roja de la pantalla.
+ */
+@Composable
+private fun SeccionBajaDeCuenta(viewModel: BajaDeCuentaViewModel, alCuentaEliminada: () -> Unit) {
+    val estado by viewModel.estado.collectAsStateWithLifecycle()
+    val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
+    val esMedico = viewModel.tipo == TipoDeCuenta.PROFESIONAL
+
+    LaunchedEffect(estado.completada) {
+        if (estado.completada) alCuentaEliminada()
+    }
+
+    TarjetaSalud {
+        if (!estado.desplegada) {
+            Text(
+                text = stringResource(Res.string.config_baja_apoyo),
+                style = MaterialTheme.typography.bodySmall,
+                color = colores.textoSecundario,
+            )
+            val descripcion = stringResource(Res.string.a11y_config_baja_accion)
+            TextButton(
+                onClick = viewModel::desplegar,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = AreaTactilMinima)
+                    .semantics { contentDescription = descripcion },
+                shape = FormaSalud.media,
+            ) {
+                Text(
+                    text = stringResource(Res.string.config_baja_accion),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(vertical = espaciado.compacto),
+                )
+            }
+        } else {
+            FormularioBaja(estado, viewModel, esMedico)
+        }
+    }
+}
+
+@Composable
+private fun FormularioBaja(estado: BajaDeCuentaUiState, viewModel: BajaDeCuentaViewModel, esMedico: Boolean) {
+    val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
+    Column {
+        Text(
+            text = stringResource(Res.string.config_baja_titulo),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(Modifier.height(espaciado.compacto))
+        Text(
+            text = stringResource(
+                if (esMedico) Res.string.config_baja_se_borra_profesional else Res.string.config_baja_se_borra_paciente,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(espaciado.compacto))
+        Text(
+            text = stringResource(
+                if (esMedico) Res.string.config_baja_se_conserva_profesional else Res.string.config_baja_se_conserva_paciente,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(espaciado.medio))
+
+        CampoTextoRellenoSalud(
+            valor = estado.correo,
+            alCambiar = viewModel::actualizarCorreo,
+            etiqueta = stringResource(Res.string.config_baja_correo),
+            descripcionAccesible = stringResource(Res.string.a11y_config_baja_correo),
+            tipoTeclado = KeyboardType.Email,
+        )
+        Spacer(Modifier.height(espaciado.compacto))
+        CampoTextoRellenoSalud(
+            valor = estado.contrasena,
+            alCambiar = viewModel::actualizarContrasena,
+            etiqueta = stringResource(Res.string.config_baja_contrasena),
+            descripcionAccesible = stringResource(Res.string.a11y_config_baja_contrasena),
+            tipoTeclado = KeyboardType.Password,
+            ocultarTexto = true,
+        )
+        Spacer(Modifier.height(espaciado.compacto))
+        CasillaDeclaracion(
+            marcada = estado.confirmada,
+            alCambiar = viewModel::cambiarConfirmacion,
+            etiqueta = stringResource(Res.string.config_baja_confirmacion),
+        )
+
+        estado.error?.let { error ->
+            Spacer(Modifier.height(espaciado.compacto))
+            Text(
+                text = stringResource(
+                    when (error) {
+                        MotivoFalloBaja.CREDENCIALES_INVALIDAS -> Res.string.config_baja_error_credenciales
+                        MotivoFalloBaja.SIN_CONEXION -> Res.string.config_baja_error_conexion
+                    },
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+
+        Spacer(Modifier.height(espaciado.medio))
+        val descripcionBoton = stringResource(Res.string.a11y_config_baja_boton)
+        Button(
+            onClick = viewModel::darDeBaja,
+            enabled = estado.puedeEnviar,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = AreaTactilMinima)
+                .semantics { contentDescription = descripcionBoton },
+            shape = FormaSalud.media,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            ),
+        ) {
+            Text(
+                text = stringResource(
+                    if (estado.enviando) Res.string.config_baja_boton_enviando else Res.string.config_baja_boton,
+                ),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        val descripcionCancelar = stringResource(Res.string.a11y_config_baja_cancelar)
+        TextButton(
+            onClick = viewModel::plegar,
+            enabled = !estado.enviando,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = AreaTactilMinima)
+                .semantics { contentDescription = descripcionCancelar },
+            shape = FormaSalud.media,
+        ) {
+            Text(
+                text = stringResource(Res.string.config_baja_cancelar),
+                style = MaterialTheme.typography.titleMedium,
+                color = colores.acentoAccion,
             )
         }
     }

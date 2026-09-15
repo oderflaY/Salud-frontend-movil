@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.eter.salud.domain.adjuntos.rememberAbridorDeAdjuntos
 import com.eter.salud.domain.adjuntos.rememberSelectorDeAdjuntos
 import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
@@ -281,6 +282,7 @@ private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
         descripcionBase
     }
     val colorTexto = if (esPaciente) colores.sobreBurbujaMedico else MaterialTheme.colorScheme.onPrimary
+    val abridor = rememberAbridorDeAdjuntos()
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -302,7 +304,7 @@ private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
                 verticalArrangement = Arrangement.spacedBy(espaciado.compacto),
             ) {
                 if (adjunto != null) {
-                    ChipDeAdjunto(adjunto = adjunto, colorTexto = colorTexto)
+                    ChipDeAdjunto(adjunto = adjunto, colorTexto = colorTexto, abridor = abridor)
                 }
                 if (mensaje.texto.isNotBlank()) {
                     Text(
@@ -315,54 +317,6 @@ private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
         }
     }
 }
-
-/** Nombre del tipo de adjunto, tal como se muestra al medico. */
-@Composable
-private fun tituloDe(tipo: TipoAdjunto): String = when (tipo) {
-    TipoAdjunto.FOTO -> stringResource(Res.string.chat_adjunto_tipo_foto)
-    TipoAdjunto.ARCHIVO -> stringResource(Res.string.chat_adjunto_tipo_archivo)
-    TipoAdjunto.ESCANEO -> stringResource(Res.string.chat_adjunto_tipo_escaneo)
-}
-
-private fun glifoDe(tipo: TipoAdjunto): GlifoSalud = when (tipo) {
-    TipoAdjunto.FOTO -> GlifoSalud.FOTO
-    TipoAdjunto.ARCHIVO -> GlifoSalud.ARCHIVO
-    TipoAdjunto.ESCANEO -> GlifoSalud.ESCANER
-}
-
-/**
- * El adjunto dentro de la burbuja: icono por tipo, nombre del archivo y su
- * categoria. Es deliberadamente un rotulo y no una miniatura de la imagen: leer
- * una foto de un archivo local en las tres plataformas exige decodificarla a
- * mano (no hay libreria de imagenes en el proyecto), y un rotulo claro dice lo
- * mismo que hace falta saber -- que se adjunto y de que tipo es -- sin ese
- * costo.
- */
-@Composable
-private fun ChipDeAdjunto(adjunto: Adjunto, colorTexto: Color) {
-    val espaciado = LocalEspaciadoSalud.current
-    Row(
-        modifier = Modifier
-            .background(colorTexto.copy(alpha = ALFA_FONDO_CHIP), FormaSalud.sutil)
-            .padding(horizontal = espaciado.compacto, vertical = espaciado.minimo),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
-    ) {
-        IconoSalud(glifo = glifoDe(adjunto.tipo), lado = LADO_ICONO_ADJUNTO, color = colorTexto)
-        Column {
-            Text(text = adjunto.nombre, style = MaterialTheme.typography.labelLarge, color = colorTexto, maxLines = 1)
-            Text(
-                text = tituloDe(adjunto.tipo),
-                style = MaterialTheme.typography.labelSmall,
-                color = colorTexto.copy(alpha = ALFA_SUBTITULO_CHIP),
-            )
-        }
-    }
-}
-
-private const val ALFA_FONDO_CHIP = 0.12f
-private const val ALFA_SUBTITULO_CHIP = 0.7f
-private val LADO_ICONO_ADJUNTO = 22.dp
 
 /**
  * El bloque destacado de Orientacion Inicial: soporte vital inmediato de parte
@@ -488,64 +442,6 @@ private fun FilaEnvio(
             selector = selectorDeAdjuntos,
             alAdjuntar = viewModel::adjuntar,
             onDismissRequest = { mostrandoHojaAdjuntar = false },
-        )
-    }
-}
-
-@Composable
-private fun BotonAdjuntar(alPulsar: () -> Unit) {
-    val colores = LocalColoresSalud.current
-    val descripcion = stringResource(Res.string.a11y_chat_accion_adjuntar)
-    Surface(
-        modifier = Modifier
-            .size(AreaTactilMinima)
-            .clickable(onClick = alPulsar)
-            .semantics { contentDescription = descripcion },
-        color = colores.fondoCampo,
-        shape = CircleShape,
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            IconoSalud(glifo = GlifoSalud.ADJUNTAR, lado = 20.dp, color = colores.textoSecundario)
-        }
-    }
-}
-
-/**
- * El adjunto ya elegido, a la espera de que se pulse enviar. Vive pegado al
- * campo de texto y no dentro de una burbuja de chat: todavia no es un mensaje,
- * es lo que el mensaje va a llevar.
- */
-@Composable
-private fun VistaPreviaAdjunto(adjunto: Adjunto, alQuitar: () -> Unit) {
-    val espaciado = LocalEspaciadoSalud.current
-    val colores = LocalColoresSalud.current
-    val descripcionQuitar = stringResource(Res.string.a11y_chat_adjunto_quitar, adjunto.nombre)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colores.fondoCampo, FormaSalud.sutil)
-            .padding(horizontal = espaciado.medio, vertical = espaciado.compacto),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
-    ) {
-        IconoSalud(glifo = glifoDe(adjunto.tipo), lado = LADO_ICONO_ADJUNTO, color = colores.acentoAccion)
-        Text(
-            text = adjunto.nombre,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = stringResource(Res.string.chat_adjunto_accion_quitar),
-            style = MaterialTheme.typography.labelLarge,
-            color = colores.acentoAccion,
-            modifier = Modifier
-                .heightIn(min = AreaTactilMinima)
-                .clickable(onClick = alQuitar)
-                .semantics { contentDescription = descripcionQuitar }
-                .padding(horizontal = espaciado.compacto),
         )
     }
 }

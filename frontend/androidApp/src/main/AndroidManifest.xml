@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Todo el backend. Antes no se declaraba: llegaba de rebote desde
+      transport-backend-cct, una dependencia interna de ML Kit. Quitar ML Kit
+      habria dejado la app publicada sin red.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Escaner de emergencia: lee la tarjeta RFID del paciente. -->
     <uses-permission android:name="android.permission.NFC" />
@@ -19,28 +27,48 @@
       "en algun momento de la manana" cuando al sistema le venga bien agrupar
       trabajos. Sin este permiso la app degrada a alarma inexacta en vez de
       dejar al paciente sin aviso, pero pierde precision.
+
+      Solo SCHEDULE_EXACT_ALARM, que concede el usuario desde Ajustes (la app
+      se lo pide desde la pantalla de medicacion). USE_EXACT_ALARM se quito a
+      proposito: Play lo reserva a apps de alarma o calendario y exige
+      justificarlo.
     -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
-    <!-- Reprogramar los recordatorios tras un reinicio del telefono. -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!--
+      Sin RECEIVE_BOOT_COMPLETED: todavia no hay un receptor que vuelva a
+      programar las alarmas tras reiniciar el telefono, y declarar un permiso
+      que la app no usa obliga a justificarlo en Play. Hasta que exista, las
+      tomas pendientes del dia se reprograman cuando el paciente vuelve a abrir
+      la pantalla de inicio (HomeScreen.ProgramarRecordatorios).
+    -->
 
     <!-- Vibracion del aviso de medicacion. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!--
-      Escaner de documentos del chat (adjuntar una receta o un resultado de
-      laboratorio en papel). No obligatoria: adjuntar una foto de galeria o un
-      archivo ya guardado sigue funcionando sin camara.
+      El escaner de documentos del chat NO necesita permiso de camara: la API
+      de ML Kit (play-services-mlkit-document-scanner) presenta su propia
+      interfaz de captura dentro de Play Services y devuelve la pagina ya
+      recortada. Declarar CAMERA aqui pedia al usuario un permiso que la app
+      nunca usa, y obligaba a justificarlo en la ficha de Play.
+      La galeria usa PickVisualMedia, que tampoco requiere permiso.
     -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
 
+    <!--
+      allowBackup apagado a proposito: la base local guarda datos clinicos
+      (alergias, diagnosticos, medicacion). Con el respaldo automatico esa copia
+      sale del telefono hacia Google Drive, fuera del control del expediente.
+      El respaldo real del expediente es el backend. allowBackup cubre hasta
+      Android 11; en 12+ manda dataExtractionRules, que ademas cierra la
+      transferencia directa a otro telefono. Lint pide ademas fullBackupContent
+      para Android 7-11, pero ese atributo solo elige QUE respaldar cuando el
+      respaldo esta activo; con allowBackup="false" no hay nada que elegir.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/reglas_extraccion_datos"
+        tools:ignore="DataExtractionRules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -65,6 +93,22 @@
         <receiver
             android:name="com.eter.salud.domain.avisos.ReceptorDeRecordatorios"
             android:exported="false" />
+
+        <!--
+          Abre un adjunto del chat (la receta, el estudio escaneado) con el visor
+          del sistema sin copiarlo a una carpeta publica: el visor recibe una URI
+          con permiso de lectura solo para esa apertura. La autoridad la usa
+          AbridorDeAdjuntos.android.kt.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.adjuntos"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/rutas_adjuntos" />
+        </provider>
     </application>
 
 </manifest>

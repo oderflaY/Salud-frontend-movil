@@ -7,6 +7,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
@@ -14,46 +16,41 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.Serializable
 
 /**
- * `DiarioRepositorio` contra el backend en Go (`docs/CONTRATOS_BACKEND.md`,
- * seccion 10).
+ * `DiarioRepositorio` contra la vista `/entradas_diario` de PostgREST
+ * (`docs/mapeo-endpoints.md`, seccion 10). Antes apuntaba a rutas REST del
+ * contrato original (`/pacientes/{id}/diario`) que el backend nunca expuso.
  *
- * ## Limitacion deliberada de [entradasDe]
+ * Es la fuente del MEDICO: el diario del paciente vive en el telefono del
+ * paciente, y el medico solo puede verlo aqui, una vez subido. El paciente no
+ * usa esta clase directo sino [DiarioRepositorioSincronizado], que escribe
+ * primero en el telefono (el diario tiene que poder escribirse sin cobertura)
+ * y sube despues.
  *
- * El contrato es explicito: el diario es local-first POR DISENO, no por falta
- * de backend, y no define un endpoint REST para listar todas las entradas (solo
- * `guardar`, `eliminar` y `ultimaEntradaDe`). Por eso [entradasDe] no lee de la
- * red: es una cache en memoria, por paciente, que solo esta paciente actualiza
- * con lo que ESTE MISMO repositorio escribe o borra en este proceso. No
- * refleja entradas escritas desde otro dispositivo ni sobrevive a reiniciar la
- * app.
- *
- * Por esa razon [com.eter.salud.data.local.ContenedorSalud] sigue usando
- * `DiarioRepositorioLocal` (SQLite) como fuente de verdad del diario incluso
- * cuando el resto de los repositorios pasan a la red -- ver
- * `ConfiguracionApi.USAR_BACKEND_REMOTO`. Esta clase existe para completar el
- * contrato y para poder probarlo, no para sustituir a la version local.
+ * El id de cada entrada lo genera el telefono y viaja tal cual: asi subir la
+ * misma entrada dos veces choca con la llave primaria (409) en vez de
+ * duplicarla, y ese 409 se trata como "ya estaba".
  */
 class DiarioRepositorioRemoto(
     private val cliente: HttpClient,
     private val baseUrl: String,
 ) : DiarioRepositorio {
 
-    private val entradasPorPaciente = mutableMapOf<String, MutableStateFlow<List<EntradaDiario>>>()
-
-    override fun entradasDe(idPaciente: String): Flow<List<EntradaDiario>> = flujoDe(idPaciente)
+    /** Lectura unica: el backend aun no emite eventos de diario en vivo. */
+    override fun entradasDe(idPaciente: String): Flow<List<EntradaDiario>> = flow {
+        listar(idPaciente).getOrNull()?.let { emit(it) }
+    }
 
     override suspend fun guardar(entrada: EntradaDiario): Result<Unit> {
-        val respuesta = cliente.post("$baseUrl/pacientes/${entrada.idPaciente}/diario") {
+        val respuesta = cliente.post("$baseUrl/entradas_diario") {
             contentType(ContentType.Application.Json)
+            header("Prefer", "return=minimal")
             setBody(entrada)
         }
-        return if (respuesta.status.isSuccess()) {
-            val flujo = flujoDe(entrada.idPaciente)
-            flujo.value = (listOf(entrada) + flujo.value.filterNot { it.idEntrada == entrada.idEntrada })
-                .sortedByDescending { it.instante }
+        return if (respuesta.status.isSuccess() || respuesta.status == HttpStatusCode.Conflict) {
             Result.success(Unit)
         } else {
             Result.failure(FalloDeRedGenerico(respuesta.status.value))
@@ -61,11 +58,10 @@ class DiarioRepositorioRemoto(
     }
 
     override suspend fun eliminar(idEntrada: String): Result<Unit> {
-        val respuesta = cliente.delete("$baseUrl/diario/$idEntrada")
+        val respuesta = cliente.delete("$baseUrl/entradas_diario") {
+            parameter("idEntrada", "eq.$idEntrada")
+        }
         return if (respuesta.status.isSuccess()) {
-            entradasPorPaciente.values.forEach { flujo ->
-                flujo.value = flujo.value.filterNot { it.idEntrada == idEntrada }
-            }
             Result.success(Unit)
         } else {
             Result.failure(FalloDeRedGenerico(respuesta.status.value))
@@ -73,14 +69,34 @@ class DiarioRepositorioRemoto(
     }
 
     override suspend fun ultimaEntradaDe(idPaciente: String): Result<EntradaDiario?> {
-        val respuesta = cliente.get("$baseUrl/pacientes/$idPaciente/diario/ultima")
-        return when {
-            respuesta.status == HttpStatusCode.NotFound -> Result.success(null)
-            respuesta.status.isSuccess() -> Result.success(respuesta.body())
-            else -> Result.failure(FalloDeRedGenerico(respuesta.status.value))
+        val respuesta = cliente.get("$baseUrl/entradas_diario") {
+            parameter("idPaciente", "eq.$idPaciente")
+            parameter("order", "instante.desc")
+            parameter("limit", "1")
         }
+        if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
+        return Result.success(respuesta.body<List<EntradaDiario>>().firstOrNull())
     }
 
-    private fun flujoDe(idPaciente: String): MutableStateFlow<List<EntradaDiario>> =
-        entradasPorPaciente.getOrPut(idPaciente) { MutableStateFlow(emptyList()) }
+    /** Ids que el servidor ya tiene, para subir solo lo que falta. */
+    suspend fun idsEnServidor(idPaciente: String): Result<Set<String>> {
+        val respuesta = cliente.get("$baseUrl/entradas_diario") {
+            parameter("idPaciente", "eq.$idPaciente")
+            parameter("select", "idEntrada")
+        }
+        if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
+        return Result.success(respuesta.body<List<SoloId>>().mapTo(mutableSetOf()) { it.idEntrada })
+    }
+
+    private suspend fun listar(idPaciente: String): Result<List<EntradaDiario>> {
+        val respuesta = cliente.get("$baseUrl/entradas_diario") {
+            parameter("idPaciente", "eq.$idPaciente")
+            parameter("order", "instante.desc")
+        }
+        if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
+        return Result.success(respuesta.body())
+    }
 }
+
+@Serializable
+private data class SoloId(val idEntrada: String)

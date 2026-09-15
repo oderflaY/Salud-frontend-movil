@@ -162,5 +162,11 @@ enum class MotivoFalloCita {
     /** Otro paciente gano la carrera por esa franja. */
     FRANJA_OCUPADA,
 
+    /**
+     * La propuesta del medico ya no esta en espera: la retiro, o el paciente
+     * ya la habia respondido. Distinto de un fallo de red: reintentar no sirve.
+     */
+    PROPUESTA_NO_DISPONIBLE,
+
     SIN_CONEXION,
 }

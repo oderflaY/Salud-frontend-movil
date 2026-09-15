@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cruz medica con un trazo de electrocardiograma grabado en zafiro.
+  Todo cabe en el circulo seguro de 66dp del icono adaptativo (el punto mas
+  lejano del centro queda a ~26dp), asi que ningun launcher lo recorta.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M49.5,30H58.5A5,5 0,0 1,63.5 35V73A5,5 0,0 1,58.5 78H49.5A5,5 0,0 1,44.5 73V35A5,5 0,0 1,49.5 30Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M35,44.5H73A5,5 0,0 1,78 49.5V58.5A5,5 0,0 1,73 63.5H35A5,5 0,0 1,30 58.5V49.5A5,5 0,0 1,35 44.5Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M34,54H45.5L49,47.5L53.5,60.5L57,50.5L59,54H74"
+        android:strokeWidth="2.8"
+        android:strokeColor="#FF0A4C86"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

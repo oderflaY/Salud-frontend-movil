@@ -71,6 +71,9 @@ class AlmacenDeSesion(
             datos[CLAVE_ID] = sesion.idPaciente
             datos[CLAVE_TOKEN] = sesion.token
             datos[CLAVE_REQUIERE_ONBOARDING] = sesion.requiereOnboarding
+            // Si la app se cierra antes de elegir la contrasena nueva, al
+            // volver tiene que caer otra vez en esa pantalla, no en el panel.
+            datos[CLAVE_REQUIERE_CAMBIO_CONTRASENA] = sesion.requiereCambioContrasena
         }
     }
 
@@ -106,6 +109,7 @@ class AlmacenDeSesion(
                     idPaciente = id,
                     token = this[CLAVE_TOKEN].orEmpty(),
                     requiereOnboarding = this[CLAVE_REQUIERE_ONBOARDING] ?: false,
+                    requiereCambioContrasena = this[CLAVE_REQUIERE_CAMBIO_CONTRASENA] ?: false,
                 ),
             )
 
@@ -132,6 +136,7 @@ class AlmacenDeSesion(
         val CLAVE_ID = stringPreferencesKey("sesion_id")
         val CLAVE_TOKEN = stringPreferencesKey("sesion_token")
         val CLAVE_REQUIERE_ONBOARDING = booleanPreferencesKey("sesion_requiere_onboarding")
+        val CLAVE_REQUIERE_CAMBIO_CONTRASENA = booleanPreferencesKey("sesion_requiere_cambio_contrasena")
         val CLAVE_NOMBRE = stringPreferencesKey("sesion_nombre")
         val CLAVE_TRATAMIENTO = stringPreferencesKey("sesion_tratamiento")
         val CLAVE_APELLIDOS = stringPreferencesKey("sesion_apellidos")

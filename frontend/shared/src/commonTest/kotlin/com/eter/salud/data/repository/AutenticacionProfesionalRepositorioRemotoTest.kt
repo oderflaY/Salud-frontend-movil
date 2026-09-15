@@ -38,7 +38,7 @@ class AutenticacionProfesionalRepositorioRemotoTest {
     fun cedula_duplicada_se_traduce_al_motivo_tipado() = runTest {
         val cliente = clienteDePrueba {
             respond(
-                content = """{"motivo":"CEDULA_YA_REGISTRADA"}""",
+                content = """{"message":"CEDULA_YA_REGISTRADA"}""",
                 status = HttpStatusCode.Conflict,
                 headers = headersOf("Content-Type", "application/json"),
             )

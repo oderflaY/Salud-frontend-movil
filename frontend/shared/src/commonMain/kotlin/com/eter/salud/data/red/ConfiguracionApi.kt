@@ -27,12 +27,17 @@ object ConfiguracionApi {
      * cada servicio por separado. En la maquina de desarrollo del backend es
      * el puerto `8000` (`PROXY_PORT` de su `.env`).
      *
-     * `10.0.2.2` es como el emulador de Android ve el `localhost` de la
-     * maquina anfitriona. Un dispositivo fisico o un simulador de iOS
-     * necesitan la IP real de la maquina en la red local, o el dominio de
-     * verdad en produccion.
+     * En Android NO se usa este valor por defecto: `MainActivity` lo
+     * sobreescribe con `BuildConfig.URL_BACKEND`, que sale de
+     * `salud.baseUrl.debug` / `salud.baseUrl.release` en `local.properties`
+     * (ver `androidApp/build.gradle.kts`). Fijar aqui la IP de una red local
+     * concreta significaba que un build de release salia apuntando a la maquina
+     * de un desarrollador.
+     *
+     * `10.0.2.2` es como el emulador de Android ve el `localhost` de la maquina
+     * anfitriona; queda como valor de arranque para iOS y para las pruebas.
      */
-    var BASE_URL: String = "http://10.206.42.87:8000"
+    var BASE_URL: String = "http://10.0.2.2:8000"
 
     /**
      * Raiz del socket de tiempo real (seccion 11 de `CONTRATOS_BACKEND.md`).

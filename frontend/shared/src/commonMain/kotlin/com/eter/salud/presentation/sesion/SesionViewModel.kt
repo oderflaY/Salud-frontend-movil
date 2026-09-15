@@ -2,13 +2,16 @@ package com.eter.salud.presentation.sesion
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eter.salud.data.sesion.AvisoDeSesion
 import com.eter.salud.data.sesion.FuenteDeSesion
+import com.eter.salud.data.sesion.TipoAvisoDeSesion
 import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.domain.model.SesionProfesional
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -30,6 +33,11 @@ data class SesionUiState(
      * sesion se habia perdido.
      */
     val restaurando: Boolean = true,
+    /**
+     * La sesion la cerro el servidor, no la persona: el acceso tiene que decir
+     * por que aparecio de golpe, o parece que la app fallo.
+     */
+    val cerradaPorElServidor: Boolean = false,
 ) {
     val hayAlguienDentro: Boolean get() = paciente != null || profesional != null
 }
@@ -97,5 +105,41 @@ class SesionViewModel(
     fun cerrar() {
         _estado.value = SesionUiState(restaurando = false)
         viewModelScope.launch { almacen?.borrar() }
+    }
+
+    /**
+     * El backend rechazo la sesion con la que salio una peticion.
+     *
+     * Solo cuenta si ese token es el de la sesion abierta AHORA: una peticion
+     * que salio antes de cambiar la contrasena vuelve rechazada despues, y no
+     * debe tumbar la sesion nueva. Devuelve si el aviso cambio algo.
+     */
+    fun sesionRechazada(aviso: AvisoDeSesion): Boolean {
+        val actual = _estado.value
+        val vigente = actual.paciente?.token ?: actual.profesional?.token
+        if (vigente == null || vigente != aviso.token) return false
+
+        return when (aviso.tipo) {
+            TipoAvisoDeSesion.CERRADA -> {
+                _estado.value = SesionUiState(restaurando = false, cerradaPorElServidor = true)
+                viewModelScope.launch { almacen?.borrar() }
+                true
+            }
+
+            TipoAvisoDeSesion.CAMBIO_DE_CONTRASENA_REQUERIDO -> {
+                val paciente = actual.paciente
+                if (paciente == null || paciente.requiereCambioContrasena) {
+                    false
+                } else {
+                    abrirComoPaciente(paciente.copy(requiereCambioContrasena = true))
+                    true
+                }
+            }
+        }
+    }
+
+    /** El acceso ya explico por que se cerro la sesion. */
+    fun avisoDeCierreVisto() {
+        _estado.update { it.copy(cerradaPorElServidor = false) }
     }
 }

@@ -1,5 +1,6 @@
 package com.eter.salud.presentation.chatmedico
 
+import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.ResumenClinicoIa
 import com.eter.salud.domain.model.RiesgoPaciente
@@ -38,6 +39,7 @@ data class MensajeVisibleChat(
     val autor: AutorMensaje,
     val esPropio: Boolean,
     val horaLocal: String,
+    val adjunto: Adjunto? = null,
 )
 
 /**
@@ -85,13 +87,15 @@ data class ChatMedicoUiState(
     val riesgoPaciente: RiesgoPaciente = RiesgoPaciente.BAJO,
     val historial: HistorialChatUiState = HistorialChatUiState.Cargando,
     val textoEnCurso: String = "",
+    /** Archivo, foto o escaneo elegido y aun sin enviar. */
+    val adjuntoEnCurso: Adjunto? = null,
     val errorEnvio: Boolean = false,
     /** Resumen de IA por `idMensaje`, solo para los mensajes del paciente que lo ameritan. */
     val resumenesIa: Map<String, EstadoResumenIa> = emptyMap(),
     /** `idMensaje` cuyo mensaje original se muestra expandido bajo su resumen. */
     val originalExpandido: Set<String> = emptySet(),
 ) {
-    val puedeEnviar: Boolean get() = textoEnCurso.isNotBlank()
+    val puedeEnviar: Boolean get() = textoEnCurso.isNotBlank() || adjuntoEnCurso != null
 
     /** Mensajes ya descargados; vacio mientras carga o si fallo. */
     val mensajes: List<MensajeVisibleChat>
