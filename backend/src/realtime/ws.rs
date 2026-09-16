@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use axum::{
     extract::{
@@ -39,6 +39,13 @@ enum MensajeCliente {
 enum MensajeServidor {
     Suscrito { canal: String },
     Error { mensaje: String },
+    /// Cada [`INTERVALO_LATIDO`] sin importar si hubo eventos: mantiene viva la
+    /// conexión en routers que cortan las inactivas y le permite al cliente
+    /// notar que el socket murió aunque TCP no avise.
+    Latido,
+    /// El cliente se perdió eventos (iba lento): debe volver a pedir lo que
+    /// muestra en vez de quedarse con datos viejos sin saberlo.
+    Resincronizar,
 }
 
 pub async fn manejar_conexion(
@@ -64,24 +71,33 @@ pub async fn manejar_conexion(
     ws.on_upgrade(move |socket| atender_socket(socket, state, claims))
 }
 
+/// Menor que los 60 s que suelen tolerar los proxies y routers sin tráfico.
+const INTERVALO_LATIDO: Duration = Duration::from_secs(25);
+
 async fn atender_socket(mut socket: WebSocket, state: AppState, claims: Claims) {
     let mut receptor = state.hub.suscribirse();
     let mut canales_autorizados: HashSet<String> = HashSet::new();
+    let mut latido = tokio::time::interval_at(tokio::time::Instant::now() + INTERVALO_LATIDO, INTERVALO_LATIDO);
+    latido.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
     loop {
         tokio::select! {
+            _ = latido.tick() => {
+                if enviar_json(&mut socket, &MensajeServidor::Latido).await.is_err() {
+                    break;
+                }
+            }
             evento = receptor.recv() => {
                 match evento {
                     Ok(evento) => {
-                        if canales_autorizados.contains(&evento.canal) {
-                            if enviar_json(&mut socket, &evento).await.is_err() {
-                                break;
-                            }
+                        if canales_autorizados.contains(&evento.canal) && enviar_json(&mut socket, &evento).await.is_err() {
+                            break;
                         }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
-                        // Un cliente lento se saltó eventos; sigue con los que vengan.
-                        continue;
+                        if enviar_json(&mut socket, &MensajeServidor::Resincronizar).await.is_err() {
+                            break;
+                        }
                     }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
@@ -153,7 +169,7 @@ async fn canal_autorizado(db: &sqlx::PgPool, canal: &str, sub: &str, role: &str)
             }
             if role == "medico" {
                 return sqlx::query_scalar::<_, bool>(
-                    "select exists(select 1 from app.control_accesos_medico where id_paciente = $1 and id_medico = $2)",
+                    "select app.vinculo_vigente($2, $1)",
                 )
                 .bind(id)
                 .bind(sub)

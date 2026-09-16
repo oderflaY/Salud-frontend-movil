@@ -98,6 +98,50 @@ class ChatMedicoViewModel(
     }
 
     /**
+     * Mantiene la conversacion al dia mientras la pantalla este visible (la
+     * llama la Vista y se cancela al salir), igual que en el chat del
+     * paciente: los mensajes llegan sin tener que salir y volver a entrar.
+     */
+    suspend fun mantenerAlDia() {
+        refrescar()
+        repositorio.cambiosEn(idConversacion).collect { refrescar() }
+    }
+
+    private var refrescoEnCurso = false
+
+    /** Historial nuevo sin esqueleto de carga; lo que aun no confirma el servidor se queda al final. */
+    private suspend fun refrescar() {
+        if (refrescoEnCurso || consultaEnCurso) return
+        refrescoEnCurso = true
+        try {
+            val delServidor = ejecutarSeguro { repositorio.obtenerHistorial(idConversacion) }.getOrNull() ?: return
+            var llegoAlgoNuevo = false
+            _estado.update { previo ->
+                val actuales = (previo.historial as? HistorialChatUiState.ConMensajes)?.mensajes.orEmpty()
+                val conocidos = actuales.mapTo(HashSet()) { it.idMensaje }
+                llegoAlgoNuevo = delServidor.any { it.idMensaje !in conocidos && it.autor != AutorMensaje.MEDICO }
+                val pendientes = actuales.filter { it.idMensaje.startsWith(PREFIJO_ID_PROVISIONAL) }
+                val alDia = delServidor.map { it.aVisible() } + pendientes
+                if (previo.historial is HistorialChatUiState.ConMensajes && alDia == actuales) {
+                    previo
+                } else {
+                    previo.copy(historial = HistorialChatUiState.ConMensajes(alDia))
+                }
+            }
+            delServidor.forEach { mensaje ->
+                if (mensaje.autor == AutorMensaje.PACIENTE && esMensajeLargo(mensaje.texto)) {
+                    solicitarResumen(mensaje.idMensaje, mensaje.texto)
+                }
+            }
+            if (llegoAlgoNuevo) {
+                ejecutarSeguro { Result.success(repositorio.marcarConversacionLeida(idConversacion)) }
+            }
+        } finally {
+            refrescoEnCurso = false
+        }
+    }
+
+    /**
      * Alterna entre el resumen de IA y el mensaje tal como lo escribio el
      * paciente, bajo la misma tarjeta.
      */
@@ -204,8 +248,12 @@ class ChatMedicoViewModel(
                 onSuccess = { confirmado ->
                     _estado.update { previo ->
                         previo.conMensajes { mensajes ->
-                            mensajes.map {
-                                if (it.idMensaje == provisional.idMensaje) confirmado.aVisible() else it
+                            if (mensajes.any { it.idMensaje == confirmado.idMensaje }) {
+                                mensajes.filterNot { it.idMensaje == provisional.idMensaje }
+                            } else {
+                                mensajes.map {
+                                    if (it.idMensaje == provisional.idMensaje) confirmado.aVisible() else it
+                                }
                             }
                         }
                     }

@@ -37,7 +37,28 @@ object ConfiguracionApi {
      * `10.0.2.2` es como el emulador de Android ve el `localhost` de la maquina
      * anfitriona; queda como valor de arranque para iOS y para las pruebas.
      */
+    @kotlin.concurrent.Volatile
     var BASE_URL: String = "http://10.0.2.2:8000"
+
+    /** La URL con la que se compiló la app: otra candidata si la IP cambió. */
+    var URL_COMPILADA: String? = null
+
+    /**
+     * Solo en desarrollo: si el backend (en una computadora de la red local)
+     * cambia de IP, la app lo busca en su subred en vez de quedarse sin conexión.
+     * Ver [VigiaDeServidor].
+     */
+    var DESCUBRIR_EN_RED: Boolean = false
+
+    /**
+     * Si el cliente HTTP escribe cada peticion en el log. Solo en desarrollo:
+     * las URLs llevan ids de pacientes y en release el log lo lee cualquier
+     * app con permisos de depuracion.
+     */
+    var REGISTRAR_PETICIONES: Boolean = false
+
+    /** Para recordar la dirección encontrada entre ejecuciones (lo conecta cada plataforma). */
+    var alCambiarServidor: (String) -> Unit = {}
 
     /**
      * Raiz del socket de tiempo real (seccion 11 de `CONTRATOS_BACKEND.md`).

@@ -153,6 +153,22 @@ impl ClienteDeepSeek {
         Ok(resumen.puntos)
     }
 
+    /// RAG: explica el nivel de riesgo usando SOLO el contexto recuperado de la
+    /// base de conocimiento (`app.base_conocimiento_riesgo`). El nivel ya viene
+    /// decidido por reglas; el modelo no lo cambia, solo lo explica.
+    pub async fn explicar_riesgo(&self, texto: &str, contexto: &str) -> Result<String, AppError> {
+        self.completar(
+            "Eres un asistente de apoyo clinico para medicos. Recibes lo que escribio un paciente \
+             y el CONTEXTO recuperado de una base de conocimiento de senales de alarma, con el \
+             nivel de riesgo ya calculado. Usando UNICAMENTE ese contexto y el texto del paciente, \
+             explica en espanol, en 2 o 3 frases, por que tiene ese nivel y que conviene hacer. \
+             No cambies el nivel, no des diagnosticos, no inventes datos ni recomiendes \
+             medicamentos o dosis. Si el contexto no tiene senales de alarma, dilo.",
+            format!("TEXTO DEL PACIENTE:\n{texto}\n\nCONTEXTO RECUPERADO:\n{contexto}"),
+        )
+        .await
+    }
+
     pub async fn traducir(&self, texto: &str, idioma_destino: &str) -> Result<String, AppError> {
         self.completar(
             &format!(
@@ -201,6 +217,28 @@ mod tests {
             .unwrap();
 
         assert_eq!(resumen, "El paciente reportó dolor de cabeza.");
+    }
+
+    #[tokio::test]
+    async fn explicar_riesgo_manda_el_texto_y_el_contexto_recuperado() {
+        let servidor = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .and(wiremock::matchers::body_string_contains("CONTEXTO RECUPERADO"))
+            .and(wiremock::matchers::body_string_contains("me duele el pecho"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "choices": [{ "message": { "content": "Nivel rojo por dolor de pecho." } }]
+            })))
+            .expect(1)
+            .mount(&servidor)
+            .await;
+
+        let explicacion = cliente_de_prueba(servidor.uri())
+            .explicar_riesgo("me duele el pecho", "NIVEL CALCULADO: ROJO")
+            .await
+            .unwrap();
+
+        assert_eq!(explicacion, "Nivel rojo por dolor de pecho.");
     }
 
     #[tokio::test]

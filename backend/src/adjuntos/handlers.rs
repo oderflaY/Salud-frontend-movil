@@ -165,7 +165,7 @@ pub async fn descargar_adjunto(
 /// El nombre viaja de vuelta en `Content-Disposition`: una comilla o un salto
 /// de linea ahi permitirian inyectar cabeceras. Tambien se quitan rutas (un
 /// `../` no significa nada para nosotros) y se acota la longitud.
-fn nombre_seguro(original: &str) -> String {
+pub(crate) fn nombre_seguro(original: &str) -> String {
     let base = original.rsplit(['/', '\\']).next().unwrap_or(original);
     let limpio: String = base
         .chars()
@@ -180,7 +180,7 @@ fn nombre_seguro(original: &str) -> String {
     }
 }
 
-fn tipo_mime_servible(tipo_mime: &str) -> &str {
+pub(crate) fn tipo_mime_servible(tipo_mime: &str) -> &str {
     let esencia = tipo_mime.split(';').next().unwrap_or("").trim().to_ascii_lowercase();
     if TIPOS_NO_SERVIBLES.contains(&esencia.as_str()) {
         "application/octet-stream"

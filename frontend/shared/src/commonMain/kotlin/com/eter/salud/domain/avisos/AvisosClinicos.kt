@@ -66,6 +66,14 @@ interface AvisosClinicos {
     fun solicitarPermisos()
 
     /**
+     * Pide el permiso de avisos con el dialogo del sistema, UNA sola vez en la
+     * vida de la app y solo si hace falta. No abre Ajustes ni insiste: si la
+     * persona lo niega, se respeta, y puede activarlo despues desde Ajustes de
+     * la app ([solicitarPermisos]).
+     */
+    fun pedirPermisoSiHaceFalta() {}
+
+    /**
      * Programa el recordatorio de una toma, o REEMPLAZA el que ya existiera para
      * la misma toma. Reprogramar no debe poder duplicar el aviso de una pastilla
      * (ver [RecordatorioMedicacion.claveSistema]).

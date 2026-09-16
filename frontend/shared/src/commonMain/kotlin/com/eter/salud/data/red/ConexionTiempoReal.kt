@@ -4,14 +4,19 @@ import com.eter.salud.data.sesion.FuenteDeSesion
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
@@ -20,9 +25,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Un evento del socket multiplexado (`mapeo-endpoints.md`, seccion 11):
@@ -55,6 +63,13 @@ private data class SolicitudDeCanal(val suscribir: String? = null, val desuscrib
 interface CanalTiempoReal {
     /** Suscribe al [nombre] de canal exacto; decodifica el `payload` con [decodificar]. */
     fun <T> canal(nombre: String, decodificar: (JsonElement) -> T): Flow<T>
+
+    /**
+     * Avisa que pudieron perderse eventos: el socket se volvio a abrir tras
+     * caerse, o el servidor pidio resincronizar. Quien muestra datos en vivo
+     * debe volver a pedirlos.
+     */
+    val reconexiones: Flow<Unit> get() = emptyFlow()
 }
 
 /**
@@ -82,7 +97,7 @@ interface CanalTiempoReal {
  * ## Reconexion, sin desconexion por falta de suscriptores
  *
  * La conexion se abre con el primer canal que alguien pida y se reintenta sola
- * (con una pausa fija) si se cae. NO se cierra cuando el ultimo suscriptor
+ * (con espera creciente, hasta 30 s) si se cae o se queda sin latido. NO se cierra cuando el ultimo suscriptor
  * cancela: para una app clinica, mantener el socket abierto mientras la app
  * este en primer plano es mas simple y mas barato de razonar que un contador
  * de suscriptores con apagado diferido, y el costo -- una conexion ociosa -- es
@@ -99,6 +114,9 @@ class ConexionTiempoReal(
     private var sesionActual: DefaultClientWebSocketSession? = null
     private val canalesSuscritos = mutableSetOf<String>()
     private val mutex = Mutex()
+
+    private val _reconexiones = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val reconexiones: Flow<Unit> = _reconexiones
 
     override fun <T> canal(nombre: String, decodificar: (JsonElement) -> T): Flow<T> =
         entrante
@@ -127,7 +145,9 @@ class ConexionTiempoReal(
     }
 
     private suspend fun bucleDeConexion() {
-        while (kotlin.coroutines.coroutineContext.isActive) {
+        var fallosSeguidos = 0
+        var yaSeAbrioAntes = false
+        while (currentCoroutineContext().isActive) {
             try {
                 val sesion = fuenteDeSesion.sesion.first()
                 val token = sesion.paciente?.token ?: sesion.profesional?.token
@@ -137,15 +157,13 @@ class ConexionTiempoReal(
                         sesionActual = this
                         canalesSuscritos.forEach { nombre -> enviarSolicitud(this, SolicitudDeCanal(suscribir = nombre)) }
                     }
+                    fallosSeguidos = 0
+                    // Lo que paso mientras el socket estaba caido no llega por el:
+                    // quien muestra datos en vivo vuelve a pedirlos.
+                    if (yaSeAbrioAntes) _reconexiones.tryEmit(Unit)
+                    yaSeAbrioAntes = true
                     try {
-                        for (marco in incoming) {
-                            if (marco is Frame.Text) {
-                                val sobre = runCatching {
-                                    JsonRed.decodeFromString(SobreTiempoReal.serializer(), marco.readText())
-                                }.getOrNull()
-                                if (sobre != null) entrante.emit(sobre)
-                            }
-                        }
+                        escuchar()
                     } finally {
                         mutex.withLock { sesionActual = null }
                     }
@@ -156,7 +174,34 @@ class ConexionTiempoReal(
                 // Se reintenta tras la pausa de abajo: una caida de red es una
                 // reconexion, nunca un fallo que deba propagarse a la Vista.
             }
-            delay(RETARDO_RECONEXION_MS)
+            fallosSeguidos++
+            delay(esperaDeReconexion(fallosSeguidos))
+        }
+    }
+
+    /**
+     * Lee marcos hasta que el socket se cierre o se quede mudo. El servidor
+     * manda un latido cada 25 s: si en [SILENCIO_MAXIMO_MS] no llega nada, la
+     * conexion murio sin avisar (wifi que cambio, router que la corto) y se
+     * cierra para abrir otra, en vez de esperar eventos que ya no llegaran.
+     */
+    private suspend fun DefaultClientWebSocketSession.escuchar() {
+        while (true) {
+            val marco = withTimeoutOrNull(SILENCIO_MAXIMO_MS) { incoming.receiveCatching() }
+            if (marco == null) {
+                runCatching { close(CloseReason(CloseReason.Codes.GOING_AWAY, "sin latido")) }
+                return
+            }
+            val recibido = marco.getOrNull() ?: return
+            if (recibido !is Frame.Text) continue
+            val json = runCatching { JsonRed.parseToJsonElement(recibido.readText()).jsonObject }.getOrNull() ?: continue
+            when (json["tipo"]?.jsonPrimitive?.contentOrNull) {
+                // latido, suscrito, error: control, sin datos que publicar.
+                null -> runCatching { JsonRed.decodeFromJsonElement(SobreTiempoReal.serializer(), json) }
+                    .getOrNull()
+                    ?.let { entrante.emit(it) }
+                TIPO_RESINCRONIZAR -> _reconexiones.tryEmit(Unit)
+            }
         }
     }
 
@@ -164,8 +209,13 @@ class ConexionTiempoReal(
         runCatching { sesion.send(JsonRed.encodeToString(SolicitudDeCanal.serializer(), solicitud)) }
     }
 
-    private companion object {
+    internal companion object {
         const val TAMANO_MEMORIA_INTERMEDIA = 64
-        const val RETARDO_RECONEXION_MS = 3_000L
+        const val SILENCIO_MAXIMO_MS = 60_000L
+        const val TIPO_RESINCRONIZAR = "resincronizar"
+
+        /** 1 s, 2 s, 4 s... hasta 30 s: sin servidor no se gasta bateria reintentando cada 3 s. */
+        fun esperaDeReconexion(fallosSeguidos: Int): Long =
+            (1_000L shl (fallosSeguidos - 1).coerceIn(0, 5)).coerceAtMost(30_000L)
     }
 }

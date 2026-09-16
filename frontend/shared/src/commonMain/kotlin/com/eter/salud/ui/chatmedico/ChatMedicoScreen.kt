@@ -70,8 +70,13 @@ import com.eter.salud.ui.profesional.recurso
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.ColoresSalud
 import com.eter.salud.ui.theme.FormaSalud
+import com.eter.salud.ui.componentes.MientrasSeVe
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
+import com.eter.salud.ui.dictado.BotonDictar
+import com.eter.salud.ui.dictado.PanelDeDictado
+import com.eter.salud.ui.dictado.rememberControladorDeDictado
+import salud.shared.generated.resources.dictado_accion_detener_y_enviar
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
 import salud.shared.generated.resources.a11y_chatmedico_accion_enviar
@@ -112,6 +117,9 @@ fun ChatMedicoScreen(
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
     val listState = rememberLazyListState()
+
+    // Mensajes nuevos (del telefono de la otra parte o del panel web) sin salir del chat.
+    MientrasSeVe(viewModel) { viewModel.mantenerAlDia() }
 
     // Auto-scroll al ultimo mensaje en cuanto llega uno nuevo.
     LaunchedEffect(estado.mensajes.size) {
@@ -338,8 +346,15 @@ private fun FilaEnvio(estado: ChatMedicoUiState, viewModel: ChatMedicoViewModel)
     val espaciado = LocalEspaciadoSalud.current
     val selectorDeAdjuntos = rememberSelectorDeAdjuntos(estado.idConversacion)
     var mostrandoHojaAdjuntar by remember { mutableStateOf(false) }
+    val dictado = rememberControladorDeDictado(viewModel::actualizarTexto)
 
     Column {
+        PanelDeDictado(
+            controlador = dictado,
+            alEnviar = viewModel::enviarMensaje,
+            etiquetaEnviar = Res.string.dictado_accion_detener_y_enviar,
+            modifier = Modifier.padding(bottom = espaciado.compacto),
+        )
         estado.adjuntoEnCurso?.let { adjunto ->
             VistaPreviaAdjunto(adjunto = adjunto, alQuitar = viewModel::quitarAdjunto)
             Spacer(Modifier.height(espaciado.compacto))
@@ -355,7 +370,8 @@ private fun FilaEnvio(estado: ChatMedicoUiState, viewModel: ChatMedicoViewModel)
                 alCambiar = viewModel::actualizarTexto,
                 modifier = Modifier.weight(1f),
             )
-            BotonEnviar(habilitado = estado.puedeEnviar, alPulsar = viewModel::enviarMensaje)
+            BotonDictar(dictado, textoActual = { viewModel.estado.value.textoEnCurso })
+            BotonEnviar(habilitado = estado.puedeEnviar, alPulsar = { dictado.detenerYEnviar(viewModel::enviarMensaje) })
         }
     }
 

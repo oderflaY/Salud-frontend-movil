@@ -1,6 +1,7 @@
 package com.eter.salud.data.repository
 
 import com.eter.salud.data.red.FalloDeRedGenerico
+import com.eter.salud.domain.diario.SeveridadDiario
 import com.eter.salud.domain.model.EntradaDiario
 import com.eter.salud.domain.repository.DiarioRepositorio
 import io.ktor.client.HttpClient
@@ -75,7 +76,7 @@ class DiarioRepositorioRemoto(
             parameter("limit", "1")
         }
         if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
-        return Result.success(respuesta.body<List<EntradaDiario>>().firstOrNull())
+        return Result.success(respuesta.body<List<EntradaDiarioRed>>().firstOrNull()?.aDominio())
     }
 
     /** Ids que el servidor ya tiene, para subir solo lo que falta. */
@@ -94,9 +95,44 @@ class DiarioRepositorioRemoto(
             parameter("order", "instante.desc")
         }
         if (!respuesta.status.isSuccess()) return Result.failure(FalloDeRedGenerico(respuesta.status.value))
-        return Result.success(respuesta.body())
+        return Result.success(respuesta.body<List<EntradaDiarioRed>>().map { it.aDominio() })
     }
 }
 
 @Serializable
 private data class SoloId(val idEntrada: String)
+
+/**
+ * La entrada como la devuelve el servidor: ademas del color que calculo la app
+ * del paciente, el que calculo el backend al guardarla (0019), con lo que
+ * detecto. El medico ve el MAS GRAVE de los dos: un telefono con el
+ * diccionario viejo ya no esconde una senal de alarma.
+ */
+@Serializable
+private data class EntradaDiarioRed(
+    val idEntrada: String,
+    val idPaciente: String,
+    val instante: String,
+    val fecha: String,
+    val texto: String,
+    val severidad: SeveridadDiario,
+    val terminosDetectados: List<String> = emptyList(),
+    val severidadServidor: SeveridadDiario? = null,
+    val analisisRiesgo: AnalisisRiesgoRed? = null,
+) {
+    fun aDominio() = EntradaDiario(
+        idEntrada = idEntrada,
+        idPaciente = idPaciente,
+        instante = instante,
+        fecha = fecha,
+        texto = texto,
+        severidad = listOfNotNull(severidad, severidadServidor).maxBy { it.codigo },
+        terminosDetectados = (terminosDetectados + analisisRiesgo?.hallazgos.orEmpty().map { it.termino }).distinct(),
+    )
+}
+
+@Serializable
+private data class AnalisisRiesgoRed(val hallazgos: List<HallazgoRed> = emptyList())
+
+@Serializable
+private data class HallazgoRed(val termino: String)

@@ -47,6 +47,12 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <!--
+      Dictado por voz (diario y chat): el permiso se pide al tocar el microfono,
+      no al abrir la app.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
       El escaner de documentos del chat NO necesita permiso de camara: la API
       de ML Kit (play-services-mlkit-document-scanner) presenta su propia
       interfaz de captura dentro de Play Services y devuelve la pagina ya
@@ -65,6 +71,13 @@
       para Android 7-11, pero ese atributo solo elige QUE respaldar cuando el
       respaldo esta activo; con allowBackup="false" no hay nada que elegir.
     -->
+    <!-- Sin esto, Android 11+ oculta el servicio de reconocimiento de voz y el microfono no aparece. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/reglas_extraccion_datos"

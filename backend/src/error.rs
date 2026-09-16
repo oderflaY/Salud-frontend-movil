@@ -73,7 +73,7 @@ struct ErrorBody {
 }
 
 impl AppError {
-    fn motivo(&self) -> &'static str {
+    pub(crate) fn motivo(&self) -> &'static str {
         match self {
             AppError::CredencialesInvalidas => "CREDENCIALES_INVALIDAS",
             AppError::CuentaBloqueada => "CUENTA_BLOQUEADA",
@@ -102,7 +102,7 @@ impl AppError {
         }
     }
 
-    fn status(&self) -> StatusCode {
+    pub(crate) fn status(&self) -> StatusCode {
         match self {
             AppError::CredencialesInvalidas => StatusCode::UNAUTHORIZED,
             AppError::CuentaBloqueada => StatusCode::FORBIDDEN,

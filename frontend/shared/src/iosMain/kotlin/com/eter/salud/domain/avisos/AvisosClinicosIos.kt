@@ -71,6 +71,11 @@ private class AvisosClinicosIos : AvisosClinicos {
     /** `UNCalendarNotificationTrigger` siempre dispara en su hora exacta. */
     override val alarmasExactas: Boolean = true
 
+    /** iOS solo muestra el dialogo la primera vez: pedirlo de nuevo no molesta. */
+    override fun pedirPermisoSiHaceFalta() {
+        if (!yaSePregunto) pedirAutorizacion()
+    }
+
     override fun solicitarPermisos() {
         if (!yaSePregunto) {
             pedirAutorizacion()

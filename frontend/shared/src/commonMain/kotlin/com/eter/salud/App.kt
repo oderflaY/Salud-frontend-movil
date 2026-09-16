@@ -27,6 +27,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.eter.salud.data.local.recordarContenedorSalud
+import com.eter.salud.data.red.VigiaDeServidor
+import com.eter.salud.ui.componentes.AlReconectar
+import com.eter.salud.ui.componentes.AvisoSinConexion
+import kotlinx.coroutines.withTimeoutOrNull
+import salud.shared.generated.resources.app_buscando_servidor
 import com.eter.salud.data.red.ConfiguracionApi
 import com.eter.salud.data.red.recordarContenedorRed
 import com.eter.salud.data.sesion.TipoAvisoDeSesion
@@ -163,6 +168,14 @@ fun App() {
             contenedor.preparar()
             value = true
         }
+        // En desarrollo el backend puede haber cambiado de IP desde la ultima vez:
+        // se confirma (o se busca en la red local) antes de crear los clientes.
+        val servidorListo by produceState(!VigiaDeServidor.habilitado) {
+            if (!value) {
+                withTimeoutOrNull(BUSQUEDA_MAXIMA_SERVIDOR_MS) { VigiaDeServidor.asegurar() }
+                value = true
+            }
+        }
         val almacenDeSesion = recordarAlmacenDeSesion()
         val sesiones = viewModel { SesionViewModel(almacenDeSesion) }
         val estadoSesion by sesiones.estado.collectAsStateWithLifecycle()
@@ -175,8 +188,8 @@ fun App() {
         // perdio. Pero tampoco se deja la pantalla en blanco -- si la lectura
         // tarda, o el archivo esta danado y el flujo no emite, el usuario se
         // queda ante un vacio sin explicacion. Se muestra que esta pasando.
-        if (estadoSesion.restaurando || !baseLista) {
-            PantallaDeArranque()
+        if (estadoSesion.restaurando || !baseLista || !servidorListo) {
+            PantallaDeArranque(buscandoServidor = !servidorListo)
             return@SaludTheme
         }
 
@@ -311,6 +324,7 @@ fun App() {
             if (profesionalActual != null) Destino.PanelProfesional else Destino.Inicio
 
         Column(Modifier.fillMaxSize()) {
+            if (contenedorRed != null) AvisoSinConexion()
             AnfitrionNavegacion(pila = pila, modifier = Modifier.weight(1f)) { destino ->
                 when {
                     profesionalActual != null -> PantallaProfesional(
@@ -448,7 +462,7 @@ fun App() {
  * esos casos la alternativa era una pantalla en blanco indefinida.
  */
 @Composable
-private fun PantallaDeArranque() {
+private fun PantallaDeArranque(buscandoServidor: Boolean = false) {
     val colores = LocalColoresSalud.current
     val espaciado = LocalEspaciadoSalud.current
     val descripcion = stringResource(Res.string.a11y_app_restaurando)
@@ -469,7 +483,7 @@ private fun PantallaDeArranque() {
         CircularProgressIndicator(color = colores.acentoAccion)
         Spacer(Modifier.height(espaciado.medio))
         Text(
-            text = stringResource(Res.string.app_restaurando),
+            text = stringResource(if (buscandoServidor) Res.string.app_buscando_servidor else Res.string.app_restaurando),
             style = MaterialTheme.typography.bodyMedium,
             color = colores.textoSecundario,
         )
@@ -584,6 +598,7 @@ private fun PantallaPaciente(
             val perfil = viewModel(key = "$CLAVE_PERFIL${sesion.idPaciente}") {
                 PerfilMedicoViewModel(repositorioHistorial)
             }
+            AlReconectar { perfil.cargarPerfil(sesion.idPaciente) }
             // Sin `alVolver`: es una raiz de pestana, no una pantalla apilada.
             PerfilMedicoScreen(viewModel = perfil, idPaciente = sesion.idPaciente)
         }
@@ -595,6 +610,7 @@ private fun PantallaPaciente(
             val bandeja = viewModel(key = "$CLAVE_BANDEJA${sesion.idPaciente}") {
                 BandejaViewModel(repositorioDirectorio, repositorioChat, sesion.idPaciente)
             }
+            AlReconectar { bandeja.refrescar() }
             BandejaScreen(
                 viewModel = bandeja,
                 alAbrirConversacion = { medico -> navegacion.ir(Destino.ChatConMedico(medico)) },
@@ -611,6 +627,7 @@ private fun PantallaPaciente(
                     idPaciente = sesion.idPaciente,
                 )
             }
+            AlReconectar { agendaPaciente.refrescar() }
             AgendaPacienteScreen(viewModel = agendaPaciente)
         }
 
@@ -661,20 +678,23 @@ private fun PantallaPaciente(
             alVolver = navegacion::volver,
         )
 
-        else -> HomeScreen(
-            viewModel = inicio,
-            alCompletarPerfil = { navegacion.ir(Destino.Onboarding) },
-            alAbrirAcceso = { acceso ->
-                when (acceso) {
-                    AccesoRapido.HISTORIAL -> navegacion.irASeccion(Destino.Historial, Destino.Inicio)
-                    AccesoRapido.MIS_MEDICOS -> navegacion.irASeccion(Destino.MiMedico, Destino.Inicio)
-                    AccesoRapido.DIARIO_SINTOMAS -> navegacion.ir(Destino.Diario)
-                    else -> Unit
-                }
-            },
-            alAbrirAjustes = { navegacion.ir(Destino.Configuracion) },
-            alAbrirAgenda = { navegacion.irASeccion(Destino.AgendaPaciente, Destino.Inicio) },
-        )
+        else -> {
+            AlReconectar { inicio.cargar() }
+            HomeScreen(
+                viewModel = inicio,
+                alCompletarPerfil = { navegacion.ir(Destino.Onboarding) },
+                alAbrirAcceso = { acceso ->
+                    when (acceso) {
+                        AccesoRapido.HISTORIAL -> navegacion.irASeccion(Destino.Historial, Destino.Inicio)
+                        AccesoRapido.MIS_MEDICOS -> navegacion.irASeccion(Destino.MiMedico, Destino.Inicio)
+                        AccesoRapido.DIARIO_SINTOMAS -> navegacion.ir(Destino.Diario)
+                        else -> Unit
+                    }
+                },
+                alAbrirAjustes = { navegacion.ir(Destino.Configuracion) },
+                alAbrirAgenda = { navegacion.irASeccion(Destino.AgendaPaciente, Destino.Inicio) },
+            )
+        }
     }
 }
 
@@ -768,6 +788,7 @@ private fun PantallaProfesional(
                     idMedico = sesion.idMedico,
                 )
             }
+            AlReconectar { bandejaClinica.cargar() }
             InboxScreen(
                 viewModel = bandejaClinica,
                 alAbrirConversacion = { paciente -> navegacion.ir(Destino.ChatConPaciente(paciente)) },
@@ -786,6 +807,7 @@ private fun PantallaProfesional(
                     pacientesVinculados = repositorioPacientesVinculados,
                 )
             }
+            AlReconectar { agenda.reintentar() }
             AgendaMedicoScreen(
                 viewModel = agenda,
                 alAbrirExpediente = { cita ->
@@ -836,6 +858,7 @@ private fun PantallaProfesional(
                     idPaciente = destino.idPaciente,
                 )
             }
+            AlReconectar { expediente.reintentar() }
             ExpedienteMedicoScreen(
                 viewModel = expediente,
                 nombreReferencia = destino.nombreReferencia,
@@ -854,6 +877,7 @@ private fun PantallaProfesional(
                     estadoVerificacion = sesion.estadoVerificacion,
                 )
             }
+            AlReconectar { inicioProfesional.cargar() }
             HomeProfesionalScreen(
                 viewModel = inicioProfesional,
                 alEscanearTarjeta = { navegacion.irASeccion(Destino.Escaner, Destino.PanelProfesional) },
@@ -893,3 +917,6 @@ private const val CLAVE_CONFIGURACION = "configuracion"
 private const val CLAVE_BAJA = "baja_de_cuenta_"
 private const val CLAVE_CONTRASENA = "cambio_contrasena_"
 private const val CLAVE_CONTRASENA_OBLIGATORIA = "cambio_contrasena_obligatorio_"
+
+/** Si en este tiempo no aparece el servidor, la app abre igual y cada pantalla dice que no hay conexion. */
+private const val BUSQUEDA_MAXIMA_SERVIDOR_MS = 10_000L

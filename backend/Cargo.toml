@@ -8,7 +8,7 @@ rust-version = "1.80"
 axum = { version = "0.7", features = ["ws", "query", "multipart"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6", features = ["trace", "cors"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "timeout", "compression-gzip", "compression-br"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -23,6 +23,7 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower_governor = "0.4"
+governor = "0.6"
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
 dotenvy = "0.15"
@@ -37,3 +38,10 @@ http-body-util = "0.1"
 # Servidor HTTP falso para probar el cliente de DeepSeek sin una API key real
 # ni depender de la red — ver backend/src/ia/deepseek.rs.
 wiremock = "0.6"
+
+# Binario de producción más chico y rápido. `lto = "thin"` en vez de "fat":
+# casi la misma ganancia con mucha menos memoria al compilar (la imagen se
+# construye en equipos de 8 GB).
+[profile.release]
+lto = "thin"
+strip = true

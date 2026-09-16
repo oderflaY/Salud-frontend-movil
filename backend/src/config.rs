@@ -64,6 +64,10 @@ impl Config {
     }
 }
 
+fn require_env(name: &str) -> String {
+    env::var(name).unwrap_or_else(|_| panic!("falta la variable de entorno requerida: {name}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,8 +79,4 @@ mod tests {
             vec!["https://panel.salud.mx", "http://localhost:5173"]
         );
     }
-}
-
-fn require_env(name: &str) -> String {
-    env::var(name).unwrap_or_else(|_| panic!("falta la variable de entorno requerida: {name}"))
 }

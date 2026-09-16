@@ -67,6 +67,35 @@ class DiarioRepositorioRemotoTest {
     }
 
     @Test
+    fun el_medico_ve_el_color_mas_grave_entre_la_app_y_el_analisis_del_servidor() = runTest {
+        val cliente = clienteDePrueba {
+            respond(
+                """[{"idEntrada":"entrada_1","idPaciente":"pac_1","instante":"2026-09-12T10:00:00+00:00","fecha":"2026-09-12","texto":"Presion 190/120","severidad":"VERDE","terminosDetectados":[],"severidadServidor":"ROJO","analisisRiesgo":{"nivel":"ROJO","hallazgos":[{"termino":"Presión muy alta (190/120)","categoria":"URGENCIA_FISICA"}]}}]""",
+                HttpStatusCode.OK,
+                json,
+            )
+        }
+
+        val ultima = DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).ultimaEntradaDe("pac_1").getOrThrow()
+
+        assertEquals(SeveridadDiario.ROJO, ultima?.severidad)
+        assertEquals(listOf("Presión muy alta (190/120)"), ultima?.terminosDetectados)
+    }
+
+    @Test
+    fun un_color_del_servidor_mas_leve_no_baja_el_de_la_app() = runTest {
+        val cliente = clienteDePrueba {
+            respond(
+                """[{"idEntrada":"entrada_1","idPaciente":"pac_1","instante":"2026-09-12T10:00:00+00:00","fecha":"2026-09-12","texto":"x","severidad":"ROJO","severidadServidor":"VERDE"}]""",
+                HttpStatusCode.OK,
+                json,
+            )
+        }
+
+        assertEquals(SeveridadDiario.ROJO, DiarioRepositorioRemoto(cliente, URL_BASE_DE_PRUEBA).ultimaEntradaDe("pac_1").getOrThrow()?.severidad)
+    }
+
+    @Test
     fun sin_entradas_la_ultima_es_null_y_no_un_fallo() = runTest {
         val cliente = clienteDePrueba { respond("[]", HttpStatusCode.OK, json) }
 

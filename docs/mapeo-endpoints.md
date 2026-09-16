@@ -177,6 +177,19 @@ Nota: `instante` en la respuesta viene como `...+00:00` (no `...Z`) — es el
 único módulo donde no se normalizó, para no perder la actualización
 automática de la vista. Ambas formas son ISO-8601 UTC válidas.
 
+### Análisis de riesgo (0019)
+
+Cada entrada del diario y cada mensaje del paciente se analizan al guardarse contra `app.base_conocimiento_riesgo` (palabras clave con negaciones, más signos vitales escritos con número: temperatura, saturación, presión, glucosa, pulso). Resultado: `VERDE`, `AMBAR` o `ROJO`, con lo detectado, qué puede indicar y qué hacer.
+
+| Qué | Dónde | Notas |
+|---|---|---|
+| `severidadServidor`, `analisisRiesgo` | columnas nuevas de `GET /entradas_diario` | La app del médico usa el color más grave entre `severidad` (app) y `severidadServidor`. |
+| `POST /rpc/analizar_riesgo` `{texto}` | PostgREST | Mismo motor, sin IA. |
+| `POST /riesgo/analizar` `{texto, explicar?}` | Axum | `{analisis, explicacion_ia}`. Con `explicar: true` y `DEEPSEEK_API_KEY`, DeepSeek explica el resultado usando solo lo recuperado (RAG); sin IA, `explicacion_ia` es `null`. |
+| `GET /riesgo/diario/{idEntrada}?explicar=true` | Axum | Solo el paciente dueño o un médico con vínculo vigente (si no, 401). |
+
+Las alertas del panel (`/api/v1/admin/alertas`) salen de entradas del diario y mensajes del chat en `ROJO`/`AMBAR`; la sugerencia es el "qué hacer" de la base de conocimiento.
+
 ## 11. Tiempo real (WebSocket)
 
 ```
@@ -196,8 +209,14 @@ Servidor → cliente:
 ```json
 {"tipo":"suscrito","canal":"chat:conv_xxx"}
 {"tipo":"error","mensaje":"NO_AUTORIZADO"}
+{"tipo":"latido"}
+{"tipo":"resincronizar"}
 {"canal":"chat:conv_xxx","evento":"mensaje_nuevo","payload":{"idMensaje":"...","autor":"PACIENTE","texto":"..."}}
 ```
+- `latido` llega cada 25 s. Si en 60 s no llega nada, el cliente da la conexión por muerta, la cierra y reconecta (espera creciente de 1 a 30 s).
+- `resincronizar` significa que el cliente se perdió eventos (iba lento). Igual que al reconectar, debe volver a pedir lo que muestra.
+
+Límite de intentos por IP (429): el alta y el inicio de sesión de la app, y `/api/v1/auth/login` y `/api/v1/auth/recuperar-contrasena` del panel, permiten 10 seguidos y después 1 cada 6 s.
 Eventos disponibles: `mensaje_nuevo` (chat), `cita_creada`/`cita_actualizada`/`agenda_bloqueada` (agenda) — el diario aún no emite eventos propios (módulo 10 no generó ninguno; agregarlo implica una migración nueva con `app.emitir_evento` en el INSERT).
 
 ## IA (DeepSeek): resumen de chat y traducción
@@ -223,13 +242,15 @@ canales — esta conexión de Axum a Postgres no tiene el GUC
 se reintenta del lado del cliente si tiene sentido, no es un error del
 paciente/médico.
 
-## Dashboard web del médico (`/api/v1`, Axum)
+## Panel web del médico (`/api/v1`, Axum)
 
-Contrato completo, con los tipos TypeScript, en [dashboard-medico.md](dashboard-medico.md).
-Entra el médico con su cuenta de la app y ve solo a sus pacientes vinculados.
-`login` del paciente devuelve además `requiereCambioContrasena`: es `true` tras un reset desde el
-dashboard, y hasta cambiarla la API responde `403 CAMBIO_CONTRASENA_REQUERIDO` a todo lo demás.
+Contrato "Salud+ Panel Web" implementado tal cual (admin en snake_case, chat en camelCase). Detalle, decisiones y
+lo que le falta al frontend en [DM_Panel_Web.md](DM_Panel_Web.md). Entra el médico con su cuenta de la app y ve
+solo a sus pacientes vinculados; los mensajes que manda desde el panel le llegan a la app por el WebSocket.
 
-**Sesiones revocables (0016).** Cualquier token emitido antes de un reset, o de una cuenta bloqueada o
+`login` del paciente devuelve además `requiereCambioContrasena`: es `true` tras un reinicio desde el panel, y
+hasta cambiarla la API responde `403 CAMBIO_CONTRASENA_REQUERIDO` a todo lo demás.
+
+**Sesiones revocables (0016).** Cualquier token emitido antes de un reinicio, o de una cuenta bloqueada o
 dada de baja, se rechaza con `401 SESION_REVOCADA` / `CUENTA_INACTIVA`: en PostgREST (`db-pre-request`
 `app.verificar_sesion`), en Axum y en el WebSocket.

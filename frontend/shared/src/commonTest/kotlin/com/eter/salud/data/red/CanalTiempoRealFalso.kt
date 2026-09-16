@@ -14,6 +14,14 @@ import kotlinx.serialization.json.JsonElement
  */
 class CanalTiempoRealFalso : CanalTiempoReal {
     private val entrante = MutableSharedFlow<Pair<String, JsonElement>>(extraBufferCapacity = 16)
+    private val reabiertas = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
+
+    override val reconexiones: Flow<Unit> = reabiertas
+
+    /** Simula que el socket se cayo y se volvio a abrir. */
+    fun simularReconexion() {
+        reabiertas.tryEmit(Unit)
+    }
 
     suspend fun emitir(canal: String, payload: JsonElement) {
         entrante.emit(canal to payload)

@@ -53,6 +53,10 @@ import com.eter.salud.ui.componentes.CampoTextoRellenoSalud
 import com.eter.salud.ui.componentes.TarjetaSalud
 import com.eter.salud.ui.componentes.TituloDeBloque
 import com.eter.salud.ui.componentes.bordeDeTarjeta
+import com.eter.salud.ui.dictado.BotonDictar
+import com.eter.salud.ui.dictado.PanelDeDictado
+import com.eter.salud.ui.dictado.rememberControladorDeDictado
+import salud.shared.generated.resources.dictado_accion_detener_y_guardar
 import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.FormaSalud
@@ -104,6 +108,8 @@ fun DiarioScreen(
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
+    // Fuera del LazyColumn: desplazar la lista no debe cortar el dictado.
+    val dictado = rememberControladorDeDictado(viewModel::actualizarBorrador)
 
     LazyColumn(
         modifier = modifier
@@ -134,6 +140,13 @@ fun DiarioScreen(
                     marcador = stringResource(Res.string.diario_marcador),
                     descripcionAccesible = stringResource(Res.string.a11y_diario_campo),
                     tipoTeclado = KeyboardType.Text,
+                    accion = { BotonDictar(dictado, textoActual = { viewModel.estado.value.borrador }) },
+                )
+                PanelDeDictado(
+                    controlador = dictado,
+                    alEnviar = viewModel::guardar,
+                    etiquetaEnviar = Res.string.dictado_accion_detener_y_guardar,
+                    modifier = Modifier.padding(top = espaciado.compacto),
                 )
                 if (estado.borrador.isNotBlank()) {
                     Spacer(Modifier.height(espaciado.compacto))
@@ -147,7 +160,7 @@ fun DiarioScreen(
                 Spacer(Modifier.height(espaciado.compacto))
                 BotonAccionPrincipal(
                     etiqueta = stringResource(Res.string.diario_accion_guardar),
-                    alPulsar = viewModel::guardar,
+                    alPulsar = { dictado.detenerYEnviar(viewModel::guardar) },
                     descripcionAccesible = stringResource(Res.string.a11y_diario_accion_guardar),
                     habilitado = estado.puedeGuardar,
                 )

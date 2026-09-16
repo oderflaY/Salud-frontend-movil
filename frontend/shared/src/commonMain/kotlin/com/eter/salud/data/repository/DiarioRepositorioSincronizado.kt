@@ -4,6 +4,7 @@ import com.eter.salud.domain.model.EntradaDiario
 import com.eter.salud.domain.repository.DiarioRepositorio
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
@@ -28,9 +29,21 @@ class DiarioRepositorioSincronizado(
     private val local: DiarioRepositorio,
     private val remoto: DiarioRepositorioRemoto,
     private val alcance: CoroutineScope,
+    reconexiones: Flow<Unit> = emptyFlow(),
 ) : DiarioRepositorio {
 
     private val subiendo = Mutex()
+
+    /** El paciente cuyo diario se abrio o escribio en este telefono. */
+    private var ultimoPaciente: String? = null
+
+    init {
+        // Lo escrito sin red sube solo en cuanto vuelve la conexion, sin
+        // esperar a que el paciente abra el diario otra vez.
+        alcance.launch {
+            reconexiones.collect { ultimoPaciente?.let { sincronizar(it) } }
+        }
+    }
 
     override fun entradasDe(idPaciente: String): Flow<List<EntradaDiario>> =
         local.entradasDe(idPaciente).onStart { sincronizarEnSegundoPlano(idPaciente) }
@@ -45,6 +58,7 @@ class DiarioRepositorioSincronizado(
         local.ultimaEntradaDe(idPaciente)
 
     private fun sincronizarEnSegundoPlano(idPaciente: String) {
+        ultimoPaciente = idPaciente
         alcance.launch { sincronizar(idPaciente) }
     }
 

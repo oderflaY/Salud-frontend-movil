@@ -221,58 +221,75 @@ else
 fi
 
 echo
-echo "J. DASHBOARD WEB DEL MÉDICO (/api/v1) — el reset usa un paciente desechable"
+echo "J. PANEL WEB DEL MÉDICO (/api/v1, contrato Salud+ Panel Web) — el reinicio usa un paciente desechable"
 V1="$API/api/v1"
-if [ "$(curl -sS -o /dev/null -w '%{http_code}' "$V1/auth/me")" = "404" ]; then
-  echo "  (se omite: este backend todavía no tiene el dashboard; aplica la migración 0016 y reconstrúyelo)"
+if [ "$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$V1/auth/login" -H 'Content-Type: application/json' -d '{}')" = "404" ]; then
+  echo "  (se omite: este backend todavía no tiene el panel; aplica las migraciones 0016-0017 y reconstrúyelo)"
 else
-  RD=$(curl -sS -X POST "$V1/auth/sesion" -H 'Content-Type: application/json' -d "$(jq -nc --arg p "$PASS" '{correo:"dr.silva@salud.local",contrasena:$p}')")
+  PANEL() { curl -sS -X "$1" "$V1$2" -H "Authorization: Bearer $3" -H 'Content-Type: application/json' ${4:+-d "$4"}; }
+  PANELS() { curl -sS -o /dev/null -w '%{http_code}' -X "$1" "$V1$2" -H "Authorization: Bearer $3" -H 'Content-Type: application/json' ${4:+-d "$4"}; }
+  RD=$(curl -sS -X POST "$V1/auth/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg p "$PASS" '{correo:"dr.silva@salud.local",contrasena:$p}')")
   TD=$(echo "$RD" | jq -r '.token // empty')
-  chk "el médico entra al dashboard con su cuenta de la app" "si" "$([ ${#TD} -gt 50 ] && echo si || echo "no: $RD")"
-  chk "/auth/me es dr.silva" "$D1" "$(GET /api/v1/auth/me "$TD" | jq -r '.idMedico')"
+  chk "el médico entra al panel con su cuenta de la app" "doctor" "$(echo "$RD" | jq -r '.usuario.rol')"
+  chk "/auth/me es dr.silva" "$D1|medico" "$(PANEL GET /auth/me "$TD" | jq -r '"\(.id)|\(.rol)"')"
   chk "/auth/me sin token -> 401" "401" "$(curl -sS -o /dev/null -w '%{http_code}' "$V1/auth/me")"
-  chk "un paciente no entra al dashboard -> 403" "403" "$(GETS /api/v1/auth/me "$TP1")"
-  PRE=$(curl -sS -o /dev/null -D - -X OPTIONS "$V1/admin/pacientes" -H 'Origin: http://localhost:5173' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization')
-  chk "CORS: el dashboard en :5173 tiene permiso" "1" "$(echo "$PRE" | grep -ic '^access-control-allow-origin: http://localhost:5173')"
+  chk "un paciente no entra al panel -> 403" "403" "$(PANELS GET /auth/me "$TP1")"
+  PRE=$(curl -sS -o /dev/null -D - -X OPTIONS "$V1/admin/pacientes" -H 'Origin: http://localhost:5173' -H 'Access-Control-Request-Method: PATCH' -H 'Access-Control-Request-Headers: authorization,content-type,x-request-id')
+  chk "CORS: el panel en :5173 tiene permiso, con X-Request-ID" "2" "$(echo "$PRE" | grep -icE '^access-control-allow-origin: http://localhost:5173|^access-control-allow-headers:.*x-request-id')"
   chk "CORS: un sitio ajeno no" "0" "$(curl -sS -o /dev/null -D - -X OPTIONS "$V1/admin/pacientes" -H 'Origin: http://sitio-ajeno.example' -H 'Access-Control-Request-Method: GET' | grep -ic '^access-control-allow-origin')"
-  chk "el puerto 8081 (el que trae el dashboard) responde" "200" "$(curl -sS -o /dev/null -w '%{http_code}' "${API%:*}:8081/api/v1/auth/me" -H "Authorization: Bearer $TD")"
-  K=$(GET /api/v1/admin/dashboard/kpis "$TD")
-  chk "KPIs: dr.silva tiene pacientes" "si" "$([ "$(echo "$K" | jq '.totalPacientes // 0')" -ge 2 ] && echo si || echo "no: $K")"
-  PS=$(GET /api/v1/admin/pacientes "$TD")
-  chk "pacientes: incluye a paciente1" "1" "$(echo "$PS" | jq --arg p "$P1" '[.[]|select(.idPaciente==$p)]|length')"
-  chk "pacientes: NO incluye a paciente4 (no vinculado)" "0" "$(echo "$PS" | jq --arg p "$P4" '[.[]|select(.idPaciente==$p)]|length')"
-  chk "pacientes: el correo va enmascarado" "0" "$(echo "$PS" | grep -c 'paciente1@salud.local')"
-  AL=$(GET /api/v1/admin/alertas "$TD")
-  chk "alertas: lista (predictivas del diario, adherencia e inventario)" "array" "$(echo "$AL" | jq -r 'type')"
-  IDA=$(echo "$AL" | jq -r '[.[]|select(.estado=="NUEVA")][0].idAlerta // empty')
+  chk "el puerto 8081 (el que usa el panel) responde" "200" "$(curl -sS -o /dev/null -w '%{http_code}' "${API%:*}:8081/api/v1/auth/me" -H "Authorization: Bearer $TD")"
+  K=$(PANEL GET /admin/dashboard/kpis "$TD")
+  chk "KPIs: las 8 claves del contrato" '["adherencia_global","alertas_pendientes","citas_hoy","pacientes_rfid","riesgo_amarillo","riesgo_rojo","riesgo_verde","total_pacientes"]' "$(echo "$K" | jq -c 'keys')"
+  PS=$(PANEL GET /admin/pacientes "$TD")
+  chk "pacientes: incluye a paciente1 con sus 28 claves" "28" "$(echo "$PS" | jq --arg p "$P1" '.[]|select(.id==$p)|keys|length')"
+  chk "pacientes: NO incluye a paciente4 (no vinculado)" "0" "$(echo "$PS" | jq --arg p "$P4" '[.[]|select(.id==$p)]|length')"
+  AL=$(PANEL GET /admin/alertas "$TD")
+  chk "alertas: estado_atencion del contrato" "true" "$(echo "$AL" | jq '[.[].estado_atencion|IN("pendiente","en_revision","resuelto")]|all')"
+  IDA=$(echo "$AL" | jq -r '[.[]|select(.estado_atencion=="pendiente")][0].id_alerta // empty')
   if [ -n "$IDA" ]; then
-    chk "alertas: pasar a EN_REVISION" "EN_REVISION" "$(curl -sS -X PATCH "$V1/admin/alertas/$IDA/estado" -H "Authorization: Bearer $TD" -H 'Content-Type: application/json' -d '{"estado":"EN_REVISION"}' | jq -r '.estado')"
-    curl -sS -o /dev/null -X PATCH "$V1/admin/alertas/$IDA/estado" -H "Authorization: Bearer $TD" -H 'Content-Type: application/json' -d '{"estado":"NUEVA"}'
-    chk "alertas: otro médico no la toca -> 404" "404" "$(curl -sS -o /dev/null -w '%{http_code}' -X PATCH "$V1/admin/alertas/$IDA/estado" -H "Authorization: Bearer $TM6" -H 'Content-Type: application/json' -d '{"estado":"ATENDIDA"}')"
+    chk "PATCH /alerts/{id} -> en_revision" "en_revision" "$(PANEL PATCH "/alerts/$IDA" "$TD" '{"status":"en_revision"}' | jq -r '.estado_atencion')"
+    PANEL PATCH "/alerts/$IDA" "$TD" '{"status":"pendiente"}' >/dev/null
+    chk "otro médico no la toca -> 403 (un 404 haría caer al panel a sus mocks)" "403" "$(PANELS PATCH "/alerts/$IDA" "$TM6" '{"status":"resuelto"}')"
   fi
+  CV=$(PANEL GET /admin/conversaciones "$TD")
+  CONV1=$(echo "$CV" | jq -r --arg p "$P1" '.[]|select(.idPaciente==$p).id')
+  chk "chat: la conversación con paciente1" "si" "$([ -n "$CONV1" ] && echo si || echo "no: $CV")"
+  chk "chat: sus mensajes en camelCase" "true" "$(PANEL GET "/admin/conversaciones/$CONV1/mensajes" "$TD" | jq 'length > 0 and (.[0]|has("idConversacion") and has("timestamp"))')"
+  chk "chat: otro médico no la lee -> 403" "403" "$(PANELS GET "/admin/conversaciones/$CONV1/mensajes" "$TM6")"
 
-  echo "  -- reset de cuenta (paciente desechable vinculado a dr.silva) --"
+  echo "  -- administrador del panel (gestiona cuentas, no ve expedientes) --"
+  RA=$(curl -sS -X POST "$V1/auth/login" -H 'Content-Type: application/json' -d "$(jq -nc --arg p "$PASS" '{correo:"admin@salud.local",contrasena:$p}')")
+  TA=$(echo "$RA" | jq -r '.token // empty')
+  chk "admin@salud.local entra como administrador" "administrator" "$(echo "$RA" | jq -r '.usuario.rol')"
+  chk "el administrador ve las cuentas de médicos y pacientes" "6|4" "$(PANEL GET /admin/cuentas/medicos "$TA" | jq length)|$(PANEL GET /admin/cuentas/pacientes "$TA" | jq length)"
+  chk "el administrador NO ve expedientes -> 403" "403" "$(PANELS GET /admin/pacientes "$TA")"
+  chk "un médico NO gestiona cuentas -> 403" "403" "$(PANELS GET /admin/cuentas/medicos "$TD")"
+
+  echo "  -- reinicio de cuenta (paciente desechable vinculado a dr.silva) --"
   CR="reset.$$.$(date +%s)@salud.local"
   TR=$(curl -sS -X POST "$API/auth/pacientes" -H 'Content-Type: application/json' -d "{\"correo\":\"$CR\",\"contrasena\":\"$PASS\"}" | jq -r '.token'); PR=$(sub "$TR")
   curl -sS -o /dev/null -X POST "$API/rpc/registrar_paciente" -H "Authorization: Bearer $TR" -H 'Content-Type: application/json' -H 'Prefer: params=single-object' \
     -d '{"datosPersonales":{"nombre":"Reset","apellidos":"Prueba"},"perfilEmergenciaReducido":{"tipoSangre":"A+"}}'
   curl -sS -o /dev/null -X POST "$API/rpc/solicitar_vinculacion" -H "Authorization: Bearer $TR" -H 'Content-Type: application/json' -d "{\"id_medico\":\"$D1\"}"
   sleep 1
-  chk "un médico sin vínculo no puede -> 404" "404" "$(curl -sS -o /dev/null -w '%{http_code}' -X PATCH "$V1/admin/usuarios/$PR/reset-cuenta" -H "Authorization: Bearer $TM6")"
-  RR=$(curl -sS -X PATCH "$V1/admin/usuarios/$PR/reset-cuenta" -H "Authorization: Bearer $TD" -H 'Content-Type: application/json' -d '{"motivo":"Prueba de verificar_demo"}')
-  TEMP=$(echo "$RR" | jq -r '.contrasenaTemporal // empty')
-  chk "el reset devuelve la contraseña temporal" "si" "$(echo "$TEMP" | grep -qE '^[a-z2-9]{5}-[a-z2-9]{5}$' && echo si || echo "no: $RR")"
+  CUERPO() { jq -nc --arg p "$PR" --arg c "$1" --arg o "$2" '{id_paciente:$p, motivo:"Prueba de verificar_demo", codigo_confirmacion:$c, password_operador:$o}'; }
+  chk "sin escribir REINICIO -> 422" "422" "$(PANELS PATCH "/admin/usuarios/$PR/reset-cuenta" "$TD" "$(CUERPO NO "$PASS")")"
+  chk "con la contraseña del médico mal -> 422 (y no cierra su sesión)" "422|200" "$(PANELS PATCH "/admin/usuarios/$PR/reset-cuenta" "$TD" "$(CUERPO REINICIO NoEsLaClave)")|$(PANELS GET /auth/me "$TD")"
+  chk "un médico sin vínculo no puede -> 403" "403" "$(PANELS PATCH "/admin/usuarios/$PR/reset-cuenta" "$TM6" "$(CUERPO REINICIO "$PASS")")"
+  RR=$(PANEL PATCH "/admin/usuarios/$PR/reset-cuenta" "$TD" "$(CUERPO REINICIO "$PASS")")
+  TEMP=$(echo "$RR" | jq -r '.password_temporal // empty')
+  chk "el reinicio devuelve {ok, evento_id, password_temporal}" '["evento_id","ok","password_temporal"]' "$(echo "$RR" | jq -c 'keys')"
   chk "el token viejo queda cerrado también en PostgREST" "SESION_REVOCADA" "$(GET /paciente_expediente "$TR" | jq -r '.message')"
   chk "la contraseña anterior ya no entra" "401" "$(status_p "$CR" "$PASS")"
   LT=$(login_p "$CR" "$TEMP"); TT=$(echo "$LT" | jq -r '.token')
   chk "entra con la temporal y debe cambiarla" "true" "$(echo "$LT" | jq '.requiereCambioContrasena')"
   chk "hasta cambiarla, PostgREST le responde 403" "403" "$(GETS /paciente_expediente "$TT")"
+  chk "el panel lo muestra como reseteada" "reseteada" "$(PANEL GET /admin/pacientes "$TD" | jq -r --arg p "$PR" '.[]|select(.id==$p).estado_cuenta')"
   NUEVA="Nueva$$Clave"
   CN=$(curl -sS -X POST "$API/auth/pacientes/contrasena" -H "Authorization: Bearer $TT" -H 'Content-Type: application/json' -d "{\"contrasenaNueva\":\"$NUEVA\"}")
   chk "elige su contraseña nueva" "false" "$(echo "$CN" | jq '.requiereCambioContrasena')"
   chk "con el token nuevo ve su expediente" "1" "$(GET /paciente_expediente "$(echo "$CN" | jq -r '.token')" | jq 'length')"
-  chk "entra con la nueva" "200" "$(status_p "$CR" "$NUEVA")"
-  chk "la auditoría registra el reset" "Prueba de verificar_demo" "$(GET /api/v1/admin/auditoria "$TD" | jq -r --arg p "$PR" '[.[]|select(.idPaciente==$p)][0].motivo')"
+  chk "la auditoría registra el reinicio" "reset_cuenta|Prueba de verificar_demo" "$(PANEL GET /admin/auditoria "$TD" | jq -r --arg p "$PR" '[.[]|select(.id_paciente==$p)][0]|"\(.tipo)|\(.motivo)"')"
   curl -sS -o /dev/null -X POST "$API/auth/pacientes/baja" -H 'Content-Type: application/json' -d "{\"correo\":\"$CR\",\"contrasena\":\"$NUEVA\"}"
   echo "  (paciente desechable dado de baja: $PR)"
 fi

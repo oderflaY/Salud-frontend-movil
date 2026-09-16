@@ -1,12 +1,15 @@
 pub mod adjuntos;
 pub mod auth;
+pub mod cli;
 pub mod config;
 pub mod dashboard;
 pub mod db;
 pub mod emergencia;
 pub mod error;
 pub mod ia;
+pub mod limite;
 pub mod realtime;
+pub mod riesgo;
 pub mod routes;
 pub mod state;
 pub mod telemetry;
@@ -24,6 +27,12 @@ pub async fn run() {
 
     telemetry::init();
 
+    let argumentos: Vec<String> = std::env::args().skip(1).collect();
+    if argumentos.first().map(String::as_str) == Some("crear-admin") {
+        cli::crear_admin(&argumentos[1..]).await;
+        return;
+    }
+
     let config = Config::from_env();
     let db = db::conectar(&config.database_url)
         .await
@@ -33,7 +42,13 @@ pub async fn run() {
     tokio::spawn(realtime::listener::escuchar(config.database_url.clone(), hub.clone()));
 
     let puerto = config.backend_port;
-    let http = reqwest::Client::new();
+    // Sin tiempo máximo, una API externa lenta (DeepSeek) dejaría peticiones
+    // del paciente esperando indefinidamente.
+    let http = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .expect("no se pudo crear el cliente HTTP");
     let state = AppState {
         db,
         config: Arc::new(config),
@@ -53,6 +68,29 @@ pub async fn run() {
         listener,
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
+    .with_graceful_shutdown(senal_de_apagado())
     .await
     .expect("el servidor terminó con error");
+}
+
+/// `docker compose stop`/`up --build` mandan SIGTERM: se terminan las
+/// peticiones en curso (un mensaje a medio guardar) antes de salir.
+async fn senal_de_apagado() {
+    let ctrl_c = async {
+        let _ = tokio::signal::ctrl_c().await;
+    };
+    #[cfg(unix)]
+    let terminar = async {
+        if let Ok(mut senal) = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            senal.recv().await;
+        }
+    };
+    #[cfg(not(unix))]
+    let terminar = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminar => {},
+    }
+    tracing::info!("apagando: se terminan las peticiones en curso");
 }

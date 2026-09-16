@@ -8,7 +8,7 @@
 - Sin respaldo en la nube ni transferencia a otro teléfono de los datos clínicos (`allowBackup` + `dataExtractionRules`).
 - Quitado el permiso de cámara: el escáner de ML Kit no lo necesita.
 - Ícono propio y gráficos de la ficha en `frontend/playstore/`.
-- Pruebas: `bash scripts/verificar_demo.sh` (114 comprobaciones contra la API real; córrelo antes de cada demo), frontend 560/560, backend 31 unitarias + integración.
+- Pruebas: `bash scripts/verificar_demo.sh` (122 comprobaciones contra la API real; córrelo antes de cada demo), frontend 560/560, backend 38 unitarias + integración.
 
 ## Lo que te toca a ti
 
@@ -20,7 +20,7 @@ En `frontend/local.properties`:
 salud.baseUrl.release=https://api.tudominio.com
 ```
 
-Y en el `.env` del servidor, antes de levantarlo: cambiar `POSTGRES_PASSWORD`, `JWT_SECRET`, `AUTHENTICATOR_PASSWORD` y `ARGON2_SECRET_KEY` (`openssl rand -base64 48` para cada uno), y `RUST_LOG=info`. Opcional: `DEEPSEEK_API_KEY` para los resúmenes clínicos con IA en el chat del médico (sin ella, el médico ve el mensaje original y todo lo demás funciona igual). **No correr `seed_demo.sh` en producción**: borra todos los pacientes. Si publicas el dashboard web del médico, pon su dominio en `CORS_ORIGENES` (p. ej. `https://panel.tudominio.com`; nunca `*`) y en el dashboard `VITE_API_URL=https://api.tudominio.com/api/v1`.
+Y en el `.env` del servidor, antes de levantarlo: cambiar `POSTGRES_PASSWORD`, `JWT_SECRET`, `AUTHENTICATOR_PASSWORD` y `ARGON2_SECRET_KEY` (`openssl rand -base64 48` para cada uno), y `RUST_LOG=info`. Opcional: `DEEPSEEK_API_KEY` para los resúmenes clínicos con IA en el chat del médico (sin ella, el médico ve el mensaje original y todo lo demás funciona igual). **No correr `seed_demo.sh` en producción**: borra todos los pacientes. Crea el primer administrador del panel con `docker compose exec -e ADMIN_CONTRASENA='…' backend backend crear-admin correo Nombre Apellidos` (sin `ADMIN_CONTRASENA` genera una temporal que se cambia al entrar); la cuenta demo `admin@salud.local` no debe existir en producción. Si publicas el dashboard web del médico, pon su dominio en `CORS_ORIGENES` (p. ej. `https://panel.tudominio.com`; nunca `*`) y en el dashboard `VITE_API_URL=https://api.tudominio.com/api/v1`.
 
 ### 2. Almacén de claves (una sola vez)
 

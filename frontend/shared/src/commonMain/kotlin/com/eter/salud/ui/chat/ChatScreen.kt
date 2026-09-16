@@ -66,9 +66,14 @@ import com.eter.salud.ui.componentes.bordeDeTarjeta
 import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.FormaSalud
+import com.eter.salud.ui.componentes.MientrasSeVe
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import com.eter.salud.ui.theme.MedidaSalud
+import com.eter.salud.ui.dictado.BotonDictar
+import com.eter.salud.ui.dictado.PanelDeDictado
+import com.eter.salud.ui.dictado.rememberControladorDeDictado
+import salud.shared.generated.resources.dictado_accion_detener_y_enviar
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
 import salud.shared.generated.resources.a11y_chat_accion_adjuntar
@@ -132,6 +137,9 @@ fun ChatScreen(
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
     val listState = rememberLazyListState()
+
+    // Mensajes nuevos (del telefono de la otra parte o del panel web) sin salir del chat.
+    MientrasSeVe(viewModel) { viewModel.mantenerAlDia() }
 
     LaunchedEffect(estado.mensajes.size, estado.medicoEscribiendo) {
         val ultimoIndice = estado.mensajes.lastIndex + if (estado.medicoEscribiendo) 1 else 0
@@ -407,8 +415,25 @@ private fun FilaEnvio(
     val espaciado = LocalEspaciadoSalud.current
     val selectorDeAdjuntos = rememberSelectorDeAdjuntos(estado.idConversacion)
     var mostrandoHojaAdjuntar by remember { mutableStateOf(false) }
+    val dictado = rememberControladorDeDictado(viewModel::actualizarTexto)
+    val enviar = {
+        // El texto se lee ANTES de enviar: `enviarMensaje` limpia el campo, asi
+        // que leerlo despues daria siempre cadena vacia. Se lee del ViewModel y
+        // no del `estado` capturado: tras un dictado, el texto final acaba de
+        // escribirse y la composicion aun no lo ve.
+        val texto = viewModel.estado.value.textoEnCurso
+        viewModel.enviarMensaje()
+        alEnviarMensaje(texto)
+    }
 
     Column {
+        PanelDeDictado(
+            controlador = dictado,
+            alEnviar = enviar,
+            etiquetaEnviar = Res.string.dictado_accion_detener_y_enviar,
+            avisarUrgencia = true,
+            modifier = Modifier.padding(bottom = espaciado.compacto),
+        )
         estado.adjuntoEnCurso?.let { adjunto ->
             VistaPreviaAdjunto(adjunto = adjunto, alQuitar = viewModel::quitarAdjunto)
             Spacer(Modifier.height(espaciado.compacto))
@@ -424,15 +449,10 @@ private fun FilaEnvio(
                 alCambiar = viewModel::actualizarTexto,
                 modifier = Modifier.weight(1f),
             )
+            BotonDictar(dictado, textoActual = { viewModel.estado.value.textoEnCurso })
             BotonEnviar(
                 habilitado = estado.puedeEnviar,
-                alPulsar = {
-                    // El texto se lee ANTES de enviar: `enviarMensaje` limpia el
-                    // campo, asi que leerlo despues daria siempre cadena vacia.
-                    val texto = estado.textoEnCurso
-                    viewModel.enviarMensaje()
-                    alEnviarMensaje(texto)
-                },
+                alPulsar = { dictado.detenerYEnviar(enviar) },
             )
         }
     }

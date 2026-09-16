@@ -468,13 +468,6 @@
     <string name="home_acceso_historial">Mi historial medico</string>
 
     <string name="a11y_home_acceso_completar_perfil">Abrir el registro de tu perfil de emergencia</string>
-    <string name="home_recordatorios_apagados_titulo">Tus recordatorios estan apagados</string>
-    <string name="home_recordatorios_apagados_descripcion">Activa los avisos para que la app te recuerde cada toma a su hora, aunque este cerrada.</string>
-    <string name="home_recordatorios_tardios_titulo">Tus recordatorios pueden llegar tarde</string>
-    <string name="home_recordatorios_tardios_descripcion">Permite las alarmas exactas para que el aviso suene justo a la hora de tu medicina.</string>
-    <string name="home_recordatorios_accion_activar">Activar recordatorios</string>
-    <string name="home_recordatorios_accion_exactas">Permitir alarmas exactas</string>
-    <string name="a11y_home_activar_recordatorios">Activar los recordatorios de medicacion</string>
     <string name="a11y_home_acceso_historial">Abrir tu historial medico y tus ajustes de perfil</string>
     <string name="a11y_home_estado_perfil">Estado de tu perfil de emergencia: %1$s</string>
 
@@ -1108,7 +1101,7 @@
     <string name="config_avisos_medicacion_apoyo">Suenan en tu telefono aunque no tengas conexion.</string>
     <string name="config_avisos_mensajes">Mensajes de tu medico</string>
     <string name="config_avisos_mensajes_apoyo">Aviso inmediato cuando tu medico te escribe.</string>
-    <string name="config_avisos_sin_permiso">El sistema tiene bloqueadas las notificaciones de esta app. Actívalas en los ajustes del telefono.</string>
+    <string name="config_avisos_sin_permiso">Las notificaciones de Salud estan apagadas: no sonaran tus recordatorios ni sabras cuando tu medico te escriba.</string>
 
     <string name="config_bloque_apariencia">Apariencia</string>
     <string name="config_modo_oscuro">Seguir el modo oscuro del sistema</string>
@@ -1314,4 +1307,39 @@
     <string name="a11y_config_contrasena_accion">Abrir el formulario para cambiar tu contrasena</string>
     <string name="a11y_contrasena_cancelar">Cancelar el cambio de contrasena</string>
 
+    <!-- Dictado por voz -->
+    <string name="a11y_dictado_iniciar">Dictar con la voz</string>
+    <string name="a11y_dictado_detener">Dejar de dictar</string>
+    <string name="dictado_estado_preparando">Abriendo el microfono...</string>
+    <string name="dictado_estado_escuchando">Te escucho. Habla con naturalidad.</string>
+    <string name="dictado_estado_finalizando">Terminando...</string>
+    <string name="dictado_ayuda_puntuacion">Di coma, punto o punto y aparte para puntuar. Las cifras y unidades se escriben solas.</string>
+    <string name="dictado_datos_detectados">Datos detectados</string>
+    <string name="dictado_agregar_resumen">Agregar un resumen al final</string>
+    <string name="dictado_accion_detener">Detener</string>
+    <string name="dictado_accion_descartar">Descartar</string>
+    <string name="a11y_dictado_descartar">Descartar lo dictado y dejar el texto como estaba</string>
+    <string name="dictado_accion_detener_y_enviar">Detener y enviar</string>
+    <string name="dictado_accion_detener_y_guardar">Detener y guardar</string>
+    <string name="dictado_aviso_urgencia">Lo que describes parece urgente. Si es una emergencia, llama al 911.</string>
+    <string name="dictado_error_sin_permiso">Para dictar, permite el microfono y el reconocimiento de voz en los ajustes del telefono.</string>
+    <string name="dictado_error_no_disponible">Este telefono no tiene dictado por voz para este idioma. Puedes escribir tu mensaje.</string>
+    <string name="dictado_error_sin_conexion">El dictado de este telefono necesita internet y no hay conexion. Lo que ya dictaste se conservo.</string>
+    <string name="dictado_error_microfono_ocupado">Otra app esta usando el microfono. Cierrala e intenta de nuevo.</string>
+    <string name="dictado_error_desconocido">El dictado se detuvo. Lo que ya dictaste se conservo.</string>
+    <string name="dictado_accion_entendido">Entendido</string>
+    <string name="dictado_resumen_titulo">Resumen</string>
+    <string name="dictado_resumen_temperatura">Temperatura</string>
+    <string name="dictado_resumen_presion">Presion</string>
+    <string name="dictado_resumen_pulso">Pulso</string>
+    <string name="dictado_resumen_saturacion">Oxigenacion</string>
+    <string name="dictado_resumen_glucosa">Glucosa</string>
+    <string name="dictado_resumen_dolor">Dolor</string>
+    <string name="dictado_resumen_desde">Inicio</string>
+    <string name="app_buscando_servidor">Buscando el servidor en tu red...</string>
+    <string name="config_avisos_permitir">Permitir notificaciones</string>
+    <string name="config_avisos_hora_exacta">Tus recordatorios pueden sonar unos minutos tarde.</string>
+    <string name="config_avisos_permitir_hora_exacta">Permitir que suenen a la hora exacta</string>
+
+    <string name="conexion_sin_red">Sin conexion. Ves lo ultimo guardado en tu telefono; se actualiza solo al volver la red.</string>
 </resources>

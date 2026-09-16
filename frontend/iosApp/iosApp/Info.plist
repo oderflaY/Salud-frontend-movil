@@ -11,6 +11,11 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Necesitamos acceder a tus fotos para que puedas adjuntarlas en el chat con tu medico.</string>
 	<!-- Escaner de documentos del chat: fotografiar una receta o un resultado de laboratorio. -->
+	<!-- Dictado por voz en el diario y el chat. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Necesitamos el microfono para que puedas dictar tus sintomas y mensajes en lugar de escribirlos.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Convertimos tu voz en texto, en el propio telefono cuando es posible, para escribir tus sintomas y mensajes.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Necesitamos la camara para que puedas escanear un documento y enviarlo en el chat con tu medico.</string>
 	<!--

@@ -5,6 +5,7 @@ import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
 import com.eter.salud.domain.model.ResumenClinicoIa
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * Contrato del chat de orientacion de primera vista hacia la API en Go.
@@ -45,6 +46,16 @@ interface ChatRepositorio {
      * mismo canal que traiga los mensajes.
      */
     fun mensajesSinLeer(idConversacion: String): Flow<Int>
+
+    /**
+     * Avisa cada vez que la conversacion pudo cambiar desde otro lado: un
+     * mensaje nuevo (del telefono de la otra parte o del panel web), o que
+     * volvio la conexion y quiza se perdio alguno. Quien escucha vuelve a
+     * pedir el historial.
+     *
+     * Por defecto no avisa nada: los repositorios locales ya son la fuente.
+     */
+    fun cambiosEn(idConversacion: String): Flow<Unit> = emptyFlow()
 
     /**
      * Marca la conversacion como vista. La llama la pantalla de chat al abrirse:

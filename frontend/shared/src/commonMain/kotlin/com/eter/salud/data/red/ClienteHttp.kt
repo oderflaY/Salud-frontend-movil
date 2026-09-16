@@ -8,7 +8,10 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.call.body
 import io.ktor.client.engine.HttpClientEngineFactory
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.api.Send
 import io.ktor.client.plugins.api.createClientPlugin
+import io.ktor.http.Url
+import kotlinx.coroutines.CancellationException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
@@ -70,9 +73,10 @@ val JsonRed: Json = Json {
 fun crearClienteHttp(
     fuenteDeSesion: FuenteDeSesion,
     engine: HttpClientEngineFactory<*> = crearMotorHttp(),
+    almacenSinConexion: AlmacenDeRespuestas? = null,
     alRechazarSesion: (AvisoDeSesion) -> Unit = {},
 ): HttpClient = HttpClient(engine) {
-    configurarPluginsRed(fuenteDeSesion, alRechazarSesion)
+    configurarPluginsRed(fuenteDeSesion, alRechazarSesion, almacenSinConexion)
 }
 
 /**
@@ -83,6 +87,8 @@ fun crearClienteHttp(
 fun HttpClientConfig<*>.configurarPluginsRed(
     fuenteDeSesion: FuenteDeSesion,
     alRechazarSesion: (AvisoDeSesion) -> Unit = {},
+    almacenSinConexion: AlmacenDeRespuestas? = null,
+    monitorDeConexion: MonitorDeConexion = EstadoDeConexion,
 ) {
     expectSuccess = false
 
@@ -92,10 +98,23 @@ fun HttpClientConfig<*>.configurarPluginsRed(
     install(WebSockets)
     install(HttpTimeout) {
         requestTimeoutMillis = TIEMPO_LIMITE_MS
-        connectTimeoutMillis = TIEMPO_LIMITE_MS
+        // Si el servidor no esta, se sabe pronto: con 15 s cada pantalla se
+        // quedaba cargando un cuarto de minuto antes de decir "sin conexion".
+        connectTimeoutMillis = TIEMPO_LIMITE_CONEXION_MS
     }
-    install(Logging) {
-        level = LogLevel.INFO
+    install(RespaldoSinConexion) {
+        almacen = almacenSinConexion
+        monitor = monitorDeConexion
+        identidad = {
+            val sesion = fuenteDeSesion.sesion.first()
+            sesion.paciente?.idPaciente ?: sesion.profesional?.idMedico
+        }
+    }
+    install(ServidorActual)
+    if (ConfiguracionApi.REGISTRAR_PETICIONES) {
+        install(Logging) {
+            level = LogLevel.INFO
+        }
     }
     install(AutorizacionDeSesion) {
         this.fuenteDeSesion = fuenteDeSesion
@@ -160,4 +179,35 @@ private val VigilanciaDeSesion = createClientPlugin("VigilanciaDeSesion", ::Conf
     }
 }
 
+/**
+ * En desarrollo, lleva cada peticion al servidor vigente aunque el repositorio
+ * se haya creado con la IP anterior, y si una peticion no llega al servidor
+ * pide a [VigiaDeServidor] que lo busque (quiza cambio de IP).
+ *
+ * Solo reescribe destinos de IP privada: en produccion (con dominio y HTTPS) y
+ * en las pruebas no hace nada.
+ */
+private val ServidorActual = createClientPlugin("ServidorActual") {
+    onRequest { peticion, _ ->
+        if (!ConfiguracionApi.DESCUBRIR_EN_RED) return@onRequest
+        val vigente = runCatching { Url(ConfiguracionApi.BASE_URL) }.getOrNull() ?: return@onRequest
+        val destino = "${peticion.url.protocol.name}://${peticion.url.host}:${peticion.url.port}"
+        if (peticion.url.host != vigente.host && DescubridorDeServidor.subredDe(destino) != null) {
+            peticion.url.host = vigente.host
+            peticion.url.port = vigente.port
+        }
+    }
+    on(Send) { peticion ->
+        try {
+            proceed(peticion)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            VigiaDeServidor.reportarFallo()
+            throw e
+        }
+    }
+}
+
 private const val TIEMPO_LIMITE_MS = 15_000L
+private const val TIEMPO_LIMITE_CONEXION_MS = 6_000L

@@ -75,10 +75,20 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
      */
     var dialogoRechazado = false
 
+    private val preferencias = contexto.getSharedPreferences(PREFERENCIAS_AVISOS, Context.MODE_PRIVATE)
+
     /** Relee ambos permisos: al volver de Ajustes el sistema no avisa de nada. */
     fun refrescar() {
         permitidos = gestorDeAvisos.areNotificationsEnabled()
         alarmasExactas = puedeProgramarExactas()
+    }
+
+    override fun pedirPermisoSiHaceFalta() {
+        // Antes de Android 13 los avisos vienen permitidos y no hay dialogo.
+        if (permitidos || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (preferencias.getBoolean(CLAVE_PERMISO_PEDIDO, false)) return
+        preferencias.edit().putBoolean(CLAVE_PERMISO_PEDIDO, true).apply()
+        pedirPermisoDeAvisos()
     }
 
     override fun solicitarPermisos() {
@@ -306,6 +316,8 @@ actual fun recordarAvisosClinicos(): AvisosClinicos {
     return avisos
 }
 
+private const val PREFERENCIAS_AVISOS = "salud_avisos"
+private const val CLAVE_PERMISO_PEDIDO = "permiso_de_avisos_pedido"
 private const val CANAL_MEDICACION = "salud_medicacion"
 private const val CANAL_MENSAJES = "salud_mensajes"
 private const val NOMBRE_CANAL_MEDICACION = "Recordatorios de medicacion"

@@ -97,6 +97,11 @@ import salud.shared.generated.resources.config_avisos_medicacion
 import salud.shared.generated.resources.config_avisos_medicacion_apoyo
 import salud.shared.generated.resources.config_avisos_mensajes
 import salud.shared.generated.resources.config_avisos_mensajes_apoyo
+import com.eter.salud.domain.avisos.recordarAvisosClinicos
+import salud.shared.generated.resources.config_avisos_permitir
+import salud.shared.generated.resources.config_avisos_hora_exacta
+import salud.shared.generated.resources.config_avisos_permitir_hora_exacta
+import com.eter.salud.ui.componentes.BotonAccionPrincipal
 import salud.shared.generated.resources.config_avisos_sin_permiso
 import salud.shared.generated.resources.config_biometria
 import salud.shared.generated.resources.config_biometria_apoyo
@@ -161,30 +166,47 @@ fun ConfiguracionScreen(
 
         // ------------------------------------------------------------ Avisos
         TituloDeBloque(stringResource(Res.string.config_bloque_avisos))
+        // Estado REAL del sistema, en vivo: al volver de Ajustes del telefono la
+        // tarjeta se actualiza sola.
+        val avisos = recordarAvisosClinicos()
         TarjetaSalud {
-            // El aviso del sistema va ARRIBA de los interruptores: activarlos
-            // con las notificaciones bloqueadas por Android no haria nada, y
-            // dejar que el paciente lo descubra solo es una trampa.
-            if (estado.avisosBloqueadosPorElSistema) {
+            // El permiso va ARRIBA de los interruptores: activarlos con las
+            // notificaciones bloqueadas por el sistema no haria nada.
+            if (!avisos.permitidos) {
                 Text(
                     text = stringResource(Res.string.config_avisos_sin_permiso),
                     style = MaterialTheme.typography.bodySmall,
                     color = colores.textoAdvertencia,
                 )
                 Spacer(Modifier.height(espaciado.compacto))
+                BotonAccionPrincipal(
+                    etiqueta = stringResource(Res.string.config_avisos_permitir),
+                    alPulsar = avisos::solicitarPermisos,
+                    descripcionAccesible = stringResource(Res.string.config_avisos_permitir),
+                )
+                Spacer(Modifier.height(espaciado.compacto))
+            } else if (!avisos.alarmasExactas) {
+                Text(
+                    text = stringResource(Res.string.config_avisos_hora_exacta),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colores.textoSecundario,
+                )
+                TextButton(onClick = avisos::solicitarPermisos) {
+                    Text(stringResource(Res.string.config_avisos_permitir_hora_exacta))
+                }
             }
             FilaDeAjuste(
                 titulo = stringResource(Res.string.config_avisos_medicacion),
                 apoyo = stringResource(Res.string.config_avisos_medicacion_apoyo),
                 activo = estado.recordatoriosDeMedicacion,
-                habilitado = !estado.avisosBloqueadosPorElSistema,
+                habilitado = avisos.permitidos,
                 alCambiar = viewModel::cambiarRecordatorios,
             )
             FilaDeAjuste(
                 titulo = stringResource(Res.string.config_avisos_mensajes),
                 apoyo = stringResource(Res.string.config_avisos_mensajes_apoyo),
                 activo = estado.avisosDeMensajes,
-                habilitado = !estado.avisosBloqueadosPorElSistema,
+                habilitado = avisos.permitidos,
                 alCambiar = viewModel::cambiarAvisosDeMensajes,
             )
         }

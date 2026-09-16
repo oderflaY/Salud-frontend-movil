@@ -1,6 +1,7 @@
 package com.eter.salud.presentation.chat
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.eter.salud.domain.model.Adjunto
@@ -13,7 +14,8 @@ import com.eter.salud.domain.repository.ResumenIaNoDisponible
 
 /** Chat falso: registra lo enviado y permite simular fallos de envio o de historial. */
 class ChatRepositorioFalso(
-    private val historial: Result<List<MensajeChat>> = Result.success(
+    /** Lo que responde el servidor; se puede cambiar a mitad de la prueba. */
+    var historial: Result<List<MensajeChat>> = Result.success(
         listOf(
             MensajeChat(
                 idMensaje = "msg_semilla_1",
@@ -67,6 +69,15 @@ class ChatRepositorioFalso(
     }
 
     private val pendientes = MutableStateFlow(0)
+
+    private val cambios = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
+
+    override fun cambiosEn(idConversacion: String): Flow<Unit> = cambios
+
+    /** Simula el aviso del servidor: llego un mensaje a la conversacion. */
+    fun simularCambio() {
+        cambios.tryEmit(Unit)
+    }
 
     var vecesMarcadaLeida: Int = 0
         private set

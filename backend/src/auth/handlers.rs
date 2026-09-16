@@ -17,7 +17,7 @@ use super::{
     sesion::{self, EstadoSesion},
 };
 
-const TRATAMIENTOS_VALIDOS: [&str; 3] = ["Dr.", "Dra.", "Dr(a)."];
+pub(crate) const TRATAMIENTOS_VALIDOS: [&str; 3] = ["Dr.", "Dra.", "Dr(a)."];
 
 /// La misma regla que la app (`ValidadorLogin.MINIMO_CARACTERES_CONTRASENA`).
 /// El tope evita que alguien mande megas a Argon2.
@@ -33,7 +33,7 @@ pub fn validar_contrasena_nueva(contrasena: &str) -> Result<(), AppError> {
     }
 }
 
-fn es_violacion_unique(err: &sqlx::Error, columna_hint: &str) -> bool {
+pub(crate) fn es_violacion_unique(err: &sqlx::Error, columna_hint: &str) -> bool {
     match err {
         sqlx::Error::Database(db_err) if db_err.code().as_deref() == Some("23505") => db_err
             .constraint()
@@ -244,6 +244,8 @@ struct FilaMedico {
     apellidos: String,
     tratamiento: String,
     estado_verificacion: String,
+    debe_cambiar_contrasena: bool,
+    temporal_vencida: bool,
 }
 
 pub async fn iniciar_sesion_profesional(
@@ -252,7 +254,8 @@ pub async fn iniciar_sesion_profesional(
 ) -> Result<Json<SesionProfesional>, AppError> {
     let fila = sqlx::query_as::<_, FilaMedico>(
         "select id_medico, hash_contrasena, estado_cuenta, nombre, apellidos,
-                tratamiento, estado_verificacion
+                tratamiento, estado_verificacion, debe_cambiar_contrasena,
+                coalesce(contrasena_temporal_expira_en < now(), false) as temporal_vencida
          from app.medicos where correo = $1",
     )
     .bind(&body.correo)
@@ -267,6 +270,11 @@ pub async fn iniciar_sesion_profesional(
     let pepper = state.config.argon2_secret_key.as_bytes();
     if !password::verificar(&body.contrasena, &fila.hash_contrasena, pepper) {
         return Err(AppError::CredencialesInvalidas);
+    }
+    // La app del médico no obliga a cambiar la temporal (eso lo hace el panel
+    // web), pero una temporal vencida no entra en ningún lado.
+    if fila.debe_cambiar_contrasena && fila.temporal_vencida {
+        return Err(AppError::ContrasenaTemporalVencida);
     }
 
     let token = jwt::emitir(

@@ -16,6 +16,8 @@ TARJETA="${TARJETA:-C38610A8}"    # UID de la tarjeta RFID física
 cd "$(dirname "$0")/.."
 
 psql_exec() { docker compose exec -T db psql -U salud_admin -d salud -v ON_ERROR_STOP=1 "$@"; }
+# Administrador del panel web: solo se crea desde el servidor (no hay ruta HTTP).
+crear_admin() { docker compose exec -T -e ADMIN_CONTRASENA="$PASS" backend backend crear-admin "$@"; }
 
 crear_medico() { # correo nombre apellidos tratamiento cedula -> idMedico
   curl -sS -X POST "$API/auth/profesionales" -H 'Content-Type: application/json' \
@@ -284,6 +286,9 @@ join lateral (
 commit;
 SQL
 
+echo "==> Administrador del panel"
+crear_admin admin@salud.local Administración Salud
+
 echo "==> Verificando"
 TOKEN_P=$(curl -sS -X POST "$API/auth/pacientes/sesion" -H 'Content-Type: application/json' \
   -d "$(jq -nc --arg p "$PASS" '{correo:"paciente1@salud.local",contrasena:$p}')" | jq -er '.token' | cut -c1-24)
@@ -320,6 +325,8 @@ cat <<RESUMEN
   paciente4@salud.local  $P4      dra.torres@salud.local   $D4
                                   dr.reyes@salud.local     $D5
                                   dra.moreno@salud.local   $D6
+
+  Administrador del panel web: admin@salud.local (gestiona cuentas, no ve expedientes)
 
   Tarjeta RFID de la demo: $TARJETA  ->  paciente1 (Juan Pérez)
 RESUMEN

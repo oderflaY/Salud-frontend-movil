@@ -66,6 +66,46 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Mantiene la conversacion al dia mientras la pantalla este visible: la
+     * llama la Vista y se cancela sola al salir. Va aparte de [cargar] a
+     * proposito: si escuchara desde `init`, el ViewModel -- que sigue vivo con
+     * el chat cerrado -- marcaria como leidos mensajes que nadie esta viendo.
+     */
+    suspend fun mantenerAlDia() {
+        refrescar()
+        repositorio.cambiosEn(idConversacion).collect { refrescar() }
+    }
+
+    /**
+     * Vuelve a pedir el historial sin mostrar "cargando" y sin tocar lo que el
+     * paciente esta escribiendo. Los mensajes suyos que aun no confirma el
+     * servidor se quedan al final.
+     */
+    private suspend fun refrescar() {
+        if (refrescoEnCurso || _estado.value.cargando) return
+        refrescoEnCurso = true
+        try {
+            val delServidor = ejecutarSeguro { repositorio.obtenerHistorial(idConversacion) }.getOrNull() ?: return
+            var llegoAlgoNuevo = false
+            _estado.update { previo ->
+                val conocidos = previo.mensajes.mapTo(HashSet()) { it.idMensaje }
+                llegoAlgoNuevo = delServidor.any { it.idMensaje !in conocidos && it.autor != AutorMensaje.PACIENTE }
+                val pendientes = previo.mensajes.filter { it.idMensaje.startsWith(PREFIJO_ID_PROVISIONAL) }
+                val alDia = delServidor + pendientes
+                if (alDia == previo.mensajes && !previo.errorCarga) previo else previo.copy(mensajes = alDia, errorCarga = false)
+            }
+            // El chat esta a la vista: lo que acaba de llegar ya se leyo.
+            if (llegoAlgoNuevo) {
+                ejecutarSeguro { Result.success(repositorio.marcarConversacionLeida(idConversacion)) }
+            }
+        } finally {
+            refrescoEnCurso = false
+        }
+    }
+
+    private var refrescoEnCurso = false
+
     fun actualizarTexto(valor: String) {
         _estado.update { it.copy(textoEnCurso = valor, errorEnvio = false) }
     }
@@ -169,8 +209,13 @@ class ChatViewModel(
         }
     }
 
+    /** Si un refresco ya trajo el definitivo, solo se retira el provisional: nunca dos burbujas iguales. */
     private fun List<MensajeChat>.reemplazarPor(idProvisional: String, definitivo: MensajeChat) =
-        map { if (it.idMensaje == idProvisional) definitivo else it }
+        if (any { it.idMensaje == definitivo.idMensaje }) {
+            filterNot { it.idMensaje == idProvisional }
+        } else {
+            map { if (it.idMensaje == idProvisional) definitivo else it }
+        }
 
     private companion object {
         const val PREFIJO_ID_PROVISIONAL = "local_"

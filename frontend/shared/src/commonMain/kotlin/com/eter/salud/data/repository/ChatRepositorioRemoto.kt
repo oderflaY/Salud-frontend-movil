@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -59,7 +62,29 @@ class ChatRepositorioRemoto(
     private val baseUrl: String,
     private val conexion: CanalTiempoReal,
     private val archivos: ArchivosAdjuntosLocales,
+    private val reconexiones: Flow<Unit> = emptyFlow(),
+    private val intervaloRevisionMs: Long = INTERVALO_REVISION_MS,
 ) : ChatRepositorio {
+
+    /**
+     * Tres fuentes, porque ninguna sola basta en un telefono real:
+     *  - el aviso `mensaje_nuevo` del WebSocket (al instante);
+     *  - la vuelta de la conexion (el socket no repite lo que paso sin red);
+     *  - una revision periodica mientras el chat esta abierto, por si el
+     *    socket se cayo sin que nadie lo notara (wifi que cambia, router que
+     *    corta conexiones inactivas).
+     */
+    override fun cambiosEn(idConversacion: String): Flow<Unit> = merge(
+        conexion.canal("chat:$idConversacion") { },
+        conexion.reconexiones,
+        reconexiones,
+        flow {
+            while (true) {
+                delay(intervaloRevisionMs)
+                emit(Unit)
+            }
+        },
+    )
 
     override suspend fun obtenerHistorial(idConversacion: String): Result<List<MensajeChat>> {
         val respuesta = cliente.post("$baseUrl/rpc/obtener_historial") {
@@ -185,6 +210,12 @@ class ChatRepositorioRemoto(
         return if (respuesta.status.isSuccess()) respuesta.body() else null
     }
 }
+
+/**
+ * Red de seguridad, no el camino principal: los mensajes llegan al instante por
+ * el socket, que ademas detecta si murio (latido) y avisa al reconectar.
+ */
+private const val INTERVALO_REVISION_MS = 20_000L
 
 @Serializable
 private data class AdjuntoRed(

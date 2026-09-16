@@ -28,6 +28,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * Los repositorios `*Remoto` de la app, todos sobre el mismo [HttpClient] y la
@@ -46,9 +49,33 @@ import kotlinx.coroutines.flow.asSharedFlow
 class ContenedorRed(
     fuenteDeSesion: FuenteDeSesion,
     archivos: ArchivosAdjuntosLocales,
+    almacenSinConexion: AlmacenDeRespuestas? = null,
     engine: HttpClientEngineFactory<*> = crearMotorHttp(),
 ) {
     private val alcance = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    init {
+        // Sin conexion, pregunta cada pocos segundos si ya volvio (y en
+        // desarrollo, si el servidor cambio de IP); al volver, las pantallas
+        // abiertas recargan solas.
+        alcance.launch {
+            EstadoDeConexion.vigilarRecuperacion { VigiaDeServidor.servidorResponde() }
+        }
+        // Al cerrar sesion se borran las copias: los datos clinicos de una
+        // cuenta no se quedan en el telefono para quien entre despues.
+        if (almacenSinConexion != null) {
+            alcance.launch {
+                var anterior: String? = null
+                fuenteDeSesion.sesion
+                    .map { it.paciente?.idPaciente ?: it.profesional?.idMedico }
+                    .distinctUntilChanged()
+                    .collect { actual ->
+                        if (anterior != null && actual != anterior) almacenSinConexion.borrarTodo()
+                        anterior = actual
+                    }
+            }
+        }
+    }
 
     // Antes que el cliente: el cliente avisa aqui desde su primera respuesta.
     private val _avisosDeSesion = MutableSharedFlow<AvisoDeSesion>(extraBufferCapacity = 16)
@@ -56,7 +83,7 @@ class ContenedorRed(
     /** El backend dio por cerrada la sesion, o pide elegir contrasena. `App()` decide que hacer. */
     val avisosDeSesion: SharedFlow<AvisoDeSesion> = _avisosDeSesion.asSharedFlow()
 
-    private val cliente = crearClienteHttp(fuenteDeSesion, engine) { _avisosDeSesion.tryEmit(it) }
+    private val cliente = crearClienteHttp(fuenteDeSesion, engine, almacenSinConexion) { _avisosDeSesion.tryEmit(it) }
     private val conexion = ConexionTiempoReal(cliente, fuenteDeSesion, alcance)
     private val baseUrl = ConfiguracionApi.BASE_URL
 
@@ -74,7 +101,7 @@ class ContenedorRed(
     val emergencia = PerfilEmergenciaRepositorioRemoto(cliente, baseUrl)
     val pacientesVinculados = PacientesVinculadosRepositorioRemoto(cliente, baseUrl)
     val directorio = DirectorioMedicoRepositorioRemoto(cliente, baseUrl)
-    val chat = ChatRepositorioRemoto(cliente, baseUrl, conexion, archivos)
+    val chat = ChatRepositorioRemoto(cliente, baseUrl, conexion, archivos, EstadoDeConexion.reconexiones)
     val citas = CitasRepositorioRemoto(cliente, baseUrl, conexion)
 
     /** Fuente del medico: lo que el paciente ya subio. */
@@ -82,7 +109,7 @@ class ContenedorRed(
 
     /** Fuente del paciente: [local] primero, subida al servidor en segundo plano. */
     fun diarioSincronizado(local: DiarioRepositorio): DiarioRepositorio =
-        DiarioRepositorioSincronizado(local, diario, alcance)
+        DiarioRepositorioSincronizado(local, diario, alcance, EstadoDeConexion.reconexiones)
 }
 
 /**
@@ -93,5 +120,8 @@ class ContenedorRed(
 @Composable
 fun recordarContenedorRed(fuenteDeSesion: FuenteDeSesion): ContenedorRed {
     val archivos = rememberArchivosAdjuntosLocales()
-    return remember(fuenteDeSesion) { ContenedorRed(fuenteDeSesion, archivos) }
+    val directorio = rememberDirectorioSinConexion()
+    return remember(fuenteDeSesion) {
+        ContenedorRed(fuenteDeSesion, archivos, AlmacenDeRespuestasEnArchivos(directorio))
+    }
 }

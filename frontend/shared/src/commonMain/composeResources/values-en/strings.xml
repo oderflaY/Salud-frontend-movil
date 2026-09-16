@@ -348,13 +348,6 @@
     <string name="home_acceso_completar_perfil">Complete my emergency profile</string>
     <string name="home_acceso_historial">My medical history</string>
     <string name="a11y_home_acceso_completar_perfil">Open the setup for your emergency profile</string>
-    <string name="home_recordatorios_apagados_titulo">Your reminders are off</string>
-    <string name="home_recordatorios_apagados_descripcion">Turn on notifications so the app reminds you of each dose on time, even when it is closed.</string>
-    <string name="home_recordatorios_tardios_titulo">Your reminders may arrive late</string>
-    <string name="home_recordatorios_tardios_descripcion">Allow exact alarms so the reminder rings right at your medicine time.</string>
-    <string name="home_recordatorios_accion_activar">Turn on reminders</string>
-    <string name="home_recordatorios_accion_exactas">Allow exact alarms</string>
-    <string name="a11y_home_activar_recordatorios">Turn on medication reminders</string>
     <string name="a11y_home_acceso_historial">Open your medical history and profile settings</string>
     <string name="a11y_home_estado_perfil">Emergency profile status: %1$s</string>
     <string name="home_saludo_con_nombre">Hello, %1$s</string>
@@ -824,7 +817,7 @@
     <string name="config_avisos_medicacion_apoyo">They ring on your phone even without a connection.</string>
     <string name="config_avisos_mensajes">Messages from your doctor</string>
     <string name="config_avisos_mensajes_apoyo">Immediate alert when your doctor writes to you.</string>
-    <string name="config_avisos_sin_permiso">The system has blocked notifications for this app. Turn them on in your phone settings.</string>
+    <string name="config_avisos_sin_permiso">Salud notifications are off: your reminders will not ring and you will not know when your doctor writes to you.</string>
     <string name="config_bloque_apariencia">Appearance</string>
     <string name="config_modo_oscuro">Follow the system dark mode</string>
     <string name="config_modo_oscuro_apoyo">Turning this off lets you set light or dark mode manually.</string>
@@ -1106,4 +1099,39 @@
     <string name="a11y_config_contrasena_accion">Open the form to change your password</string>
     <string name="a11y_contrasena_cancelar">Cancel the password change</string>
 
+    <!-- Dictado por voz -->
+    <string name="a11y_dictado_iniciar">Dictate with your voice</string>
+    <string name="a11y_dictado_detener">Stop dictating</string>
+    <string name="dictado_estado_preparando">Opening the microphone...</string>
+    <string name="dictado_estado_escuchando">Listening. Speak naturally.</string>
+    <string name="dictado_estado_finalizando">Finishing...</string>
+    <string name="dictado_ayuda_puntuacion">Say comma, period or new paragraph to punctuate. Numbers and units are written for you.</string>
+    <string name="dictado_datos_detectados">Detected data</string>
+    <string name="dictado_agregar_resumen">Add a summary at the end</string>
+    <string name="dictado_accion_detener">Stop</string>
+    <string name="dictado_accion_descartar">Discard</string>
+    <string name="a11y_dictado_descartar">Discard the dictation and restore the previous text</string>
+    <string name="dictado_accion_detener_y_enviar">Stop and send</string>
+    <string name="dictado_accion_detener_y_guardar">Stop and save</string>
+    <string name="dictado_aviso_urgencia">What you describe sounds urgent. If this is an emergency, call 911.</string>
+    <string name="dictado_error_sin_permiso">To dictate, allow the microphone and speech recognition in your phone settings.</string>
+    <string name="dictado_error_no_disponible">This phone has no voice dictation for this language. You can type your message.</string>
+    <string name="dictado_error_sin_conexion">Dictation on this phone needs internet and there is no connection. What you dictated was kept.</string>
+    <string name="dictado_error_microfono_ocupado">Another app is using the microphone. Close it and try again.</string>
+    <string name="dictado_error_desconocido">Dictation stopped. What you dictated was kept.</string>
+    <string name="dictado_accion_entendido">OK</string>
+    <string name="dictado_resumen_titulo">Summary</string>
+    <string name="dictado_resumen_temperatura">Temperature</string>
+    <string name="dictado_resumen_presion">Blood pressure</string>
+    <string name="dictado_resumen_pulso">Pulse</string>
+    <string name="dictado_resumen_saturacion">Oxygen</string>
+    <string name="dictado_resumen_glucosa">Glucose</string>
+    <string name="dictado_resumen_dolor">Pain</string>
+    <string name="dictado_resumen_desde">Onset</string>
+    <string name="app_buscando_servidor">Looking for the server on your network...</string>
+    <string name="config_avisos_permitir">Allow notifications</string>
+    <string name="config_avisos_hora_exacta">Your reminders may ring a few minutes late.</string>
+    <string name="config_avisos_permitir_hora_exacta">Let them ring at the exact time</string>
+
+    <string name="conexion_sin_red">You\'re offline. Showing what was last saved on your phone; it updates by itself when you\'re back online.</string>
 </resources>
