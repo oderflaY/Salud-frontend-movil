@@ -52,6 +52,9 @@ mod tests {
             deepseek_api_key: None,
             deepseek_base_url: "http://localhost:1".to_string(),
             deepseek_modelo: "modelo".to_string(),
+            ollama_url: None,
+            ollama_modelo_traduccion: "translategemma:12b".to_string(),
+            google_translate_api_key: None,
             cors_origenes: vec!["http://localhost:5173".to_string()],
         };
         let state = AppState {

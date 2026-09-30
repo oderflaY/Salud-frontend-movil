@@ -44,6 +44,8 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -67,6 +69,19 @@ import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.componentes.MientrasSeVe
+import com.eter.salud.presentation.comun.EstadoTraduccion
+import com.eter.salud.ui.componentes.AccionTraducir
+import com.eter.salud.ui.componentes.EstadoBurbujaTraducida
+import com.eter.salud.ui.componentes.MensajeTraducido
+import com.eter.salud.ui.componentes.TranslatedMessageBubble
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.IconButton
+import com.eter.salud.domain.time.relojDelSistema
+import com.eter.salud.ui.componentes.EstadoVacioDeChat
+import com.eter.salud.ui.componentes.MenuDeOpciones
+import com.eter.salud.ui.componentes.OpcionDeMenu
+import com.eter.salud.ui.componentes.SeparadorDeFecha
+import com.eter.salud.ui.componentes.TituloDeChat
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import com.eter.salud.ui.theme.MedidaSalud
@@ -76,6 +91,12 @@ import com.eter.salud.ui.dictado.rememberControladorDeDictado
 import salud.shared.generated.resources.dictado_accion_detener_y_enviar
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.chat_vacio_paciente
+import salud.shared.generated.resources.a11y_chat_agendar_cita
+import salud.shared.generated.resources.chat_subtitulo_medico
+import salud.shared.generated.resources.a11y_chat_accion_traduccion_automatica
+import salud.shared.generated.resources.chat_accion_ver_originales
+import salud.shared.generated.resources.chat_accion_traducir_todo
 import salud.shared.generated.resources.a11y_chat_accion_adjuntar
 import salud.shared.generated.resources.a11y_chat_accion_enviar
 import salud.shared.generated.resources.a11y_chat_adjunto_quitar
@@ -137,6 +158,8 @@ fun ChatScreen(
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
     val listState = rememberLazyListState()
+    val reloj = remember { relojDelSistema() }
+    val hoy = remember { reloj.fechaHoy() }
 
     // Mensajes nuevos (del telefono de la otra parte o del panel web) sin salir del chat.
     MientrasSeVe(viewModel) { viewModel.mantenerAlDia() }
@@ -152,27 +175,42 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = estado.nombreMedico,
-                        style = MaterialTheme.typography.titleMedium,
+                    TituloDeChat(
+                        nombre = estado.nombreMedico,
+                        subtitulo = stringResource(Res.string.chat_subtitulo_medico),
                     )
                 },
                 navigationIcon = { BotonAtras(alPulsar = alVolver) },
                 actions = {
                     // La deteccion por frase no basta como unica puerta: si el
                     // paciente no acierta con las palabras, la funcion no
-                    // existiria para el. Este boton la hace descubrible.
+                    // existiria para el. Este boton la hace descubrible. Es un
+                    // icono y no texto: dos botones de texto le quitaban al
+                    // nombre del medico todo el ancho de la barra.
                     if (alAgendarCita != null) {
-                        val descripcionAgendar = stringResource(Res.string.a11y_cita_accion_abrir)
-                        TextButton(
+                        val descripcionAgendar = stringResource(Res.string.a11y_chat_agendar_cita)
+                        IconButton(
                             onClick = alAgendarCita,
-                            modifier = Modifier
-                                .heightIn(min = AreaTactilMinima)
-                                .semantics { contentDescription = descripcionAgendar },
+                            modifier = Modifier.semantics { contentDescription = descripcionAgendar },
                         ) {
-                            Text(stringResource(Res.string.cita_accion_abrir))
+                            IconoSalud(GlifoSalud.CALENDARIO, lado = 24.dp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
+                    MenuDeOpciones(
+                        buildList {
+                            if (estado.puedeTraducir) {
+                                val activa = estado.traduccionAutomatica
+                                add(
+                                    OpcionDeMenu(
+                                        etiqueta = stringResource(
+                                            if (activa) Res.string.chat_accion_ver_originales else Res.string.chat_accion_traducir_todo,
+                                        ),
+                                        alElegir = { viewModel.cambiarTraduccionAutomatica(!activa) },
+                                    ),
+                                )
+                            }
+                        },
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colores.fondoConversacion),
             )
@@ -204,6 +242,10 @@ fun ChatScreen(
                     mensaje = stringResource(Res.string.chat_estado_error_carga),
                     alReintentar = viewModel::cargar,
                 )
+                estado.mensajes.isEmpty() && !estado.medicoEscribiendo -> EstadoVacioDeChat(
+                    descripcion = stringResource(Res.string.chat_vacio_paciente, estado.nombreMedico),
+                    modifier = Modifier.weight(1f),
+                )
                 else -> LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -215,8 +257,28 @@ fun ChatScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(espaciado.medio),
                 ) {
-                    items(estado.mensajes, key = { it.idMensaje }) { mensaje ->
-                        FilaMensaje(mensaje = mensaje, nombreMedico = estado.nombreMedico)
+                    itemsIndexed(estado.mensajes, key = { _, mensaje -> mensaje.idMensaje }) { indice, mensaje ->
+                        // Dentro del mismo elemento y no como uno aparte: asi el
+                        // desplazamiento al ultimo mensaje sigue contando igual.
+                        val fecha = reloj.fechaLocal(mensaje.instante)
+                        if (fecha != estado.mensajes.getOrNull(indice - 1)?.let { reloj.fechaLocal(it.instante) }) {
+                            SeparadorDeFecha(
+                                fechaLocal = fecha,
+                                hoy = hoy,
+                                modifier = Modifier.padding(bottom = espaciado.medio),
+                            )
+                        }
+                        FilaMensaje(
+                            mensaje = mensaje,
+                            nombreMedico = estado.nombreMedico,
+                            hora = reloj.horaLocal(mensaje.instante),
+                            traduccion = estado.traducciones[mensaje.idMensaje],
+                            // Solo lo que escribio el medico: traducir lo propio
+                            // no le sirve a nadie, y el paciente ya sabe que puso.
+                            puedeTraducir = estado.puedeTraducir && mensaje.autor != AutorMensaje.PACIENTE,
+                            alTraducir = { viewModel.traducir(mensaje.idMensaje) },
+                            alAlternarTraduccion = { viewModel.alternarTraduccion(mensaje.idMensaje) },
+                        )
                     }
                     if (estado.medicoEscribiendo) {
                         item(key = "escribiendo") {
@@ -270,9 +332,33 @@ private fun BannerAdvertencia() {
 }
 
 @Composable
-private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
+private fun FilaMensaje(
+    mensaje: MensajeChat,
+    nombreMedico: String,
+    hora: String = "",
+    traduccion: EstadoTraduccion? = null,
+    puedeTraducir: Boolean = false,
+    alTraducir: () -> Unit = {},
+    alAlternarTraduccion: () -> Unit = {},
+) {
     if (mensaje.tipo == TipoMensaje.ORIENTACION_INICIAL) {
         BloqueOrientacionInicial(mensaje)
+        return
+    }
+    // Ya traducido: la burbuja con traduccion reemplaza a la normal y deja el
+    // original a un toque.
+    if (traduccion is EstadoTraduccion.Lista) {
+        TranslatedMessageBubble(
+            estado = if (traduccion.mostrandoOriginal) {
+                EstadoBurbujaTraducida.Original(MensajeTraducido(traduccion.texto, mensaje.texto))
+            } else {
+                EstadoBurbujaTraducida.Traducido(MensajeTraducido(traduccion.texto, mensaje.texto))
+            },
+            horaLocal = hora,
+            esPropio = mensaje.autor == AutorMensaje.PACIENTE,
+            esDelMedico = mensaje.autor != AutorMensaje.PACIENTE,
+            alAlternar = alAlternarTraduccion,
+        )
         return
     }
     val espaciado = LocalEspaciadoSalud.current
@@ -321,10 +407,23 @@ private fun FilaMensaje(mensaje: MensajeChat, nombreMedico: String) {
                         color = colorTexto,
                     )
                 }
+                if (hora.isNotBlank()) {
+                    Text(
+                        text = hora,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colorTexto.copy(alpha = ALFA_HORA),
+                        modifier = Modifier.align(Alignment.End),
+                    )
+                }
+                if (puedeTraducir && mensaje.texto.isNotBlank()) {
+                    AccionTraducir(estado = traduccion, colorTexto = colorTexto, alTraducir = alTraducir)
+                }
             }
         }
     }
 }
+
+
 
 /**
  * El bloque destacado de Orientacion Inicial: soporte vital inmediato de parte
@@ -554,3 +653,6 @@ private fun IndicadorCargando() {
 
 
 private const val MAXIMO_LINEAS_CAMPO = 5
+
+/** La hora bajo el mensaje: presente, pero sin competir con el texto clinico. */
+private const val ALFA_HORA = 0.7f

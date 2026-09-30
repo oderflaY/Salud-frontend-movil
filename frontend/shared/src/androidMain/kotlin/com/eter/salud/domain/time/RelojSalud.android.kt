@@ -27,6 +27,11 @@ private class RelojAndroid : RelojSalud {
     override fun horaLocal(instanteIso: String): String = runCatching {
         formatoInstante.parse(instanteIso)?.let(formatoHoraLocal::format).orEmpty()
     }.getOrDefault("")
+
+    override fun fechaLocal(instanteIso: String): String = runCatching {
+        // `formatoFecha` no fija zona: formatea en la del dispositivo.
+        formatoInstante.parse(instanteIso)?.let(formatoFecha::format).orEmpty()
+    }.getOrDefault("")
 }
 
 actual fun relojDelSistema(): RelojSalud = RelojAndroid()

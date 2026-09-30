@@ -67,6 +67,12 @@ services:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       DEEPSEEK_MODELO: ${DEEPSEEK_MODELO:-deepseek-chat}
+      # Traducción del chat con un Ollama propio. Con OLLAMA_URL puesta, el
+      # texto del paciente no sale hacia DeepSeek.
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      OLLAMA_MODELO_TRADUCCION: ${OLLAMA_MODELO_TRADUCCION:-translategemma:12b}
+      # Tercera opción de traducción (Google Cloud Translation v2, API key).
+      GOOGLE_TRANSLATE_API_KEY: ${GOOGLE_TRANSLATE_API_KEY:-}
       # Dashboard web del médico: orígenes del navegador que pueden llamar a /api/v1.
       CORS_ORIGENES: ${CORS_ORIGENES:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,red-local}
     ports:

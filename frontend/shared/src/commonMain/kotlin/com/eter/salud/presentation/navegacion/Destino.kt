@@ -72,6 +72,9 @@ sealed interface Destino {
     /** Bitacora de sintomas del paciente. */
     data object Diario : Destino
 
+    /** El paciente decide que muestra su tarjeta de emergencia al escanearla. */
+    data object TarjetaEmergencia : Destino
+
     /**
      * El cuestionario de perfil de emergencia. NO es seccion: es un flujo con
      * principio y fin del que se sale terminandolo, y ofrecerlo como pestana

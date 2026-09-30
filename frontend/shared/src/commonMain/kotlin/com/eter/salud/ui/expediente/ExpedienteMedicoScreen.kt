@@ -33,10 +33,19 @@ import com.eter.salud.ui.componentes.BotonAtras
 import com.eter.salud.ui.componentes.CabeceraGrande
 import com.eter.salud.ui.componentes.TarjetaSalud
 import com.eter.salud.ui.componentes.TituloDeBloque
+import org.jetbrains.compose.resources.StringResource
+import com.eter.salud.ui.componentes.comoAdjunto
+import com.eter.salud.ui.componentes.GaleriaDeDocumentos
+import com.eter.salud.domain.adjuntos.rememberAbridorDeAdjuntos
+import com.eter.salud.domain.model.DocumentoClinico
+import com.eter.salud.domain.model.BloqueDeExpediente
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.expediente_sin_documentos
+import salud.shared.generated.resources.expediente_seccion_documentos
+import salud.shared.generated.resources.expediente_bloque_oculto
 import salud.shared.generated.resources.expediente_alergia_item
 import salud.shared.generated.resources.expediente_campo_aseguradora
 import salud.shared.generated.resources.expediente_campo_curp
@@ -133,11 +142,40 @@ fun ExpedienteMedicoScreen(
                 }
 
                 else -> {
+                    val ocultos = estado.bloquesOcultos
                     item(key = "identidad") { SeccionIdentidad(paciente) }
-                    item(key = "emergencia") { SeccionEmergencia(paciente) }
-                    item(key = "tratamientos") { SeccionTratamientos(paciente.tratamientosActivos) }
-                    item(key = "historial") { SeccionHistorialClinico(paciente) }
-                    item(key = "contactos") { SeccionContactos(paciente.contactosEmergencia) }
+                    // Una seccion oculta se DICE oculta: pintarla vacia haria creer
+                    // al medico que el paciente no es alergico a nada, cuando en
+                    // realidad solo decidio no compartirlo.
+                    item(key = "emergencia") {
+                        if (BloqueDeExpediente.EMERGENCIA in ocultos) {
+                            SeccionOculta(Res.string.expediente_seccion_emergencia)
+                        } else {
+                            SeccionEmergencia(paciente)
+                        }
+                    }
+                    item(key = "tratamientos") {
+                        if (BloqueDeExpediente.TRATAMIENTOS in ocultos) {
+                            SeccionOculta(Res.string.expediente_seccion_tratamientos)
+                        } else {
+                            SeccionTratamientos(paciente.tratamientosActivos)
+                        }
+                    }
+                    item(key = "historial") {
+                        if (BloqueDeExpediente.HISTORIAL_CLINICO in ocultos) {
+                            SeccionOculta(Res.string.expediente_seccion_historial_clinico)
+                        } else {
+                            SeccionHistorialClinico(paciente)
+                        }
+                    }
+                    item(key = "contactos") {
+                        if (BloqueDeExpediente.CONTACTOS in ocultos) {
+                            SeccionOculta(Res.string.expediente_seccion_contactos)
+                        } else {
+                            SeccionContactos(paciente.contactosEmergencia)
+                        }
+                    }
+                    item(key = "documentos") { SeccionDocumentos(estado.documentos) }
                 }
             }
         }
@@ -357,6 +395,39 @@ private fun <T> SubseccionLista(
             elementos.forEach { elemento ->
                 Text(text = texto(elemento), style = MaterialTheme.typography.bodyLarge)
             }
+        }
+    }
+}
+
+/** Una seccion que el paciente decidio no compartir: se nombra y se dice por que esta vacia. */
+@Composable
+private fun SeccionOculta(titulo: StringResource) {
+    val colores = LocalColoresSalud.current
+    Column {
+        TituloDeBloque(stringResource(titulo))
+        Text(
+            text = stringResource(Res.string.expediente_bloque_oculto),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colores.textoSecundario,
+        )
+    }
+}
+
+/** Los estudios que el paciente adjunto y dejo ver. Tocar uno lo abre. */
+@Composable
+private fun SeccionDocumentos(documentos: List<DocumentoClinico>) {
+    val abridor = rememberAbridorDeAdjuntos()
+    val colores = LocalColoresSalud.current
+    Column {
+        TituloDeBloque(stringResource(Res.string.expediente_seccion_documentos))
+        if (documentos.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.expediente_sin_documentos),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colores.textoSecundario,
+            )
+        } else {
+            GaleriaDeDocumentos(documentos = documentos, alAbrir = { abridor.abrir(it.comoAdjunto()) })
         }
     }
 }

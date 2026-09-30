@@ -45,7 +45,9 @@ pub async fn run() {
     // Sin tiempo máximo, una API externa lenta (DeepSeek) dejaría peticiones
     // del paciente esperando indefinidamente.
     let http = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(5))
+        // Holgado a propósito: un modelo propio detrás de un túnel (ngrok)
+        // tarda más en abrir la conexión que una API en un centro de datos.
+        .connect_timeout(std::time::Duration::from_secs(10))
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .expect("no se pudo crear el cliente HTTP");

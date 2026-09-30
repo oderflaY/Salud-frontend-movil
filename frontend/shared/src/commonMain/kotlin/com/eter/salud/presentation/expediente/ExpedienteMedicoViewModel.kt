@@ -2,6 +2,10 @@ package com.eter.salud.presentation.expediente
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eter.salud.data.expediente.ExpedienteCompartidoRepositorio
+import com.eter.salud.domain.model.ExpedienteCompartido
+import com.eter.salud.domain.model.PacienteDto
+import com.eter.salud.domain.model.paraElMedico
 import com.eter.salud.domain.repository.HistorialMedicoRepositorio
 import com.eter.salud.presentation.comun.ejecutarSeguro
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,13 +33,43 @@ import kotlinx.coroutines.launch
 class ExpedienteMedicoViewModel(
     private val repositorio: HistorialMedicoRepositorio,
     private val idPaciente: String,
+    /**
+     * Lo que el paciente decidio compartir. `null` muestra el expediente
+     * completo, como antes de que existiera esta decision.
+     */
+    private val compartido: ExpedienteCompartidoRepositorio? = null,
 ) : ViewModel() {
+
+    /** El expediente tal como llego, antes de aplicar lo que el paciente oculto. */
+    private var completo: PacienteDto? = null
+    private var decision = ExpedienteCompartido()
 
     private val _estado = MutableStateFlow(ExpedienteMedicoUiState())
     val estado: StateFlow<ExpedienteMedicoUiState> = _estado.asStateFlow()
 
     init {
         cargar()
+        compartido?.let { repositorioCompartido ->
+            viewModelScope.launch {
+                // Si el paciente cambia de opinion, la pantalla del medico lo
+                // refleja sin tener que salir y volver a entrar.
+                repositorioCompartido.de(idPaciente).collect { actual ->
+                    decision = actual
+                    publicar()
+                }
+            }
+        }
+    }
+
+    /** Vuelve a armar lo que el medico ve con el expediente y la decision actuales. */
+    private fun publicar() {
+        _estado.update {
+            it.copy(
+                paciente = completo?.paraElMedico(decision),
+                bloquesOcultos = decision.bloquesOcultos,
+                documentos = decision.documentosVisibles,
+            )
+        }
     }
 
     /** Reintenta tras un fallo de carga. No hace nada si ya hay una en curso. */
@@ -50,7 +84,10 @@ class ExpedienteMedicoViewModel(
             val resultado = ejecutarSeguro { repositorio.obtenerPaciente(idPaciente) }
             _estado.update { previo ->
                 resultado.fold(
-                    onSuccess = { dto -> previo.copy(cargando = false, paciente = dto, errorCarga = false) },
+                    onSuccess = { dto ->
+                        completo = dto
+                        previo.copy(cargando = false, paciente = dto.paraElMedico(decision), errorCarga = false)
+                    },
                     onFailure = { previo.copy(cargando = false, errorCarga = true) },
                 )
             }

@@ -11,6 +11,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.eter.salud.presentation.avisos.VigilanteDeMensajes
+import com.eter.salud.presentation.avisos.ConversacionVigilada
+import com.eter.salud.presentation.avisos.AperturaDesdeAviso
+import com.eter.salud.domain.model.AutorMensaje
+import com.eter.salud.domain.avisos.recordarAvisosClinicos
+import com.eter.salud.domain.avisos.TextosAviso
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +49,22 @@ import com.eter.salud.domain.model.MedicoVinculado
 import com.eter.salud.domain.model.SesionPaciente
 import com.eter.salud.domain.model.SesionProfesional
 import com.eter.salud.domain.nfc.rememberLectorTarjetaNfc
+import androidx.compose.ui.text.intl.Locale
+import com.eter.salud.data.preferencias.PreferenciasDeLectura
+import com.eter.salud.ui.perfil.SeccionExpedienteCompartido
+import com.eter.salud.presentation.perfil.ExpedienteCompartidoViewModel
+import com.eter.salud.data.expediente.rememberDirectorioDeExpedientes
+import com.eter.salud.data.expediente.ExpedienteCompartidoRepositorio
+import com.eter.salud.data.expediente.ExpedienteCompartidoEnArchivos
+import com.eter.salud.ui.tarjeta.TarjetaEmergenciaScreen
+import com.eter.salud.presentation.tarjeta.TarjetaEmergenciaViewModel
+import com.eter.salud.data.repository.PerfilEmergenciaSegmentado
+import com.eter.salud.data.preferencias.recordarPreferenciasDeTarjeta
+import com.eter.salud.data.preferencias.PreferenciasDeTarjeta
+import com.eter.salud.data.preferencias.recordarPreferenciasDeLectura
+import com.eter.salud.domain.idioma.recordarSelectorDeIdioma
 import com.eter.salud.domain.repository.BajaDeCuentaRepositorio
+import com.eter.salud.domain.repository.TraduccionRepositorio
 import com.eter.salud.domain.repository.CambioDeContrasenaRepositorio
 import com.eter.salud.domain.repository.TipoDeCuenta
 import com.eter.salud.domain.repository.AdherenciaRepositorio
@@ -113,6 +137,7 @@ import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import com.eter.salud.ui.theme.SaludTheme
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.aviso_mensaje_adjunto
 import salud.shared.generated.resources.a11y_app_restaurando
 import salud.shared.generated.resources.app_restaurando
 import salud.shared.generated.resources.nfc_titulo
@@ -247,9 +272,27 @@ fun App() {
         val repositorioAdherencia = contenedorRed?.adherencia ?: contenedor.adherencia
         val repositorioCuentasProfesionales = contenedorRed?.cuentasProfesionales ?: contenedor.cuentasProfesionales
         val repositorioPacientesVinculados = contenedorRed?.pacientesVinculados ?: contenedor.pacientesVinculados
-        val repositorioEmergencia = contenedorRed?.emergencia ?: contenedor.emergencia
+        val repositorioEmergenciaBase = contenedorRed?.emergencia ?: contenedor.emergencia
         val repositorioDirectorio = contenedorRed?.directorio ?: contenedor.directorio
         val repositorioChat = contenedorRed?.chat ?: contenedor.chat
+        // Sin backend no hay traduccion: la accion no se ofrece en el chat.
+        val repositorioTraduccion = contenedorRed?.traduccion
+        // El idioma elegido en Ajustes; si esta en "el del sistema", el del telefono.
+        val idiomaDeLectura = recordarSelectorDeIdioma().actual.etiquetaBcp47
+            .ifBlank { Locale.current.language }
+        // "Traducir siempre": se elige una vez y se queda, en este telefono.
+        val preferenciasDeLectura = recordarPreferenciasDeLectura()
+        // Lo que cada paciente decidio mostrar de su tarjeta de emergencia.
+        val preferenciasDeTarjeta = recordarPreferenciasDeTarjeta()
+        // Lo que cada paciente comparte con su medico y sus estudios adjuntos.
+        val directorioDeExpedientes = rememberDirectorioDeExpedientes()
+        val expedienteCompartido = remember(directorioDeExpedientes) {
+            ExpedienteCompartidoEnArchivos(directorioDeExpedientes)
+        }
+        // El escaner recibe la tarjeta ya filtrada por esa decision.
+        val repositorioEmergencia = remember(repositorioEmergenciaBase, preferenciasDeTarjeta) {
+            PerfilEmergenciaSegmentado(repositorioEmergenciaBase, preferenciasDeTarjeta)
+        }
         // Una sola instancia para los dos portales: es lo que hace que la cita
         // que el paciente confirma en el chat aparezca en el calendario del
         // medico sin recargar nada.
@@ -312,6 +355,72 @@ fun App() {
             }
         }
 
+        // ---------------------------------------------- Avisos de mensajes nuevos
+        // Un mensaje de la otra parte suena como notificacion del telefono,
+        // salvo que esa conversacion este a la vista. Vive aqui y no en una
+        // pantalla: tiene que avisar este donde este la persona dentro de la app
+        // (y con la app en segundo plano, mientras el sistema la mantenga viva).
+        val avisos = recordarAvisosClinicos()
+        val cicloDeVida = LocalLifecycleOwner.current.lifecycle
+        val destinoActual by rememberUpdatedState(pila.actual)
+        val textoSoloAdjunto = stringResource(Res.string.aviso_mensaje_adjunto)
+        var chatsConAviso by remember { mutableStateOf<Map<String, Destino>>(emptyMap()) }
+        val idPacienteConAvisos = pacienteHabilitado?.takeUnless { it.requiereOnboarding }?.idPaciente
+        val idMedicoConAvisos = profesionalActual?.idMedico
+        // El dialogo del sistema para las notificaciones, una sola vez, a
+        // cualquiera que entre: el medico nunca pasa por el inicio del paciente,
+        // que era el unico lugar donde se pedia.
+        LaunchedEffect(idPacienteConAvisos, idMedicoConAvisos) {
+            if (idPacienteConAvisos != null || idMedicoConAvisos != null) avisos.pedirPermisoSiHaceFalta()
+        }
+        LaunchedEffect(contenedorRed, idPacienteConAvisos, idMedicoConAvisos) {
+            chatsConAviso = emptyMap()
+            // Sin backend no hay mensajes de nadie mas que avisar.
+            if (contenedorRed == null) return@LaunchedEffect
+            val (yo, conversaciones) = when {
+                idMedicoConAvisos != null -> AutorMensaje.MEDICO to repositorioPacientesVinculados
+                    .obtenerPacientesVinculados(idMedicoConAvisos).getOrNull().orEmpty()
+                    .filter { it.idConversacion.isNotBlank() }
+                    .map { ConversacionVigilada(it.idConversacion, it.nombreCompleto) to Destino.ChatConPaciente(it) }
+                idPacienteConAvisos != null -> AutorMensaje.PACIENTE to repositorioDirectorio
+                    .obtenerMedicosVinculados(idPacienteConAvisos).getOrNull().orEmpty()
+                    .map { ConversacionVigilada(it.idConversacion, it.nombreCompleto) to Destino.ChatConMedico(it) }
+                else -> return@LaunchedEffect
+            }
+            chatsConAviso = conversaciones.associate { (conversacion, destino) -> conversacion.idConversacion to destino }
+            VigilanteDeMensajes(repositorioChat, yo)
+                .mensajesParaAvisar(conversaciones.map { it.first }) {
+                    // Con la app en segundo plano ninguna conversacion "se ve",
+                    // aunque sea la ultima pantalla abierta.
+                    if (!cicloDeVida.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        null
+                    } else {
+                        when (val destino = destinoActual) {
+                            is Destino.ChatConMedico -> destino.medico.idConversacion
+                            is Destino.ChatConPaciente -> destino.paciente.idConversacion
+                            else -> null
+                        }
+                    }
+                }
+                .collect { (conversacion, mensaje) ->
+                    avisos.avisarMensajeDelMedico(
+                        conversacion.idConversacion,
+                        TextosAviso(
+                            titulo = conversacion.nombre,
+                            cuerpo = mensaje.texto.ifBlank { textoSoloAdjunto },
+                        ),
+                    )
+                }
+        }
+
+        // Tocar la notificacion abre esa conversacion, no solo la app.
+        val aperturaPendiente by AperturaDesdeAviso.conversacion.collectAsStateWithLifecycle()
+        LaunchedEffect(aperturaPendiente, chatsConAviso) {
+            val destino = aperturaPendiente?.let(chatsConAviso::get) ?: return@LaunchedEffect
+            if (pila.actual != destino) navegacion.ir(destino)
+            AperturaDesdeAviso.atendida()
+        }
+
         val secciones = when {
             profesionalActual != null -> SECCIONES_PROFESIONAL
             // Sin expediente no hay pestanas: la unica salida del cuestionario
@@ -337,6 +446,10 @@ fun App() {
                         repositorioCitas = repositorioCitas,
                         repositorioDiario = repositorioDiarioMedico,
                         repositorioHistorial = repositorioHistorial,
+                        expedienteCompartido = expedienteCompartido,
+                        repositorioTraduccion = repositorioTraduccion,
+                        idiomaDeLectura = idiomaDeLectura,
+                        preferenciasDeLectura = preferenciasDeLectura,
                         repositorioBaja = repositorioBaja,
                         alCerrarSesion = {
                             sesiones.cerrar()
@@ -400,6 +513,11 @@ fun App() {
                         repositorioCitas = repositorioCitas,
                         repositorioDiario = repositorioDiarioPaciente,
                         repositorioAdherencia = repositorioAdherencia,
+                        repositorioTraduccion = repositorioTraduccion,
+                        idiomaDeLectura = idiomaDeLectura,
+                        preferenciasDeLectura = preferenciasDeLectura,
+                        preferenciasDeTarjeta = preferenciasDeTarjeta,
+                        expedienteCompartido = expedienteCompartido,
                         repositorioExpediente = remember(pacienteActual.idPaciente) {
                             expedienteNuevo(pacienteActual.idPaciente)
                         },
@@ -566,6 +684,11 @@ private fun PantallaPaciente(
     repositorioCitas: CitasRepositorio,
     repositorioDiario: DiarioRepositorio,
     repositorioAdherencia: AdherenciaRepositorio,
+    repositorioTraduccion: TraduccionRepositorio?,
+    idiomaDeLectura: String,
+    preferenciasDeLectura: PreferenciasDeLectura,
+    preferenciasDeTarjeta: PreferenciasDeTarjeta,
+    expedienteCompartido: ExpedienteCompartidoRepositorio,
     repositorioExpediente: PacienteRepositorio,
     repositorioBaja: BajaDeCuentaRepositorio?,
     repositorioCambioContrasena: CambioDeContrasenaRepositorio?,
@@ -573,9 +696,18 @@ private fun PantallaPaciente(
     alCerrarSesion: () -> Unit,
 ) {
     when (destino) {
+        Destino.TarjetaEmergencia -> {
+            val tarjeta = viewModel(key = "$CLAVE_TARJETA${sesion.idPaciente}") {
+                TarjetaEmergenciaViewModel(repositorioHistorial, preferenciasDeTarjeta, sesion.idPaciente)
+            }
+            TarjetaEmergenciaScreen(viewModel = tarjeta, alVolver = navegacion::volver)
+        }
+
         Destino.Diario -> {
             val diario = viewModel(key = "$CLAVE_DIARIO${sesion.idPaciente}") {
-                DiarioViewModel(repositorioDiario, sesion.idPaciente)
+                // El historial va aqui para que el diario sepa que tiene el
+                // paciente y le pregunte lo que corresponde a su condicion.
+                DiarioViewModel(repositorioDiario, sesion.idPaciente, historial = repositorioHistorial)
             }
             DiarioScreen(viewModel = diario, alVolver = navegacion::volver)
         }
@@ -600,7 +732,14 @@ private fun PantallaPaciente(
             }
             AlReconectar { perfil.cargarPerfil(sesion.idPaciente) }
             // Sin `alVolver`: es una raiz de pestana, no una pantalla apilada.
-            PerfilMedicoScreen(viewModel = perfil, idPaciente = sesion.idPaciente)
+            val compartido = viewModel(key = "$CLAVE_COMPARTIDO${sesion.idPaciente}") {
+                ExpedienteCompartidoViewModel(repositorioHistorial, expedienteCompartido, sesion.idPaciente)
+            }
+            PerfilMedicoScreen(
+                viewModel = perfil,
+                idPaciente = sesion.idPaciente,
+                seccionCompartida = { SeccionExpedienteCompartido(compartido, sesion.idPaciente) },
+            )
         }
 
         // La seccion es la FICHA del medico, nunca la conversacion. El chat es
@@ -666,6 +805,7 @@ private fun PantallaPaciente(
                 alCuentaEliminada = alCerrarSesion,
                 cambioDeContrasena = cambioDeContrasena,
                 alContrasenaCambiada = alContrasenaCambiada,
+                preferenciasDeLectura = preferenciasDeLectura,
             )
         }
 
@@ -675,6 +815,9 @@ private fun PantallaPaciente(
             repositorioChat = repositorioChat,
             repositorioCitas = repositorioCitas,
             repositorioDirectorio = repositorioDirectorio,
+            repositorioTraduccion = repositorioTraduccion,
+            idiomaDeLectura = idiomaDeLectura,
+            preferenciasDeLectura = preferenciasDeLectura,
             alVolver = navegacion::volver,
         )
 
@@ -688,6 +831,7 @@ private fun PantallaPaciente(
                         AccesoRapido.HISTORIAL -> navegacion.irASeccion(Destino.Historial, Destino.Inicio)
                         AccesoRapido.MIS_MEDICOS -> navegacion.irASeccion(Destino.MiMedico, Destino.Inicio)
                         AccesoRapido.DIARIO_SINTOMAS -> navegacion.ir(Destino.Diario)
+                        AccesoRapido.TARJETA_RFID -> navegacion.ir(Destino.TarjetaEmergencia)
                         else -> Unit
                     }
                 },
@@ -727,6 +871,9 @@ private fun ChatDelPaciente(
     repositorioChat: ChatRepositorio,
     repositorioCitas: CitasRepositorio,
     repositorioDirectorio: DirectorioMedicoRepositorio,
+    repositorioTraduccion: TraduccionRepositorio?,
+    idiomaDeLectura: String,
+    preferenciasDeLectura: PreferenciasDeLectura,
     alVolver: () -> Unit,
 ) {
     val chat = viewModel(key = "$CLAVE_CHAT${medico.idConversacion}") {
@@ -734,6 +881,9 @@ private fun ChatDelPaciente(
             repositorio = repositorioChat,
             idConversacion = medico.idConversacion,
             nombreMedico = medico.nombreCompleto,
+            traduccion = repositorioTraduccion,
+            idiomaDeLectura = idiomaDeLectura,
+            preferencias = preferenciasDeLectura,
         )
     }
     val agendaCita = viewModel(key = "$CLAVE_AGENDA_CITA${medico.idConversacion}") {
@@ -766,6 +916,10 @@ private fun PantallaProfesional(
     repositorioCitas: CitasRepositorio,
     repositorioDiario: DiarioRepositorio,
     repositorioHistorial: HistorialMedicoRepositorio,
+    expedienteCompartido: ExpedienteCompartidoRepositorio,
+    repositorioTraduccion: TraduccionRepositorio?,
+    idiomaDeLectura: String,
+    preferenciasDeLectura: PreferenciasDeLectura,
     repositorioBaja: BajaDeCuentaRepositorio?,
     alCerrarSesion: () -> Unit,
 ) {
@@ -829,6 +983,7 @@ private fun PantallaProfesional(
                 // Tras la baja no queda cuenta a la que volver: se sale igual que
                 // al cerrar sesion, y el acceso queda limpio para otra persona.
                 alCuentaEliminada = alCerrarSesion,
+                preferenciasDeLectura = preferenciasDeLectura,
             )
         }
 
@@ -840,6 +995,9 @@ private fun PantallaProfesional(
                     idConversacion = paciente.idConversacion,
                     nombrePaciente = paciente.nombreCompleto,
                     riesgoPaciente = paciente.riesgo,
+                    traduccion = repositorioTraduccion,
+                    idiomaDeLectura = idiomaDeLectura,
+                    preferencias = preferenciasDeLectura,
                 )
             }
             ChatMedicoScreen(
@@ -856,6 +1014,7 @@ private fun PantallaProfesional(
                 ExpedienteMedicoViewModel(
                     repositorio = repositorioHistorial,
                     idPaciente = destino.idPaciente,
+                    compartido = expedienteCompartido,
                 )
             }
             AlReconectar { expediente.reintentar() }
@@ -908,6 +1067,8 @@ private const val CLAVE_BANDEJA = "bandeja_"
 private const val CLAVE_BANDEJA_CLINICA = "bandeja_clinica_"
 private const val CLAVE_AGENDA_PACIENTE = "agenda_paciente_"
 private const val CLAVE_DIARIO = "diario_"
+private const val CLAVE_TARJETA = "tarjeta_emergencia_"
+private const val CLAVE_COMPARTIDO = "expediente_compartido_"
 private const val CLAVE_ONBOARDING = "onboarding_"
 private const val CLAVE_PERFIL = "perfil_medico_"
 private const val CLAVE_EXPEDIENTE = "expediente_medico_"

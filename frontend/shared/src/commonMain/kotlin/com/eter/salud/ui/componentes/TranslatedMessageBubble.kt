@@ -36,10 +36,13 @@ import salud.shared.generated.resources.Res
 import salud.shared.generated.resources.a11y_ia_traduccion_accion_ver_original
 import salud.shared.generated.resources.a11y_ia_traduccion_accion_ver_traduccion
 import salud.shared.generated.resources.a11y_ia_traduccion_burbuja_original
+import salud.shared.generated.resources.a11y_ia_traduccion_burbuja_original_simple
 import salud.shared.generated.resources.a11y_ia_traduccion_burbuja_traducida
+import salud.shared.generated.resources.a11y_ia_traduccion_burbuja_traducida_simple
 import salud.shared.generated.resources.ia_traduccion_accion_ver_original
 import salud.shared.generated.resources.ia_traduccion_accion_ver_traduccion
 import salud.shared.generated.resources.ia_traduccion_pie
+import salud.shared.generated.resources.ia_traduccion_pie_automatica
 
 /**
  * Estado de una burbuja con traduccion automatica.
@@ -69,7 +72,13 @@ sealed interface EstadoBurbujaTraducida {
 data class MensajeTraducido(
     val textoTraducido: String,
     val textoOriginal: String,
-    val idiomaOriginal: String,
+    /**
+     * Idioma en el que se escribio, si se sabe. Vacio cuando no: el modelo
+     * traduce sin decir de que idioma venia, y poner "Traducido de espanol"
+     * adivinando seria afirmar algo que nadie comprobo. En ese caso el pie
+     * dice solo que la traduccion es automatica.
+     */
+    val idiomaOriginal: String = "",
 )
 
 /**
@@ -104,18 +113,15 @@ fun TranslatedMessageBubble(
     val colorFondo = if (esDelMedico) MaterialTheme.colorScheme.primary else colores.fondoBurbujaMedico
     val colorTexto = if (esDelMedico) MaterialTheme.colorScheme.onPrimary else colores.sobreBurbujaMedico
 
-    val descripcion = if (mostrandoOriginal) {
-        stringResource(
-            Res.string.a11y_ia_traduccion_burbuja_original,
-            mensaje.idiomaOriginal,
-            mensaje.textoOriginal,
-        )
-    } else {
-        stringResource(
-            Res.string.a11y_ia_traduccion_burbuja_traducida,
-            mensaje.idiomaOriginal,
-            mensaje.textoTraducido,
-        )
+    val descripcion = when {
+        mostrandoOriginal && mensaje.idiomaOriginal.isNotBlank() ->
+            stringResource(Res.string.a11y_ia_traduccion_burbuja_original, mensaje.idiomaOriginal, mensaje.textoOriginal)
+        mostrandoOriginal ->
+            stringResource(Res.string.a11y_ia_traduccion_burbuja_original_simple, mensaje.textoOriginal)
+        mensaje.idiomaOriginal.isNotBlank() ->
+            stringResource(Res.string.a11y_ia_traduccion_burbuja_traducida, mensaje.idiomaOriginal, mensaje.textoTraducido)
+        else ->
+            stringResource(Res.string.a11y_ia_traduccion_burbuja_traducida_simple, mensaje.textoTraducido)
     }
 
     Row(
@@ -199,7 +205,11 @@ private fun PieDeTraduccion(
         horizontalArrangement = Arrangement.spacedBy(espaciado.minimo),
     ) {
         Text(
-            text = stringResource(Res.string.ia_traduccion_pie, idioma),
+            text = if (idioma.isBlank()) {
+                stringResource(Res.string.ia_traduccion_pie_automatica)
+            } else {
+                stringResource(Res.string.ia_traduccion_pie, idioma)
+            },
             style = MaterialTheme.typography.labelSmall,
             color = colorTexto.copy(alpha = ALFA_PIE_TRADUCCION),
         )

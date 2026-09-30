@@ -35,6 +35,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -78,6 +80,11 @@ import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.alarmas_exactas_ahora_no
+import salud.shared.generated.resources.alarmas_exactas_permitir
+import salud.shared.generated.resources.alarmas_exactas_texto
+import salud.shared.generated.resources.alarmas_exactas_titulo
+import salud.shared.generated.resources.aviso_accion_posponer
 import salud.shared.generated.resources.a11y_accion_ajustes
 import salud.shared.generated.resources.a11y_home_abrir_agenda
 import salud.shared.generated.resources.a11y_home_acceso_completar_perfil
@@ -181,6 +188,26 @@ fun HomeScreen(
     // la persona lo niega, se activa despues desde Ajustes.
     LaunchedEffect(estado.cargando) {
         if (!estado.cargando) avisos.pedirPermisoSiHaceFalta()
+    }
+    // Las alarmas exactas no tienen dialogo del sistema: se explica una vez, y
+    // solo a quien de verdad tiene tomas que recordar.
+    if (!estado.cargando && estado.tomasPorRecordar.isNotEmpty() && avisos.debeExplicarAlarmasExactas) {
+        AlertDialog(
+            onDismissRequest = { avisos.responderAlarmasExactas(aceptar = false) },
+            icon = { IconoSalud(GlifoSalud.PASTILLA, lado = 28.dp) },
+            title = { Text(stringResource(Res.string.alarmas_exactas_titulo)) },
+            text = { Text(stringResource(Res.string.alarmas_exactas_texto)) },
+            confirmButton = {
+                TextButton(onClick = { avisos.responderAlarmasExactas(aceptar = true) }) {
+                    Text(stringResource(Res.string.alarmas_exactas_permitir))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { avisos.responderAlarmasExactas(aceptar = false) }) {
+                    Text(stringResource(Res.string.alarmas_exactas_ahora_no))
+                }
+            },
+        )
     }
 
     LazyColumn(
@@ -289,7 +316,7 @@ fun HomeScreen(
 @Composable
 private fun ProgramarRecordatorios(estado: HomeUiState, avisos: AvisosClinicos) {
     val titulo = stringResource(Res.string.aviso_medicacion_titulo)
-
+    val etiquetaPosponer = stringResource(Res.string.aviso_accion_posponer)
     val pendientes = estado.tomasPorRecordar.map { toma ->
         RecordatorioMedicacion(
             idToma = toma.idToma,
@@ -300,6 +327,7 @@ private fun ProgramarRecordatorios(estado: HomeUiState, avisos: AvisosClinicos) 
         ) to TextosAviso(
             titulo = titulo,
             cuerpo = stringResource(Res.string.aviso_medicacion_cuerpo, toma.medicamento, toma.dosis),
+            accionPosponer = etiquetaPosponer,
         )
     }
     val yaRegistradas = estado.tomasDelDia

@@ -7,7 +7,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{auth::sesion, error::AppError, state::AppState};
 
-use super::deepseek::{ClienteDeepSeek, PuntoResumen};
+use super::{
+    deepseek::{ClienteDeepSeek, PuntoResumen},
+    google::ClienteGoogleTraductor,
+    ollama::ClienteOllama,
+};
 
 
 fn cliente_deepseek(state: &AppState) -> Result<ClienteDeepSeek, AppError> {
@@ -100,11 +104,20 @@ pub struct RespuestaTraduccion {
     pub traduccion: String,
 }
 
+/// Largo máximo de un texto a traducir: un mensaje de chat, no un expediente.
+const LARGO_MAXIMO_TRADUCCION: usize = 4_000;
+
 /// `POST /chat/traducir` — traduce un texto suelto (p. ej. un mensaje del
 /// chat antes de mostrarlo). No está atado a una conversación en particular
 /// ni valida participación: cualquier usuario autenticado puede traducir
 /// texto arbitrario, igual que traduciría cualquier texto que ya puede leer
 /// en su propio idioma.
+///
+/// Prioridad, de la más a la menos preferida: `OLLAMA_URL` (local, gratis, el
+/// texto del paciente no sale de la red propia), `GOOGLE_TRANSLATE_API_KEY`
+/// (nube oficial, confiable), `DEEPSEEK_API_KEY` (nube, ya usada para
+/// resumir). La primera que esté configurada gana; sin ninguna, 503
+/// `IA_NO_CONFIGURADA`.
 pub async fn traducir_texto(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -112,12 +125,22 @@ pub async fn traducir_texto(
 ) -> Result<Json<RespuestaTraduccion>, AppError> {
     sesion::autenticar(&headers, &state).await?;
 
-    if body.texto.trim().is_empty() || body.idioma_destino.trim().is_empty() {
+    let texto = body.texto.trim();
+    if texto.is_empty() || body.idioma_destino.trim().is_empty() || texto.chars().count() > LARGO_MAXIMO_TRADUCCION {
         return Err(AppError::SolicitudInvalida);
     }
 
-    let cliente = cliente_deepseek(&state)?;
-    let traduccion = cliente.traducir(&body.texto, &body.idioma_destino).await?;
+    let traduccion = if let Some(url) = state.config.ollama_url.clone() {
+        ClienteOllama::nuevo(state.http.clone(), url, state.config.ollama_modelo_traduccion.clone())
+            .traducir(texto, &body.idioma_destino)
+            .await?
+    } else if let Some(api_key) = state.config.google_translate_api_key.clone() {
+        ClienteGoogleTraductor::nuevo(state.http.clone(), api_key)
+            .traducir(texto, &body.idioma_destino)
+            .await?
+    } else {
+        cliente_deepseek(&state)?.traducir(texto, &body.idioma_destino).await?
+    };
     Ok(Json(RespuestaTraduccion { traduccion }))
 }
 

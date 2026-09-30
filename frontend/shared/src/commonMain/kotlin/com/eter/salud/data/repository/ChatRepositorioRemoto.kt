@@ -9,7 +9,9 @@ import com.eter.salud.domain.model.MensajeChat
 import com.eter.salud.domain.model.ResumenClinicoIa
 import com.eter.salud.domain.model.TipoAdjunto
 import com.eter.salud.domain.model.TipoMensaje
+import com.eter.salud.data.red.JsonRed
 import com.eter.salud.domain.repository.ChatRepositorio
+import com.eter.salud.domain.repository.MensajeEntrante
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.forms.formData
@@ -127,6 +129,14 @@ class ChatRepositorioRemoto(
         return Result.success(mensaje)
     }
 
+    override fun mensajesEntrantes(idConversacion: String): Flow<MensajeEntrante> =
+        conexion.canal("chat:$idConversacion") { payload ->
+            JsonRed.decodeFromJsonElement(AvisoMensajeNuevoRed.serializer(), payload)
+        }.mapNotNull { aviso ->
+            val autor = runCatching { AutorMensaje.valueOf(aviso.autor) }.getOrNull() ?: return@mapNotNull null
+            MensajeEntrante(aviso.idMensaje, autor, aviso.texto.orEmpty())
+        }
+
     /**
      * Conteo al abrir, y otra vez con cada aviso del canal (mensaje nuevo) o al
      * marcar la conversacion como leida desde este telefono. El conteo lo da
@@ -216,6 +226,15 @@ class ChatRepositorioRemoto(
  * el socket, que ademas detecta si murio (latido) y avisa al reconectar.
  */
 private const val INTERVALO_REVISION_MS = 20_000L
+
+/** El `payload` de `mensaje_nuevo` en el canal `chat:{id}` (0013, 0017). */
+@Serializable
+private data class AvisoMensajeNuevoRed(
+    val idMensaje: String,
+    val autor: String,
+    /** `null` cuando el mensaje es solo un adjunto. */
+    val texto: String? = null,
+)
 
 @Serializable
 private data class AdjuntoRed(

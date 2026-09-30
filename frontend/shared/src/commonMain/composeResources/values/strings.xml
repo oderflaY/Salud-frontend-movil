@@ -10,7 +10,7 @@
     <!-- ============================================================= -->
     <!-- GLOBAL: acciones, navegacion y estados                        -->
     <!-- ============================================================= -->
-    <string name="app_nombre">Salud</string>
+    <string name="app_nombre">+Salud</string>
 
     <string name="accion_continuar">Continuar</string>
     <string name="accion_atras">Atras</string>
@@ -59,7 +59,7 @@
     <!-- ============================================================= -->
 
     <!-- Bienvenida -->
-    <string name="onb_bienvenida_titulo">Bienvenido a Salud</string>
+    <string name="onb_bienvenida_titulo">Bienvenido a +Salud</string>
     <string name="onb_bienvenida_descripcion">Vamos a preparar tu perfil de emergencia. Son diez preguntas breves; la informacion critica queda disponible para los paramedicos que lean tu tarjeta.</string>
     <string name="onb_bienvenida_accion">Comenzar</string>
     <string name="a11y_onb_bienvenida_accion">Comenzar el registro de tu perfil de salud</string>
@@ -406,7 +406,7 @@
     <string name="login_accion_registrarse">Crear cuenta nueva</string>
     <string name="login_estado_autenticando">Verificando tus datos</string>
 
-    <string name="a11y_login_isotipo">Isotipo de la aplicacion Salud</string>
+    <string name="a11y_login_isotipo">Isotipo de la aplicacion +Salud</string>
     <string name="a11y_login_correo_campo">Escribe tu correo electronico</string>
     <string name="a11y_login_contrasena_campo">Escribe tu contrasena</string>
     <string name="a11y_login_mostrar_contrasena">Mostrar la contrasena en pantalla</string>
@@ -1101,7 +1101,7 @@
     <string name="config_avisos_medicacion_apoyo">Suenan en tu telefono aunque no tengas conexion.</string>
     <string name="config_avisos_mensajes">Mensajes de tu medico</string>
     <string name="config_avisos_mensajes_apoyo">Aviso inmediato cuando tu medico te escribe.</string>
-    <string name="config_avisos_sin_permiso">Las notificaciones de Salud estan apagadas: no sonaran tus recordatorios ni sabras cuando tu medico te escriba.</string>
+    <string name="config_avisos_sin_permiso">Las notificaciones de +Salud estan apagadas: no sonaran tus recordatorios ni sabras cuando tu medico te escriba.</string>
 
     <string name="config_bloque_apariencia">Apariencia</string>
     <string name="config_modo_oscuro">Seguir el modo oscuro del sistema</string>
@@ -1342,4 +1342,91 @@
     <string name="config_avisos_permitir_hora_exacta">Permitir que suenen a la hora exacta</string>
 
     <string name="conexion_sin_red">Sin conexion. Ves lo ultimo guardado en tu telefono; se actualiza solo al volver la red.</string>
+    <string name="chat_accion_traducir">Traducir</string>
+    <string name="chat_accion_reintentar_traduccion">Reintentar traduccion</string>
+    <string name="chat_traduciendo">Traduciendo...</string>
+    <string name="chat_traduccion_fallida">No se pudo traducir el mensaje.</string>
+    <string name="a11y_chat_accion_traducir">Traducir este mensaje a tu idioma</string>
+    <string name="ia_traduccion_pie_automatica">Traduccion automatica</string>
+    <string name="a11y_ia_traduccion_burbuja_traducida_simple">Mensaje traducido: %1$s</string>
+    <string name="a11y_ia_traduccion_burbuja_original_simple">Mensaje original: %1$s</string>
+    <string name="chat_accion_traducir_todo">Traducir todo</string>
+    <string name="chat_accion_ver_originales">Ver originales</string>
+    <string name="a11y_chat_accion_traduccion_automatica">Traducir siempre los mensajes al idioma de la app</string>
+    <string name="chat_traduccion_sin_cambios">Ya esta en tu idioma</string>
+    <string name="config_traduccion_titulo">Traducir mensajes a mi idioma</string>
+    <string name="config_traduccion_descripcion">Los mensajes del chat se traducen solos al idioma de la app. El original queda a un toque.</string>
+    <string name="chat_fecha_hoy">Hoy</string>
+    <string name="chat_fecha_ayer">Ayer</string>
+    <string name="chat_vacio_titulo">Aun no hay mensajes</string>
+    <string name="chat_vacio_paciente">Escribele a %1$s: te respondera aqui. Tambien puedes dictar tu mensaje o adjuntar un estudio.</string>
+    <string name="chat_vacio_medico">%1$s todavia no ha escrito. Puedes iniciar la conversacion.</string>
+    <string name="chat_subtitulo_medico">Tu medico</string>
+    <string name="a11y_chat_mas_opciones">Mas opciones</string>
+    <string name="a11y_chat_agendar_cita">Agendar una cita con tu medico</string>
+    <string name="aviso_mensaje_adjunto">Te envio un archivo</string>
+    <string name="aviso_accion_posponer">Posponer 10 min</string>
+    <string name="alarmas_exactas_titulo">Recordatorios a la hora exacta</string>
+    <string name="alarmas_exactas_texto">Para que tus medicinas te avisen justo a su hora, +Salud necesita el permiso de alarmas. Te llevamos al ajuste del telefono; solo tienes que activarlo.</string>
+    <string name="alarmas_exactas_permitir">Permitir</string>
+    <string name="alarmas_exactas_ahora_no">Ahora no</string>
+    <string name="diario_preguntas_titulo">Cuentale a tu medico</string>
+    <string name="diario_preguntas_apoyo">Preguntas para tu caso. Toca una y completala con tus palabras.</string>
+    <string name="a11y_diario_pregunta">Responder: %1$s</string>
+    <string name="tarjeta_titulo">Mi tarjeta de emergencia</string>
+    <string name="tarjeta_descripcion">Tu decides que ve el personal de emergencia cuando escanea tu tarjeta.</string>
+    <string name="tarjeta_siempre_visible">Tu nombre y tu fecha de nacimiento siempre se muestran: sin ellos no pueden atenderte ni calcular dosis.</string>
+    <string name="tarjeta_bloque_compartes">Que compartes</string>
+    <string name="tarjeta_dato_alergias">Alergias</string>
+    <string name="tarjeta_dato_medicacion">Medicacion de rescate</string>
+    <string name="tarjeta_dato_condiciones">Condiciones medicas</string>
+    <string name="tarjeta_dato_tipo_sangre">Tipo de sangre</string>
+    <string name="tarjeta_dato_donacion">Donacion de organos</string>
+    <string name="tarjeta_sin_registrar">Sin registrar</string>
+    <string name="tarjeta_donador_si">Si es donador</string>
+    <string name="tarjeta_donador_no">No es donador</string>
+    <string name="tarjeta_etiqueta_vital">Puede salvarte la vida</string>
+    <string name="tarjeta_aviso_vital">Ocultaste datos que pueden salvarte la vida. Si tienes una urgencia, quien te atienda no los vera.</string>
+    <string name="tarjeta_vista_paramedico">Asi te ve un paramedico</string>
+    <string name="tarjeta_oculto">Oculto por ti</string>
+    <string name="tarjeta_sin_tarjeta">No tienes una tarjeta de emergencia activa. Pidela en tu clinica.</string>
+    <string name="tarjeta_error_carga">No pudimos cargar tu tarjeta.</string>
+    <string name="tarjeta_numero">Tarjeta %1$s</string>
+    <string name="a11y_tarjeta_interruptor">%1$s: %2$s</string>
+    <string name="a11y_tarjeta_visible">se muestra</string>
+    <string name="a11y_tarjeta_oculto">oculto</string>
+    <string name="compartido_titulo">Lo que ve tu medico</string>
+    <string name="compartido_apoyo">Tu decides que parte de tu expediente puede consultar tu medico. Tu nombre y fecha de nacimiento siempre los ve.</string>
+    <string name="compartido_bloque_emergencia">Alergias y condiciones</string>
+    <string name="compartido_bloque_tratamientos">Tratamientos y medicinas</string>
+    <string name="compartido_bloque_historial">Cirugias y antecedentes</string>
+    <string name="compartido_bloque_metricas">Peso, estatura y presion</string>
+    <string name="compartido_bloque_identificaciones">CURP, seguro social y aseguradora</string>
+    <string name="compartido_bloque_contactos">Contactos de emergencia</string>
+    <string name="compartido_sin_datos">Aun no has registrado esto</string>
+    <string name="compartido_aviso_vital">Ocultaste datos que tu medico necesita para no recetarte algo que te haga dano.</string>
+    <string name="documentos_titulo">Estudios y documentos</string>
+    <string name="documentos_apoyo">Radiografias, laboratorios o fotos que quieras que tu medico vea.</string>
+    <string name="documentos_escanear">Escanear</string>
+    <string name="documentos_foto">Foto</string>
+    <string name="documentos_archivo">Archivo</string>
+    <string name="documentos_vacio">Todavia no has adjuntado ningun estudio.</string>
+    <string name="documentos_visible">Lo ve tu medico</string>
+    <string name="documentos_oculto">Solo tu</string>
+    <string name="documentos_eliminar">Eliminar</string>
+    <string name="documentos_clasificar_titulo">¿Que es este documento?</string>
+    <string name="documentos_clasificar_nombre">Nombre</string>
+    <string name="documentos_clasificar_marcador">Por ejemplo: Radiografia de torax</string>
+    <string name="documentos_guardar">Guardar</string>
+    <string name="documentos_cancelar">Cancelar</string>
+    <string name="documentos_categoria_radiografia">Radiografia</string>
+    <string name="documentos_categoria_laboratorio">Laboratorio</string>
+    <string name="documentos_categoria_receta">Receta</string>
+    <string name="documentos_categoria_foto">Foto</string>
+    <string name="documentos_categoria_otro">Otro</string>
+    <string name="a11y_documento">%1$s, %2$s, %3$s. Toca para abrirlo.</string>
+    <string name="a11y_documentos_nombre">Nombre del documento</string>
+    <string name="expediente_seccion_documentos">Estudios y documentos</string>
+    <string name="expediente_sin_documentos">El paciente no ha compartido estudios.</string>
+    <string name="expediente_bloque_oculto">El paciente decidio no compartir esta seccion.</string>
 </resources>

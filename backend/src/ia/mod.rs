@@ -1,4 +1,6 @@
 pub mod deepseek;
+pub mod google;
+pub mod ollama;
 pub mod handlers;
 
 use axum::{routing::post, Router};

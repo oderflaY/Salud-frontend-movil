@@ -60,12 +60,17 @@ import salud.shared.generated.resources.dictado_accion_detener_y_guardar
 import com.eter.salud.ui.componentes.elevacionDeTarjeta
 import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.FormaSalud
+import androidx.compose.ui.text.font.FontWeight
+import com.eter.salud.domain.diario.PreguntaGuiada
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import com.eter.salud.ui.theme.MedidaSalud
 import com.eter.salud.ui.theme.MovimientoSalud
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.a11y_diario_pregunta
+import salud.shared.generated.resources.diario_preguntas_apoyo
+import salud.shared.generated.resources.diario_preguntas_titulo
 import salud.shared.generated.resources.a11y_diario_accion_eliminar
 import salud.shared.generated.resources.a11y_diario_accion_guardar
 import salud.shared.generated.resources.a11y_diario_campo
@@ -129,6 +134,15 @@ fun DiarioScreen(
                 apoyo = stringResource(Res.string.diario_descripcion),
                 accion = { BotonAtras(alPulsar = alVolver) },
             )
+        }
+
+        if (estado.preguntasPendientes.isNotEmpty()) {
+            item(key = "preguntas") {
+                PreguntasGuiadas(
+                    preguntas = estado.preguntasPendientes,
+                    alResponder = viewModel::responder,
+                )
+            }
         }
 
         item(key = "captura") {
@@ -314,3 +328,57 @@ private fun FilaDeEntrada(
     }
 }
 
+/**
+ * Las preguntas que le tocan a ESTE paciente por lo que tiene.
+ *
+ * Son fichas y no un formulario: tocar una escribe el principio de la
+ * respuesta en el diario y el paciente la termina con sus palabras. Asi el
+ * texto sigue siendo suyo -- lo que su medico necesita leer -- y no una lista
+ * de casillas marcadas.
+ *
+ * Desaparecen conforme las responde para que no se pregunte dos veces lo mismo.
+ */
+@Composable
+private fun PreguntasGuiadas(
+    preguntas: List<PreguntaGuiada>,
+    alResponder: (PreguntaGuiada) -> Unit,
+) {
+    val espaciado = LocalEspaciadoSalud.current
+    val colores = LocalColoresSalud.current
+
+    TarjetaSalud {
+        Text(
+            text = stringResource(Res.string.diario_preguntas_titulo),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = stringResource(Res.string.diario_preguntas_apoyo),
+            style = MaterialTheme.typography.bodySmall,
+            color = colores.textoSecundario,
+            modifier = Modifier.padding(top = espaciado.minimo, bottom = espaciado.compacto),
+        )
+        preguntas.forEach { pregunta ->
+            val descripcion = stringResource(Res.string.a11y_diario_pregunta, pregunta.pregunta)
+            Surface(
+                onClick = { alResponder(pregunta) },
+                shape = FormaSalud.media,
+                color = colores.fondoCampo,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = espaciado.compacto)
+                    .heightIn(min = AreaTactilMinima)
+                    .semantics { contentDescription = descripcion },
+            ) {
+                Text(
+                    text = pregunta.pregunta,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(
+                        horizontal = espaciado.medio,
+                        vertical = espaciado.compacto,
+                    ),
+                )
+            }
+        }
+    }
+}

@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Nombre bajo el icono. PRODUCT_NAME sigue siendo "Salud": es el del binario. -->
+	<key>CFBundleDisplayName</key>
+	<string>+Salud</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<!-- Exigido por CoreNFC: el texto que ve el usuario antes de conceder el permiso de lectura. -->
@@ -20,7 +23,7 @@
 	<string>Necesitamos la camara para que puedas escanear un documento y enviarlo en el chat con tu medico.</string>
 	<!--
 	  Permite HTTP sin cifrar SOLO hacia direcciones locales/privadas (loopback,
-	  .local, rangos 10.x/172.16-31.x/192.168.x) -- para apuntar el simulador o
+	  .local, rangos 10.x/172.16-31.x/192.168.x) — para apuntar el simulador o
 	  un dispositivo al backend de desarrollo corriendo en la misma maquina o
 	  red local (ver ConfiguracionApi.BASE_URL). Cualquier host publico sigue
 	  exigiendo HTTPS: esto no relaja ATS para produccion.

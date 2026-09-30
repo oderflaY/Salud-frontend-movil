@@ -37,6 +37,12 @@ private class RelojIos : RelojSalud {
         val fecha = formatoInstante.dateFromString(instanteIso) ?: return ""
         return formatoHoraLocal.stringFromDate(fecha)
     }
+
+    override fun fechaLocal(instanteIso: String): String {
+        val fecha = formatoInstante.dateFromString(instanteIso) ?: return ""
+        // `formatoFecha` no fija zona: formatea en la del dispositivo.
+        return formatoFecha.stringFromDate(fecha)
+    }
 }
 
 actual fun relojDelSistema(): RelojSalud = RelojIos()

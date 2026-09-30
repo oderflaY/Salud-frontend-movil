@@ -2,6 +2,7 @@ package com.eter.salud.presentation.chat
 
 import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.MensajeChat
+import com.eter.salud.presentation.comun.EstadoTraduccion
 
 /**
  * Estado unico de la pantalla de chat. La Vista solo pinta esto
@@ -24,6 +25,15 @@ data class ChatUiState(
     val errorEnvio: Boolean = false,
     /** El medico esta "escribiendo" la respuesta automatica de cortesia. */
     val medicoEscribiendo: Boolean = false,
+    /**
+     * Traduccion por mensaje, solo de los que alguien pidio traducir. Sin
+     * entrada en el mapa = el mensaje se lee como se escribio.
+     */
+    val traducciones: Map<String, EstadoTraduccion> = emptyMap(),
+    /** El backend tiene traduccion configurada; si no, no se ofrece la accion. */
+    val puedeTraducir: Boolean = false,
+    /** Traducir sin preguntar todo lo que escribe el medico (preferencia guardada). */
+    val traduccionAutomatica: Boolean = false,
 ) {
     /** Hay algo que enviar: texto, adjunto, o los dos. Nunca ninguno. */
     val puedeEnviar: Boolean get() = textoEnCurso.isNotBlank() || adjuntoEnCurso != null

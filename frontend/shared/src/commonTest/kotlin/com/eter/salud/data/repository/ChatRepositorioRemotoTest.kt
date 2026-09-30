@@ -230,6 +230,25 @@ class ChatRepositorioRemotoTest {
 
         assertEquals(0, recibidos.recibirPronto())
     }
+
+    @Test
+    fun el_aviso_del_socket_trae_autor_y_texto_para_la_notificacion() = runTest {
+        val canal = CanalTiempoRealFalso()
+        val repositorio = ChatRepositorioRemoto(
+            clienteDePrueba { respond("[]") }, URL_BASE_DE_PRUEBA, canal, ArchivosAdjuntosLocalesFalso(),
+        )
+        val recibidos = mutableListOf<com.eter.salud.domain.repository.MensajeEntrante>()
+        val escucha = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            repositorio.mensajesEntrantes("conv_1").collect { recibidos += it }
+        }
+
+        canal.emitir("chat:conv_1", Json.parseToJsonElement("""{"idMensaje":"m9","autor":"MEDICO","texto":"Hola"}"""))
+        canal.emitir("chat:conv_1", Json.parseToJsonElement("""{"idMensaje":"m10","autor":"PACIENTE"}"""))
+
+        assertEquals(listOf("m9" to "Hola", "m10" to ""), recibidos.map { it.idMensaje to it.texto })
+        assertEquals(AutorMensaje.MEDICO, recibidos.first().autor)
+        escucha.cancel()
+    }
 }
 
 /**

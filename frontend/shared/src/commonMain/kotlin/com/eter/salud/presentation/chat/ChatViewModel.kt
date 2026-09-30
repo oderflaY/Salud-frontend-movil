@@ -6,14 +6,22 @@ import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.MensajeChat
 import com.eter.salud.domain.repository.ChatRepositorio
+import com.eter.salud.data.preferencias.PreferenciasDeLectura
+import com.eter.salud.domain.repository.TraduccionRepositorio
 import com.eter.salud.domain.time.RelojSalud
 import com.eter.salud.domain.time.relojDelSistema
+import com.eter.salud.presentation.comun.EstadoTraduccion
+import com.eter.salud.presentation.comun.alternando
+import com.eter.salud.presentation.comun.mostrandoOriginales
 import com.eter.salud.presentation.comun.ejecutarSeguro
+import com.eter.salud.presentation.comun.traducirParaLaVista
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * ViewModel del chat de orientacion de primera vista.
@@ -34,17 +42,63 @@ class ChatViewModel(
     private val idConversacion: String,
     nombreMedico: String,
     private val reloj: RelojSalud = relojDelSistema(),
+    /** Null con el backend apagado o sin traduccion: la accion no se ofrece. */
+    private val traduccion: TraduccionRepositorio? = null,
+    /** Idioma de quien lee, no del mensaje: a eso se traduce. */
+    private val idiomaDeLectura: String = IDIOMA_POR_DEFECTO,
+    /** Donde vive "traducir siempre"; null en modo local o en las pruebas. */
+    private val preferencias: PreferenciasDeLectura? = null,
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(
-        ChatUiState(idConversacion = idConversacion, nombreMedico = nombreMedico),
+        ChatUiState(
+            idConversacion = idConversacion,
+            nombreMedico = nombreMedico,
+            puedeTraducir = traduccion != null,
+        ),
     )
     val estado: StateFlow<ChatUiState> = _estado.asStateFlow()
+
+    /** Las traducciones se piden de una en una: el modelo atiende una a la vez. */
+    private val candadoDeTraduccion = Mutex()
 
     init {
         // Atada al ciclo de vida del ViewModel, no a un `LaunchedEffect`: ver
         // la nota en `DescubrimientoMedicoViewModel`.
         cargar()
+        if (traduccion != null) {
+            viewModelScope.launch {
+                preferencias?.traducirSiempre?.collect { activa ->
+                    _estado.update {
+                        it.copy(
+                            traduccionAutomatica = activa,
+                            traducciones = it.traducciones.mostrandoOriginales(!activa),
+                        )
+                    }
+                    if (activa) traducirLoQueFalta()
+                }
+            }
+        }
+    }
+
+    /**
+     * Traduce los mensajes del medico que aun no tienen traduccion. Se llama al
+     * encender el interruptor y cada vez que llegan mensajes nuevos, y va de
+     * uno en uno: diez peticiones a la vez no llegarian antes, solo saturarian
+     * al modelo.
+     */
+    private fun traducirLoQueFalta() {
+        if (!_estado.value.traduccionAutomatica) return
+        _estado.value.mensajes
+            .filter { it.autor != AutorMensaje.PACIENTE && it.texto.isNotBlank() }
+            .filter { it.idMensaje !in _estado.value.traducciones }
+            .forEach { traducir(it.idMensaje) }
+    }
+
+    /** Enciende o apaga la traduccion automatica; queda guardada en el telefono. */
+    fun cambiarTraduccionAutomatica(activa: Boolean) {
+        val almacen = preferencias ?: return
+        viewModelScope.launch { almacen.cambiarTraducirSiempre(activa) }
     }
 
     fun cargar() {
@@ -58,6 +112,7 @@ class ChatViewModel(
                     onFailure = { previo.copy(cargando = false, errorCarga = true) },
                 )
             }
+            traducirLoQueFalta()
             // Abrir la conversacion ES leerla: el punto rojo de la barra baja
             // aqui, sin pedirle al paciente ningun gesto adicional.
             if (resultado.isSuccess) {
@@ -95,6 +150,9 @@ class ChatViewModel(
                 val alDia = delServidor + pendientes
                 if (alDia == previo.mensajes && !previo.errorCarga) previo else previo.copy(mensajes = alDia, errorCarga = false)
             }
+            // Con la traduccion automatica encendida, lo que acaba de llegar
+            // se traduce sin que el paciente tenga que pedirlo.
+            traducirLoQueFalta()
             // El chat esta a la vista: lo que acaba de llegar ya se leyo.
             if (llegoAlgoNuevo) {
                 ejecutarSeguro { Result.success(repositorio.marcarConversacionLeida(idConversacion)) }
@@ -192,6 +250,30 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Traduce un mensaje al idioma de quien lee. Se pide mensaje por mensaje y
+     * a peticion: traducir toda la conversacion de oficio costaria diez
+     * segundos por burbuja para textos que quiza ya se entienden.
+     */
+    fun traducir(idMensaje: String) {
+        val repositorioTraduccion = traduccion ?: return
+        val texto = _estado.value.mensajes.firstOrNull { it.idMensaje == idMensaje }?.texto ?: return
+        if (texto.isBlank() || _estado.value.traducciones[idMensaje] == EstadoTraduccion.Cargando) return
+
+        _estado.update { it.copy(traducciones = it.traducciones + (idMensaje to EstadoTraduccion.Cargando)) }
+        viewModelScope.launch {
+            val resultado = candadoDeTraduccion.withLock {
+                traducirParaLaVista(repositorioTraduccion, texto, idiomaDeLectura)
+            }
+            _estado.update { it.copy(traducciones = it.traducciones + (idMensaje to resultado)) }
+        }
+    }
+
+    /** Cruza entre la traduccion y el mensaje tal como lo escribio su autor. */
+    fun alternarTraduccion(idMensaje: String) {
+        _estado.update { it.copy(traducciones = it.traducciones.alternando(idMensaje)) }
+    }
+
     fun descartarErrorEnvio() {
         _estado.update { it.copy(errorEnvio = false) }
     }
@@ -219,5 +301,6 @@ class ChatViewModel(
 
     private companion object {
         const val PREFIJO_ID_PROVISIONAL = "local_"
+        const val IDIOMA_POR_DEFECTO = "es"
     }
 }

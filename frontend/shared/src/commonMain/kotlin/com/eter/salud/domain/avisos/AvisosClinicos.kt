@@ -74,6 +74,17 @@ interface AvisosClinicos {
     fun pedirPermisoSiHaceFalta() {}
 
     /**
+     * Si conviene explicar ahora que los recordatorios no sonaran a la hora
+     * exacta. Android no tiene dialogo para ese permiso (solo una pantalla de
+     * Ajustes), asi que la app lo explica UNA vez y lleva a esa pantalla; si la
+     * persona dice que no, no se vuelve a preguntar.
+     */
+    val debeExplicarAlarmasExactas: Boolean get() = false
+
+    /** Registra la respuesta a esa explicacion y, si acepto, abre el ajuste del sistema. */
+    fun responderAlarmasExactas(aceptar: Boolean) {}
+
+    /**
      * Programa el recordatorio de una toma, o REEMPLAZA el que ya existiera para
      * la misma toma. Reprogramar no debe poder duplicar el aviso de una pastilla
      * (ver [RecordatorioMedicacion.claveSistema]).

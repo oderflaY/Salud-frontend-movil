@@ -18,6 +18,7 @@ import com.eter.salud.data.repository.HistorialMedicoRepositorioRemoto
 import com.eter.salud.data.repository.PacienteRepositorioRemoto
 import com.eter.salud.data.repository.PacientesVinculadosRepositorioRemoto
 import com.eter.salud.data.repository.PerfilEmergenciaRepositorioRemoto
+import com.eter.salud.data.repository.TraduccionRepositorioRemoto
 import com.eter.salud.data.sesion.AvisoDeSesion
 import com.eter.salud.data.sesion.FuenteDeSesion
 import com.eter.salud.domain.repository.DiarioRepositorio
@@ -102,6 +103,9 @@ class ContenedorRed(
     val pacientesVinculados = PacientesVinculadosRepositorioRemoto(cliente, baseUrl)
     val directorio = DirectorioMedicoRepositorioRemoto(cliente, baseUrl)
     val chat = ChatRepositorioRemoto(cliente, baseUrl, conexion, archivos, EstadoDeConexion.reconexiones)
+
+    /** Traduccion de mensajes del chat; el backend decide con que modelo. */
+    val traduccion = TraduccionRepositorioRemoto(cliente, baseUrl)
     val citas = CitasRepositorioRemoto(cliente, baseUrl, conexion)
 
     /** Fuente del medico: lo que el paciente ya subio. */

@@ -91,6 +91,22 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
         pedirPermisoDeAvisos()
     }
 
+    /** Observable, como los permisos: al responder, el dialogo se cierra al instante. */
+    private var alarmasYaExplicadas by mutableStateOf(preferencias.getBoolean(CLAVE_ALARMAS_EXPLICADAS, false))
+
+    override val debeExplicarAlarmasExactas: Boolean
+        get() = permitidos && !alarmasExactas && !alarmasYaExplicadas
+
+    override fun responderAlarmasExactas(aceptar: Boolean) {
+        preferencias.edit().putBoolean(CLAVE_ALARMAS_EXPLICADAS, true).apply()
+        alarmasYaExplicadas = true
+        if (aceptar && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            abrirAjustes(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${contexto.packageName}")),
+            )
+        }
+    }
+
     override fun solicitarPermisos() {
         when {
             !permitidos && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !dialogoRechazado ->
@@ -164,11 +180,19 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
     }
 
     override fun avisarMensajeDelMedico(idConversacion: String, textos: TextosAviso) {
-        if (!permitidos) return
+        // Se relee: el permiso pudo cambiar desde Ajustes con la app abierta.
+        if (!gestorDeAvisos.areNotificationsEnabled()) return
         val aviso = constructor(CANAL_MENSAJES)
+            .conEstiloSalud(contexto)
             .setContentTitle(textos.titulo)
             .setContentText(textos.cuerpo)
-            .setSmallIcon(android.R.drawable.ic_dialog_email)
+            // El texto completo al expandir: una indicacion del medico no se
+            // corta en la primera linea.
+            .setStyle(Notification.BigTextStyle().bigText(textos.cuerpo))
+            .setCategory(Notification.CATEGORY_MESSAGE)
+            // Tocarlo abre ESA conversacion, no solo la app.
+            .setContentIntent(intentParaAbrir(contexto, idConversacion))
+            .setGroup(GRUPO_MENSAJES)
             .setAutoCancel(true)
             // `MAX` es lo que hace que baje sobre la pantalla en vez de quedarse
             // en la bandeja. En API 26+ manda la importancia del canal, pero
@@ -189,6 +213,7 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
             putExtra(EXTRA_TITULO, textos.titulo)
             putExtra(EXTRA_CUERPO, textos.cuerpo)
             putExtra(EXTRA_CLAVE, recordatorio.claveSistema)
+            putExtra(EXTRA_ETIQUETA_POSPONER, textos.accionPosponer)
         }
         return PendingIntent.getBroadcast(
             contexto,
@@ -217,6 +242,13 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
             ),
         ).forEach { canal ->
             canal.enableVibration(true)
+            canal.enableLights(true)
+            canal.lightColor = COLOR_MARCA
+            canal.description = if (canal.id == CANAL_MEDICACION) {
+                DESCRIPCION_CANAL_MEDICACION
+            } else {
+                DESCRIPCION_CANAL_MENSAJES
+            }
             gestorDeAvisos.createNotificationChannel(canal)
         }
     }
@@ -239,6 +271,10 @@ private class AvisosClinicosAndroid(private val contexto: Context) : AvisosClini
 class ReceptorDeRecordatorios : BroadcastReceiver() {
 
     override fun onReceive(contexto: Context, intencion: Intent) {
+        if (intencion.action == ACCION_POSPONER) {
+            posponer(contexto, intencion)
+            return
+        }
         val gestor =
             contexto.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (!gestor.areNotificationsEnabled()) return
@@ -246,6 +282,7 @@ class ReceptorDeRecordatorios : BroadcastReceiver() {
         val titulo = intencion.getStringExtra(EXTRA_TITULO).orEmpty()
         val cuerpo = intencion.getStringExtra(EXTRA_CUERPO).orEmpty()
         val clave = intencion.getStringExtra(EXTRA_CLAVE).orEmpty()
+        val etiquetaPosponer = intencion.getStringExtra(EXTRA_ETIQUETA_POSPONER)
 
         val constructor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(contexto, CANAL_MEDICACION)
@@ -254,17 +291,102 @@ class ReceptorDeRecordatorios : BroadcastReceiver() {
             Notification.Builder(contexto)
         }
 
-        val aviso = constructor
+        constructor
+            .conEstiloSalud(contexto)
             .setContentTitle(titulo)
             .setContentText(cuerpo)
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setStyle(Notification.BigTextStyle().bigText(cuerpo))
+            .setCategory(Notification.CATEGORY_REMINDER)
+            .setContentIntent(intentParaAbrir(contexto, idConversacion = null))
             .setAutoCancel(true)
             .setPriority(Notification.PRIORITY_MAX)
             .setDefaults(Notification.DEFAULT_ALL)
-            .build()
 
-        gestor.notify(claveNumerica(clave), aviso)
+        // "Posponer 10 min" desde la propia notificacion: sin abrir la app,
+        // que es lo que uno quiere cuando la alarma suena en mal momento.
+        if (!etiquetaPosponer.isNullOrBlank()) {
+            val posponer = Intent(contexto, ReceptorDeRecordatorios::class.java)
+                .setAction(ACCION_POSPONER)
+                .putExtras(intencion)
+            constructor.addAction(
+                Notification.Action.Builder(
+                    null,
+                    etiquetaPosponer,
+                    PendingIntent.getBroadcast(
+                        contexto,
+                        claveNumerica("posponer_$clave"),
+                        posponer,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                ).build(),
+            )
+        }
+
+        gestor.notify(claveNumerica(clave), constructor.build())
     }
+
+    /** Retira el aviso y lo vuelve a programar dentro de [MINUTOS_POSPONER] minutos. */
+    private fun posponer(contexto: Context, intencion: Intent) {
+        val clave = intencion.getStringExtra(EXTRA_CLAVE).orEmpty()
+        val gestor = contexto.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        gestor.cancel(claveNumerica(clave))
+
+        val alarmas = contexto.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val repetir = Intent(contexto, ReceptorDeRecordatorios::class.java).putExtras(intencion).setAction(null)
+        val disparo = PendingIntent.getBroadcast(
+            contexto,
+            claveNumerica(clave),
+            repetir,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val instante = System.currentTimeMillis() + MINUTOS_POSPONER * 60_000L
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmas.canScheduleExactAlarms()) {
+                alarmas.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, instante, disparo)
+            } else {
+                alarmas.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, instante, disparo)
+            }
+        } catch (sinPermiso: SecurityException) {
+            alarmas.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, instante, disparo)
+        }
+    }
+}
+
+/**
+ * Lo que comparten todos los avisos de +Salud: el icono de la marca (no uno
+ * generico del sistema), el color, y la hora en que llego.
+ */
+private fun Notification.Builder.conEstiloSalud(contexto: Context): Notification.Builder =
+    setSmallIcon(iconoDeAvisos(contexto))
+        .setColor(COLOR_MARCA)
+        .setShowWhen(true)
+        .setWhen(System.currentTimeMillis())
+
+/**
+ * El icono vive en la app (`androidApp/res/drawable/ic_stat_salud.xml`) y este
+ * modulo no ve su clase `R`: se busca por nombre. Si no estuviera (una prueba,
+ * otra app que use el modulo), se usa uno del sistema en vez de fallar.
+ */
+@android.annotation.SuppressLint("DiscouragedApi")
+private fun iconoDeAvisos(contexto: Context): Int =
+    contexto.resources.getIdentifier(ICONO_DE_AVISOS, "drawable", contexto.packageName)
+        .takeIf { it != 0 }
+        ?: android.R.drawable.ic_popup_reminder
+
+/**
+ * Abre la app y, si hay [idConversacion], esa conversacion. Con la app ya
+ * abierta reutiliza la misma pantalla (`SINGLE_TOP`) en vez de apilar otra.
+ */
+private fun intentParaAbrir(contexto: Context, idConversacion: String?): PendingIntent {
+    val intencion = (contexto.packageManager.getLaunchIntentForPackage(contexto.packageName) ?: Intent())
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        .apply { if (idConversacion != null) putExtra(EXTRA_ABRIR_CONVERSACION, idConversacion) }
+    return PendingIntent.getActivity(
+        contexto,
+        claveNumerica("abrir_${idConversacion.orEmpty()}"),
+        intencion,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
 }
 
 /**
@@ -318,6 +440,7 @@ actual fun recordarAvisosClinicos(): AvisosClinicos {
 
 private const val PREFERENCIAS_AVISOS = "salud_avisos"
 private const val CLAVE_PERMISO_PEDIDO = "permiso_de_avisos_pedido"
+private const val CLAVE_ALARMAS_EXPLICADAS = "alarmas_exactas_explicadas"
 private const val CANAL_MEDICACION = "salud_medicacion"
 private const val CANAL_MENSAJES = "salud_mensajes"
 private const val NOMBRE_CANAL_MEDICACION = "Recordatorios de medicacion"
@@ -325,3 +448,14 @@ private const val NOMBRE_CANAL_MENSAJES = "Mensajes de tu medico"
 private const val EXTRA_TITULO = "titulo"
 private const val EXTRA_CUERPO = "cuerpo"
 private const val EXTRA_CLAVE = "clave"
+private const val EXTRA_ETIQUETA_POSPONER = "etiqueta_posponer"
+private const val ACCION_POSPONER = "com.eter.salud.POSPONER_RECORDATORIO"
+private const val MINUTOS_POSPONER = 10
+private const val ICONO_DE_AVISOS = "ic_stat_salud"
+private const val GRUPO_MENSAJES = "salud_mensajes"
+private const val COLOR_MARCA = 0xFF0A4C86.toInt()
+private const val DESCRIPCION_CANAL_MEDICACION = "Suenan a la hora de cada toma, aunque la app este cerrada."
+private const val DESCRIPCION_CANAL_MENSAJES = "Avisan cuando te escriben en el chat."
+
+/** Lo lee la Activity al abrirse desde un aviso de mensaje. */
+const val EXTRA_ABRIR_CONVERSACION = "com.eter.salud.ABRIR_CONVERSACION"

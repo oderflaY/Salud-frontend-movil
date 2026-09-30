@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -62,6 +64,11 @@ import com.eter.salud.presentation.chatmedico.MensajeVisibleChat
 import com.eter.salud.ui.componentes.BarraAccionInferior
 import com.eter.salud.ui.componentes.BloqueDeError
 import com.eter.salud.ui.componentes.BotonAtras
+import com.eter.salud.presentation.comun.EstadoTraduccion
+import com.eter.salud.ui.componentes.AccionTraducir
+import com.eter.salud.ui.componentes.EstadoBurbujaTraducida
+import com.eter.salud.ui.componentes.MensajeTraducido
+import com.eter.salud.ui.componentes.TranslatedMessageBubble
 import com.eter.salud.ui.componentes.BurbujaMensaje
 import com.eter.salud.ui.componentes.ClinicalAiSummaryCard
 import com.eter.salud.ui.componentes.GlifoSalud
@@ -71,6 +78,13 @@ import com.eter.salud.ui.theme.AreaTactilMinima
 import com.eter.salud.ui.theme.ColoresSalud
 import com.eter.salud.ui.theme.FormaSalud
 import com.eter.salud.ui.componentes.MientrasSeVe
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.eter.salud.domain.time.relojDelSistema
+import com.eter.salud.ui.componentes.EstadoVacioDeChat
+import com.eter.salud.ui.componentes.MenuDeOpciones
+import com.eter.salud.ui.componentes.OpcionDeMenu
+import com.eter.salud.ui.componentes.SeparadorDeFecha
+import com.eter.salud.ui.componentes.TituloDeChat
 import com.eter.salud.ui.theme.LocalColoresSalud
 import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import com.eter.salud.ui.dictado.BotonDictar
@@ -79,6 +93,10 @@ import com.eter.salud.ui.dictado.rememberControladorDeDictado
 import salud.shared.generated.resources.dictado_accion_detener_y_enviar
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.chat_vacio_medico
+import salud.shared.generated.resources.a11y_chat_accion_traduccion_automatica
+import salud.shared.generated.resources.chat_accion_ver_originales
+import salud.shared.generated.resources.chat_accion_traducir_todo
 import salud.shared.generated.resources.a11y_chatmedico_accion_enviar
 import salud.shared.generated.resources.a11y_chatmedico_accion_expediente
 import salud.shared.generated.resources.a11y_chatmedico_cabecera
@@ -117,6 +135,7 @@ fun ChatMedicoScreen(
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
     val listState = rememberLazyListState()
+    val hoy = remember { relojDelSistema().fechaHoy() }
 
     // Mensajes nuevos (del telefono de la otra parte o del panel web) sin salir del chat.
     MientrasSeVe(viewModel) { viewModel.mantenerAlDia() }
@@ -136,6 +155,7 @@ fun ChatMedicoScreen(
                 estado = estado,
                 alVolver = alVolver,
                 alAbrirExpediente = alAbrirExpediente,
+                alCambiarTraduccion = viewModel::cambiarTraduccionAutomatica,
             )
         },
         // El campo vive en la barra inferior, que ya aplica `imePadding()` y el
@@ -165,7 +185,10 @@ fun ChatMedicoScreen(
 
                 is HistorialChatUiState.ConMensajes -> {
                     if (historial.mensajes.isEmpty()) {
-                        MensajeSinMensajes()
+                        EstadoVacioDeChat(
+                            descripcion = stringResource(Res.string.chat_vacio_medico, estado.nombrePaciente),
+                            modifier = Modifier.weight(1f),
+                        )
                     } else {
                         LazyColumn(
                             state = listState,
@@ -178,13 +201,26 @@ fun ChatMedicoScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(espaciado.medio),
                         ) {
-                            items(historial.mensajes, key = { it.idMensaje }) { mensaje ->
+                            itemsIndexed(historial.mensajes, key = { _, mensaje -> mensaje.idMensaje }) { indice, mensaje ->
+                                if (mensaje.fechaLocal != historial.mensajes.getOrNull(indice - 1)?.fechaLocal) {
+                                    SeparadorDeFecha(
+                                        fechaLocal = mensaje.fechaLocal,
+                                        hoy = hoy,
+                                        modifier = Modifier.padding(bottom = espaciado.medio),
+                                    )
+                                }
                                 MensajeDelChat(
                                     mensaje = mensaje,
                                     nombrePaciente = estado.nombrePaciente,
                                     resumenIa = estado.resumenesIa[mensaje.idMensaje],
                                     originalExpandido = mensaje.idMensaje in estado.originalExpandido,
                                     alAlternarOriginal = { viewModel.alternarOriginal(mensaje.idMensaje) },
+                                    traduccion = estado.traducciones[mensaje.idMensaje],
+                                    // Solo lo que escribio el paciente: el medico
+                                    // no necesita traducir sus propias respuestas.
+                                    puedeTraducir = estado.puedeTraducir && !mensaje.esPropio,
+                                    alTraducir = { viewModel.traducir(mensaje.idMensaje) },
+                                    alAlternarTraduccion = { viewModel.alternarTraduccion(mensaje.idMensaje) },
                                 )
                             }
                         }
@@ -214,6 +250,7 @@ private fun CabeceraClinica(
     estado: ChatMedicoUiState,
     alVolver: () -> Unit,
     alAbrirExpediente: () -> Unit,
+    alCambiarTraduccion: (Boolean) -> Unit = {},
 ) {
     val espaciado = LocalEspaciadoSalud.current
     val colores = LocalColoresSalud.current
@@ -230,33 +267,12 @@ private fun CabeceraClinica(
 
     TopAppBar(
         title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(espaciado.compacto),
-                modifier = Modifier.semantics(mergeDescendants = true) {
-                    contentDescription = descripcionCabecera
-                },
-            ) {
-                // Semaforo sutil: un punto, no un bloque de color que compita
-                // con la conversacion.
-                Box(
-                    Modifier
-                        .size(TAMANO_PUNTO_RIESGO)
-                        .background(estado.riesgoPaciente.color(colores), CircleShape),
-                )
-                Column {
-                    Text(
-                        text = estado.nombrePaciente,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text(
-                        text = etiquetaRiesgo,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colores.textoSecundario,
-                    )
-                }
-            }
+            TituloDeChat(
+                nombre = estado.nombrePaciente,
+                subtitulo = etiquetaRiesgo,
+                colorDeEstado = estado.riesgoPaciente.color(colores),
+                modifier = Modifier.semantics { contentDescription = descripcionCabecera },
+            )
         },
         navigationIcon = { BotonAtras(alPulsar = alVolver) },
         actions = {
@@ -266,8 +282,25 @@ private fun CabeceraClinica(
                     .heightIn(min = AreaTactilMinima)
                     .semantics { contentDescription = descripcionExpediente },
             ) {
-                Text(stringResource(Res.string.chatmedico_accion_expediente))
+                Text(stringResource(Res.string.chatmedico_accion_expediente), maxLines = 1)
             }
+            // Traducir va en el menu: como segundo boton de texto le quitaba
+            // al nombre del paciente el ancho de la barra.
+            MenuDeOpciones(
+                buildList {
+                    if (estado.puedeTraducir) {
+                        val activa = estado.traduccionAutomatica
+                        add(
+                            OpcionDeMenu(
+                                etiqueta = stringResource(
+                                    if (activa) Res.string.chat_accion_ver_originales else Res.string.chat_accion_traducir_todo,
+                                ),
+                                alElegir = { alCambiarTraduccion(!activa) },
+                            ),
+                        )
+                    }
+                },
+            )
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = colores.fondoConversacion),
     )
@@ -293,7 +326,27 @@ private fun MensajeDelChat(
     resumenIa: EstadoResumenIa?,
     originalExpandido: Boolean,
     alAlternarOriginal: () -> Unit,
+    traduccion: EstadoTraduccion? = null,
+    puedeTraducir: Boolean = false,
+    alTraducir: () -> Unit = {},
+    alAlternarTraduccion: () -> Unit = {},
 ) {
+    // Traducido: la burbuja con traduccion reemplaza a la normal y deja el
+    // original del paciente a un toque.
+    if (traduccion is EstadoTraduccion.Lista) {
+        TranslatedMessageBubble(
+            estado = if (traduccion.mostrandoOriginal) {
+                EstadoBurbujaTraducida.Original(MensajeTraducido(traduccion.texto, mensaje.texto))
+            } else {
+                EstadoBurbujaTraducida.Traducido(MensajeTraducido(traduccion.texto, mensaje.texto))
+            },
+            horaLocal = mensaje.horaLocal,
+            esPropio = mensaje.esPropio,
+            esDelMedico = mensaje.autor == AutorMensaje.MEDICO,
+            alAlternar = alAlternarTraduccion,
+        )
+        return
+    }
     if (resumenIa != null) {
         ClinicalAiSummaryCard(
             estado = resumenIa,
@@ -321,19 +374,27 @@ private fun MensajeDelChat(
     }
     val abridor = rememberAbridorDeAdjuntos()
 
-    BurbujaMensaje(
-        texto = mensaje.texto,
-        horaLocal = mensaje.horaLocal,
-        esPropio = mensaje.esPropio,
-        // Aqui coinciden -- el medico ES quien mira -- pero se pasan por
-        // separado: son dos preguntas distintas y fundirlas volveria a atar el
-        // color a la propiedad del mensaje.
-        esDelMedico = mensaje.autor == AutorMensaje.MEDICO,
-        descripcionAccesible = descripcion,
-        adjunto = adjunto?.let { archivo ->
-            { colorTexto -> ChipDeAdjunto(adjunto = archivo, colorTexto = colorTexto, abridor = abridor) }
-        },
-    )
+    val colores = LocalColoresSalud.current
+    Column(verticalArrangement = Arrangement.spacedBy(LocalEspaciadoSalud.current.minimo)) {
+        BurbujaMensaje(
+            texto = mensaje.texto,
+            horaLocal = mensaje.horaLocal,
+            esPropio = mensaje.esPropio,
+            // Aqui coinciden -- el medico ES quien mira -- pero se pasan por
+            // separado: son dos preguntas distintas y fundirlas volveria a atar el
+            // color a la propiedad del mensaje.
+            esDelMedico = mensaje.autor == AutorMensaje.MEDICO,
+            descripcionAccesible = descripcion,
+            adjunto = adjunto?.let { archivo ->
+                { colorTexto -> ChipDeAdjunto(adjunto = archivo, colorTexto = colorTexto, abridor = abridor) }
+            },
+        )
+        // Fuera de la burbuja: la del paciente es gris y un boton dentro
+        // competiria con el texto clinico, que es lo que hay que leer.
+        if (puedeTraducir && mensaje.texto.isNotBlank()) {
+            AccionTraducir(estado = traduccion, colorTexto = colores.textoSecundario, alTraducir = alTraducir)
+        }
+    }
 }
 
 /**
@@ -471,17 +532,6 @@ private fun IndicadorCargando() {
 }
 
 
-/** Paciente vinculado que aun no escribe: el medico puede abrir la orientacion. */
-@Composable
-private fun MensajeSinMensajes() {
-    Box(Modifier.fillMaxSize().padding(LocalEspaciadoSalud.current.amplio)) {
-        Text(
-            text = stringResource(Res.string.chatmedico_sin_mensajes),
-            style = MaterialTheme.typography.bodyMedium,
-            color = LocalColoresSalud.current.textoSecundario,
-        )
-    }
-}
 
 private val TAMANO_PUNTO_RIESGO = 10.dp
 private const val MAXIMO_LINEAS_CAMPO = 5

@@ -56,6 +56,10 @@ pub fn router(origenes_permitidos: &[String]) -> Router<AppState> {
         )
         .route("/admin/conversaciones/:id_conversacion/leer", patch(handlers::marcar_leida))
         .route("/adjuntos/:id_adjunto", get(handlers::ver_adjunto))
+        // El mismo traductor que usa la app. Vive también bajo /api/v1 porque
+        // el panel corre en un navegador: fuera de aquí no hay CORS y la
+        // llamada se bloquearía antes de salir.
+        .route("/chat/traducir", post(crate::ia::handlers::traducir_texto))
         // Gestión de cuentas: solo administradores.
         .route("/admin/cuentas/medicos", get(cuentas::listar_medicos).post(cuentas::crear_medico))
         .route("/admin/cuentas/medicos/:id/verificacion", patch(cuentas::verificar_cedula))

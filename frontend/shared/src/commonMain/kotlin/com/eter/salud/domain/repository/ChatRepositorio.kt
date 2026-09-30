@@ -58,6 +58,13 @@ interface ChatRepositorio {
     fun cambiosEn(idConversacion: String): Flow<Unit> = emptyFlow()
 
     /**
+     * Cada mensaje nuevo que llega a la conversacion, al instante, con su autor
+     * y su texto: lo que necesita un aviso del sistema para decir quien escribio
+     * y que, sin descargar el historial completo.
+     */
+    fun mensajesEntrantes(idConversacion: String): Flow<MensajeEntrante> = emptyFlow()
+
+    /**
      * Marca la conversacion como vista. La llama la pantalla de chat al abrirse:
      * ver los mensajes ES leerlos, y pedir un gesto aparte para bajar el
      * contador seria inventarse un tramite.
@@ -80,6 +87,14 @@ interface ChatRepositorio {
      */
     suspend fun obtenerResumenClinico(idMensaje: String): Result<ResumenClinicoIa>
 }
+
+/** Lo que avisa el servidor al llegar un mensaje: sin adjunto ni hora, solo para avisar. */
+data class MensajeEntrante(
+    val idMensaje: String,
+    val autor: AutorMensaje,
+    /** Vacio si el mensaje es solo un adjunto. */
+    val texto: String,
+)
 
 /**
  * Fallo de [ChatRepositorio.obtenerResumenClinico] cuando no hay backend que

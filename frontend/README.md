@@ -15,7 +15,7 @@ Fuente original: [oderflaY/Salud-frontend-movil](https://github.com/oderflaY/Sal
 
 This is a Kotlin Multiplatform project targeting Android, iOS.
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,z
+* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,z11+qq
   you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
 
 * [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.

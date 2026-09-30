@@ -219,7 +219,7 @@ Servidor → cliente:
 Límite de intentos por IP (429): el alta y el inicio de sesión de la app, y `/api/v1/auth/login` y `/api/v1/auth/recuperar-contrasena` del panel, permiten 10 seguidos y después 1 cada 6 s.
 Eventos disponibles: `mensaje_nuevo` (chat), `cita_creada`/`cita_actualizada`/`agenda_bloqueada` (agenda) — el diario aún no emite eventos propios (módulo 10 no generó ninguno; agregarlo implica una migración nueva con `app.emitir_evento` en el INSERT).
 
-## IA (DeepSeek): resumen de chat y traducción
+## IA: resumen de chat y traducción
 
 No es uno de los 11 módulos del documento de contratos — capacidad nueva añadida
 sobre el chat existente. Vive en Axum (`backend/src/ia/`), no en PostgREST,
@@ -241,6 +241,14 @@ canales — esta conexión de Axum a Postgres no tiene el GUC
 (502) significa que la llamada a DeepSeek falló (red, cuota agotada, etc.) —
 se reintenta del lado del cliente si tiene sentido, no es un error del
 paciente/médico.
+
+### Traducción con un modelo propio
+
+`POST /chat/traducir` `{texto, idiomaDestino}` → `{traduccion}`. Prioridad (la primera variable puesta gana): 1) `OLLAMA_URL` (`POST {OLLAMA_URL}/api/chat`, modelo de `OLLAMA_MODELO_TRADUCCION` — local, el texto del paciente no sale hacia un tercero); 2) `GOOGLE_TRANSLATE_API_KEY` (Google Cloud Translation v2); 3) `DEEPSEEK_API_KEY`. Sin ninguna de las tres, `IA_NO_CONFIGURADA` (503).
+
+La misma ruta existe bajo `/api/v1/chat/traducir` para el panel web, que la necesita con CORS. Tarda de diez a veinte segundos por mensaje: los clientes la piden mensaje por mensaje, nunca de oficio, y esperan hasta 90 s.
+
+Cada cliente decide cuándo pedirla: hay un botón "Traducir" por mensaje y un interruptor de traducción automática que, encendido, traduce solo lo que escribe la otra parte, de uno en uno. Esa preferencia se guarda en el aparato (DataStore en la app, `localStorage` en el panel), no en el servidor. El idioma destino es el de la app (Ajustes, o el del teléfono) y el español en el panel.
 
 ## Panel web del médico (`/api/v1`, Axum)
 

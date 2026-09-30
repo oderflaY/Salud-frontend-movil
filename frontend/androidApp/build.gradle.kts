@@ -39,6 +39,17 @@ fun propiedadLocal(clave: String): String? =
 // se pone en local.properties, no aqui, para no fijar la IP de un desarrollador
 // como valor del repositorio.
 val urlBackendDebug = propiedadLocal("salud.baseUrl.debug") ?: "http://10.0.2.2:8000"
+
+/**
+ * Modo local: la app ignora el backend y sirve TODO desde su SQLite (las
+ * cuentas, el expediente, el chat y la agenda que siembra `SembradorDemo`).
+ *
+ * Existe para demostrar la app donde no hay red — en un evento, en un salon
+ * sin wifi — sin que aparezca ni un aviso de "sin conexion". Se enciende con
+ * `salud.modoLocal=true` en `local.properties`, que no va al repositorio, y
+ * apagarlo devuelve la app al backend sin tocar una linea de codigo.
+ */
+val modoLocal = propiedadLocal("salud.modoLocal").toBoolean()
 val urlBackendRelease = propiedadLocal("salud.baseUrl.release")
 
 val credencialesFirma = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { archivo ->
@@ -78,6 +89,7 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "URL_BACKEND", "\"$urlBackendDebug\"")
+            buildConfigField("boolean", "MODO_LOCAL", "$modoLocal")
         }
         release {
             // Sin esto el .aab pesa de mas y viaja con los nombres originales
@@ -109,6 +121,9 @@ android {
                 }
             }
             buildConfigField("String", "URL_BACKEND", "\"${urlBackendRelease.orEmpty()}\"")
+            // Nunca en release: una app publicada que ignora el backend
+            // mostraria datos de demostracion como si fueran del paciente.
+            buildConfigField("boolean", "MODO_LOCAL", "false")
         }
     }
     compileOptions {

@@ -94,6 +94,12 @@ fun PerfilMedicoScreen(
     modifier: Modifier = Modifier,
     /** Retorno al inicio; nulo cuando la pantalla es la raiz de su pila. */
     alVolver: (() -> Unit)? = null,
+    /**
+     * Lo que el paciente comparte con su medico y sus estudios adjuntos. Va
+     * arriba: es lo primero que alguien quiere saber de su expediente, "¿que
+     * ve mi medico?", antes de ponerse a editar un dato.
+     */
+    seccionCompartida: (@Composable () -> Unit)? = null,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
@@ -123,6 +129,11 @@ fun PerfilMedicoScreen(
         Spacer(Modifier.height(espaciado.amplio))
         CabeceraPerfil(estado)
         Spacer(Modifier.height(espaciado.generoso))
+
+        if (seccionCompartida != null) {
+            seccionCompartida()
+            Spacer(Modifier.height(espaciado.generoso))
+        }
 
         if (estado.cargando) {
             IndicadorCargando()

@@ -197,6 +197,13 @@ enum class GlifoSalud(internal val trazo: String) {
             "M300,-460 L560,-460 L560,-430 L300,-430 Z",
     ),
 
+    /** `more_vert`: el menu de mas opciones. Tres circulos exactos. */
+    MAS_OPCIONES(
+        "M480,-650 A70,70 0 1,1 480,-790 A70,70 0 1,1 480,-650 Z " +
+            "M480,-410 A70,70 0 1,1 480,-550 A70,70 0 1,1 480,-410 Z " +
+            "M480,-170 A70,70 0 1,1 480,-310 A70,70 0 1,1 480,-170 Z",
+    ),
+
     /** Opcion "Escanear documento": las cuatro esquinas de un visor de escaneo. */
     ESCANER(
         "M160,-800 L320,-800 L320,-750 L160,-750 Z " +

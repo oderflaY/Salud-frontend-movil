@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Icono de las notificaciones: la cruz del logo de +Salud en una sola tinta.
+  Android pinta de blanco (o del color de la notificacion) todo lo que no es
+  transparente, asi que aqui no puede ir el trazo de electrocardiograma en
+  color del icono de la app: se recorta como hueco para que se siga leyendo.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M10,2.5h4a1.5,1.5 0,0 1,1.5 1.5v4.5h4.5a1.5,1.5 0,0 1,1.5 1.5v4a1.5,1.5 0,0 1,-1.5 1.5h-4.5v4.5a1.5,1.5 0,0 1,-1.5 1.5h-4a1.5,1.5 0,0 1,-1.5 -1.5v-4.5h-4.5a1.5,1.5 0,0 1,-1.5 -1.5v-4a1.5,1.5 0,0 1,1.5 -1.5h4.5v-4.5a1.5,1.5 0,0 1,1.5 -1.5z M4.5,12.6h3.6l1.2,-2.2l1.8,4.6l1.5,-3.8l0.9,1.4h5.9v-1.2h-5.2l-1.7,-2.6l-1.4,3.6l-1.8,-4.6l-1.9,3.6h-2.9z" />
+</vector>

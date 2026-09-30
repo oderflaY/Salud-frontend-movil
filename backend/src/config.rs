@@ -19,6 +19,18 @@ pub struct Config {
     pub deepseek_api_key: Option<String>,
     pub deepseek_base_url: String,
     pub deepseek_modelo: String,
+    /// Ollama propio para traducir el chat (por ejemplo `translategemma`).
+    /// Si está puesta, la traducción va aquí y no a DeepSeek: el texto del
+    /// paciente no sale hacia un servicio de terceros.
+    pub ollama_url: Option<String>,
+    pub ollama_modelo_traduccion: String,
+    /// API key de Google Cloud Translation (v2, REST por key — sin OAuth).
+    /// Tercera opción de traducción: un servicio de nube oficial, para quien
+    /// no quiere mantener un Ollama propio ni usar DeepSeek. Orden de
+    /// prioridad en `ia::handlers::traducir_texto`: Ollama, luego Google,
+    /// luego DeepSeek — el local siempre gana porque no depende de internet
+    /// ni manda el texto del paciente a un tercero.
+    pub google_translate_api_key: Option<String>,
     /// Orígenes web que pueden llamar a `/api/v1` desde el navegador (el
     /// dashboard del médico). La app móvil no pasa por CORS. `*` abre a
     /// cualquiera: solo para pruebas, nunca en producción.
@@ -54,6 +66,10 @@ impl Config {
             deepseek_base_url: env::var("DEEPSEEK_BASE_URL")
                 .unwrap_or_else(|_| "https://api.deepseek.com".to_string()),
             deepseek_modelo: env::var("DEEPSEEK_MODELO").unwrap_or_else(|_| "deepseek-chat".to_string()),
+            ollama_url: env::var("OLLAMA_URL").ok().filter(|v| !v.trim().is_empty()),
+            ollama_modelo_traduccion: env::var("OLLAMA_MODELO_TRADUCCION")
+                .unwrap_or_else(|_| "translategemma:12b".to_string()),
+            google_translate_api_key: env::var("GOOGLE_TRANSLATE_API_KEY").ok().filter(|v| !v.trim().is_empty()),
             cors_origenes: separar_origenes(
                 &env::var("CORS_ORIGENES")
                     .ok()

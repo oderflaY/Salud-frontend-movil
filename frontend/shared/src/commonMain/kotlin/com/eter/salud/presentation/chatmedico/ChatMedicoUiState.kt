@@ -4,6 +4,7 @@ import com.eter.salud.domain.model.Adjunto
 import com.eter.salud.domain.model.AutorMensaje
 import com.eter.salud.domain.model.ResumenClinicoIa
 import com.eter.salud.domain.model.RiesgoPaciente
+import com.eter.salud.presentation.comun.EstadoTraduccion
 
 /**
  * Estado del resumen clinico que la IA del backend extrae de un mensaje largo
@@ -40,6 +41,8 @@ data class MensajeVisibleChat(
     val esPropio: Boolean,
     val horaLocal: String,
     val adjunto: Adjunto? = null,
+    /** `YYYY-MM-DD` local, para separar la conversacion por dias. */
+    val fechaLocal: String = "",
 )
 
 /**
@@ -94,6 +97,12 @@ data class ChatMedicoUiState(
     val resumenesIa: Map<String, EstadoResumenIa> = emptyMap(),
     /** `idMensaje` cuyo mensaje original se muestra expandido bajo su resumen. */
     val originalExpandido: Set<String> = emptySet(),
+    /** Traduccion por mensaje, solo de los que el medico pidio traducir. */
+    val traducciones: Map<String, EstadoTraduccion> = emptyMap(),
+    /** El backend tiene traduccion configurada; si no, no se ofrece la accion. */
+    val puedeTraducir: Boolean = false,
+    /** Traducir sin preguntar todo lo que escribe el paciente (preferencia guardada). */
+    val traduccionAutomatica: Boolean = false,
 ) {
     val puedeEnviar: Boolean get() = textoEnCurso.isNotBlank() || adjuntoEnCurso != null
 

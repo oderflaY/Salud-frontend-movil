@@ -53,6 +53,9 @@ import com.eter.salud.domain.repository.TipoDeCuenta
 import com.eter.salud.presentation.configuracion.BajaDeCuentaUiState
 import com.eter.salud.presentation.configuracion.BajaDeCuentaViewModel
 import com.eter.salud.presentation.configuracion.ConfiguracionUiState
+import com.eter.salud.data.preferencias.PreferenciasDeLectura
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.eter.salud.presentation.configuracion.ConfiguracionViewModel
 import com.eter.salud.presentation.contrasena.CambioContrasenaViewModel
 import com.eter.salud.ui.componentes.BotonAtras
@@ -71,6 +74,8 @@ import com.eter.salud.ui.theme.LocalEspaciadoSalud
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import salud.shared.generated.resources.Res
+import salud.shared.generated.resources.config_traduccion_descripcion
+import salud.shared.generated.resources.config_traduccion_titulo
 import salud.shared.generated.resources.a11y_accion_cerrar_sesion
 import salud.shared.generated.resources.accion_cerrar_sesion
 import salud.shared.generated.resources.a11y_config_baja_accion
@@ -144,6 +149,8 @@ fun ConfiguracionScreen(
     cambioDeContrasena: CambioContrasenaViewModel? = null,
     /** El backend cierra las demas sesiones y devuelve un token nuevo que hay que guardar. */
     alContrasenaCambiada: (SesionPaciente) -> Unit = {},
+    /** Preferencias guardadas de lectura (traduccion). `null` en modo local. */
+    preferenciasDeLectura: PreferenciasDeLectura? = null,
 ) {
     val estado by viewModel.estado.collectAsStateWithLifecycle()
     val espaciado = LocalEspaciadoSalud.current
@@ -236,6 +243,24 @@ fun ConfiguracionScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = colores.textoSecundario,
             )
+
+            // En este bloque y no en Avisos: quien viene aqui a cambiar el
+            // idioma de la app es exactamente quien necesita que los mensajes
+            // le lleguen en ese idioma.
+            if (preferenciasDeLectura != null) {
+                val alcance = rememberCoroutineScope()
+                val traducirSiempre by preferenciasDeLectura.traducirSiempre
+                    .collectAsStateWithLifecycle(initialValue = false)
+                Spacer(Modifier.height(espaciado.compacto))
+                FilaDeAjuste(
+                    titulo = stringResource(Res.string.config_traduccion_titulo),
+                    apoyo = stringResource(Res.string.config_traduccion_descripcion),
+                    activo = traducirSiempre,
+                    alCambiar = { activo ->
+                        alcance.launch { preferenciasDeLectura.cambiarTraducirSiempre(activo) }
+                    },
+                )
+            }
         }
 
         // -------------------------------------------------------- Apariencia

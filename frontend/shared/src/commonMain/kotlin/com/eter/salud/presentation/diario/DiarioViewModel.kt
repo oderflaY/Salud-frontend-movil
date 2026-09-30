@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.eter.salud.domain.diario.SeveridadDiario
 import com.eter.salud.domain.diario.TriageDelDiario
 import com.eter.salud.domain.model.EntradaDiario
+import com.eter.salud.domain.diario.PreguntaGuiada
+import com.eter.salud.domain.diario.PreguntasPorCondicion
+import com.eter.salud.domain.repository.HistorialMedicoRepositorio
 import com.eter.salud.domain.repository.DiarioRepositorio
 import com.eter.salud.domain.time.RelojSalud
 import com.eter.salud.domain.time.relojDelSistema
@@ -21,7 +24,21 @@ data class DiarioUiState(
     val borrador: String = "",
     val cargando: Boolean = true,
     val errorGuardado: Boolean = false,
+    /**
+     * Preguntas guiadas para ESTE paciente, segun sus condiciones. Vacio
+     * mientras se carga el expediente o si no se pudo leer: el diario sigue
+     * sirviendo como hoja en blanco, que es como funcionaba antes.
+     */
+    val preguntas: List<PreguntaGuiada> = emptyList(),
+    /** Las condiciones que dieron pie a esas preguntas, para decirlo en pantalla. */
+    val condiciones: List<String> = emptyList(),
+    /** Preguntas que el paciente ya uso en este borrador: no se vuelven a ofrecer. */
+    val preguntasUsadas: Set<String> = emptySet(),
 ) {
+    /** Lo que queda por ofrecer: se van consumiendo conforme responde. */
+    val preguntasPendientes: List<PreguntaGuiada>
+        get() = preguntas.filterNot { it.clave in preguntasUsadas }
+
     val puedeGuardar: Boolean get() = borrador.isNotBlank()
 
     /**
@@ -48,6 +65,11 @@ class DiarioViewModel(
     private val repositorio: DiarioRepositorio,
     private val idPaciente: String,
     private val reloj: RelojSalud = relojDelSistema(),
+    /**
+     * De donde salen las condiciones del paciente para adaptar las preguntas.
+     * `null` deja el diario como hoja en blanco, sin preguntas.
+     */
+    private val historial: HistorialMedicoRepositorio? = null,
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(DiarioUiState())
@@ -60,6 +82,45 @@ class DiarioViewModel(
             repositorio.entradasDe(idPaciente).collect { entradas ->
                 _estado.update { it.copy(entradas = entradas, cargando = false) }
             }
+        }
+        cargarPreguntas()
+    }
+
+    /**
+     * Lee las condiciones del expediente y arma las preguntas de este paciente.
+     * Si el expediente no se puede leer no se avisa de nada: la ausencia de
+     * preguntas no rompe el diario, y un error aqui no debe tapar la pantalla
+     * donde alguien viene a anotar un sintoma.
+     */
+    private fun cargarPreguntas() {
+        val repositorioHistorial = historial ?: return
+        viewModelScope.launch {
+            val paciente = ejecutarSeguro { repositorioHistorial.obtenerPaciente(idPaciente) }.getOrNull() ?: return@launch
+            val condiciones = paciente.perfilEmergenciaReducido?.condicionesCriticas.orEmpty()
+            _estado.update {
+                it.copy(
+                    preguntas = PreguntasPorCondicion.para(condiciones),
+                    condiciones = PreguntasPorCondicion.condicionesReconocidas(condiciones),
+                )
+            }
+        }
+    }
+
+    /**
+     * El paciente toco una pregunta: su inicio de respuesta se anade al
+     * borrador y la pregunta deja de ofrecerse.
+     *
+     * Se ANADE, nunca se reemplaza: quien ya escribio medio parrafo no debe
+     * perderlo por tocar una pregunta.
+     */
+    fun responder(pregunta: PreguntaGuiada) {
+        _estado.update { actual ->
+            val separador = if (actual.borrador.isBlank()) "" else "\n"
+            actual.copy(
+                borrador = actual.borrador + separador + pregunta.inicioDeRespuesta,
+                preguntasUsadas = actual.preguntasUsadas + pregunta.clave,
+                errorGuardado = false,
+            )
         }
     }
 
@@ -90,7 +151,9 @@ class DiarioViewModel(
             terminosDetectados = TriageDelDiario.terminosDetectados(texto),
         )
 
-        _estado.update { it.copy(borrador = "", errorGuardado = false) }
+        // Entrada guardada, preguntas de vuelta: manana toca contar lo de
+        // manana, y las mismas preguntas vuelven a tener sentido.
+        _estado.update { it.copy(borrador = "", errorGuardado = false, preguntasUsadas = emptySet()) }
         viewModelScope.launch {
             val resultado = ejecutarSeguro { repositorio.guardar(entrada) }
             if (resultado.isFailure) {

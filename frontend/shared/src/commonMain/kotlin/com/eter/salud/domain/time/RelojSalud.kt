@@ -22,6 +22,14 @@ interface RelojSalud {
      * inventada bajo un mensaje clinico es peor que ninguna hora.
      */
     fun horaLocal(instanteIso: String): String
+
+    /**
+     * Fecha local (`YYYY-MM-DD`) de un instante ISO 8601 UTC, para agrupar los
+     * mensajes del chat por dia. Un mensaje de las 23:30 UTC ya es "manana"
+     * en Mexico: por eso no basta con cortar la cadena. Cadena vacia si el
+     * texto no es un instante valido (y entonces no se pinta separador).
+     */
+    fun fechaLocal(instanteIso: String): String = ""
 }
 
 /** Reloj real de la plataforma (Android / iOS). */

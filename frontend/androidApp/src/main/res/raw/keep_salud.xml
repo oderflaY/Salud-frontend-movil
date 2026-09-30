@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  El icono de las notificaciones se busca por nombre desde el modulo compartido
+  (no hay referencia R directa): sin esto, shrinkResources lo borraria del
+  build de release y los avisos caerian al icono generico.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_salud" />
