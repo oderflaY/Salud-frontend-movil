@@ -50,7 +50,10 @@ val urlBackendDebug = propiedadLocal("salud.baseUrl.debug") ?: "http://10.0.2.2:
  * apagarlo devuelve la app al backend sin tocar una linea de codigo.
  */
 val modoLocal = propiedadLocal("salud.modoLocal").toBoolean()
-val urlBackendRelease = propiedadLocal("salud.baseUrl.release")
+// Producción por IP y no por nombre: la red de la universidad (Fortinet)
+// bloquea sslip.io como "Dynamic DNS"; la IP directa con certificado de
+// Let's Encrypt para IP pasa en esa red y en cualquier otra.
+val urlBackendRelease = propiedadLocal("salud.baseUrl.release") ?: "https://2.25.68.28:8443"
 
 val credencialesFirma = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { archivo ->
     Properties().apply { archivo.inputStream().use(::load) }
